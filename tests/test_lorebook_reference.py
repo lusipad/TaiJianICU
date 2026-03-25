@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from core.models.memory_snapshot import MemorySnapshot
 from core.models.reference_profile import ReferenceProfile, ReferenceTrait
 from core.models.world_model import CanonFact, CharacterArc, ExpansionSlot, WorldModel
@@ -71,3 +73,21 @@ def test_reference_planner_selects_relevant_profiles() -> None:
 
     assert len(selected) == 1
     assert selected[0].name == "世界扩张参考"
+
+
+def test_reference_planner_loads_profiles_from_directory(tmp_path: Path) -> None:
+    profile_path = tmp_path / "world.json"
+    profile_path.write_text(
+        ReferenceProfile(
+            name="世界扩张参考",
+            reference_type="world",
+            abstract_traits=[ReferenceTrait(label="地图扩张", description="逐步开放")],
+            allowed_influences=["地图"],
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    loaded = ReferencePlanner().load_profiles(tmp_path)
+
+    assert len(loaded) == 1
+    assert loaded[0].name == "世界扩张参考"

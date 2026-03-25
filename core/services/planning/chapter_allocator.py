@@ -7,6 +7,7 @@ from core.models.chapter_brief import (
     ChapterConstraint,
     ExpansionBudget,
 )
+from core.models.reference_profile import ReferenceProfile
 from core.models.world_model import WorldModel
 
 
@@ -18,11 +19,13 @@ class ChapterAllocator:
         arc_outline: ArcOutline,
         chapter_number: int,
         expansion_budget: ExpansionBudget,
+        reference_profiles: list[ReferenceProfile] | None = None,
     ) -> ChapterBrief:
         start, end = arc_outline.chapters_span
         midpoint = (start + end) // 2
         must_happen = self._build_must_happen(arc_outline, chapter_number, midpoint, end)
         may_introduce = []
+        reference_profiles = reference_profiles or []
         if expansion_budget.new_character_budget and chapter_number >= midpoint:
             may_introduce.append("允许引入一个与主线因果相连的新人物")
         if expansion_budget.new_location_budget and chapter_number >= midpoint:
@@ -31,22 +34,41 @@ class ChapterAllocator:
             may_introduce.append("允许展示一个尚未正式登场的新势力")
 
         focus_threads = [thread.id for thread in world_model.active_threads[:2]]
+        constraints = [
+            ChapterConstraint(
+                label="arc_alignment",
+                content=f"本章必须服务于 arc 目标：{arc_outline.arc_goal}",
+                priority="hard",
+            )
+        ]
+        for index, profile in enumerate(reference_profiles[:2], start=1):
+            constraints.append(
+                ChapterConstraint(
+                    label=f"reference_{index}",
+                    content=(
+                        f"参考 {profile.name} 的抽象特征："
+                        + "；".join(trait.label for trait in profile.abstract_traits[:3])
+                    ),
+                    priority="soft",
+                )
+            )
         return ChapterBrief(
             chapter_number=chapter_number,
             chapter_goal=self._build_chapter_goal(arc_outline, chapter_number, midpoint, end),
-            chapter_note=f"当前 arc 主题：{arc_outline.arc_theme}",
+            chapter_note=(
+                f"当前 arc 主题：{arc_outline.arc_theme}"
+                + (
+                    f"；参考策略：{self._build_reference_notes(reference_profiles)}"
+                    if reference_profiles
+                    else ""
+                )
+            ),
             tone_target="稳住连续性，但允许结构性扩张",
             must_happen=must_happen,
             may_introduce=may_introduce,
             must_not_break=[fact.statement for fact in world_model.canon_facts[:3]],
             focus_threads=focus_threads,
-            constraints=[
-                ChapterConstraint(
-                    label="arc_alignment",
-                    content=f"本章必须服务于 arc 目标：{arc_outline.arc_goal}",
-                    priority="hard",
-                )
-            ],
+            constraints=constraints,
             allowed_expansion=AllowedExpansion(
                 new_character=bool(expansion_budget.new_character_budget and chapter_number >= midpoint),
                 new_location=bool(expansion_budget.new_location_budget and chapter_number >= midpoint),
@@ -55,6 +77,14 @@ class ChapterAllocator:
             ),
             expansion_budget=expansion_budget,
         )
+
+    @staticmethod
+    def _build_reference_notes(reference_profiles: list[ReferenceProfile]) -> str:
+        notes: list[str] = []
+        for profile in reference_profiles[:2]:
+            traits = "、".join(trait.label for trait in profile.abstract_traits[:2]) or profile.reference_type
+            notes.append(f"{profile.name}({traits})")
+        return "；".join(notes)
 
     @staticmethod
     def _build_must_happen(

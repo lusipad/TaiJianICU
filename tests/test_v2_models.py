@@ -130,6 +130,10 @@ def test_session_store_v2_paths(tmp_path: Path) -> None:
     assert store.world_model_path("demo") == tmp_path / "demo" / "world_model.json"
     assert store.arc_outline_path("demo", "arc-001") == tmp_path / "demo" / "arcs" / "arc-001.json"
     assert store.lorebook_path("demo") == tmp_path / "demo" / "lorebook.json"
+    assert (
+        store.selected_references_path("demo")
+        == tmp_path / "demo" / "selected_references.json"
+    )
     assert store.chapter_brief_path("demo", 12) == tmp_path / "demo" / "chapter_12_brief.json"
     assert (
         store.chapter_evaluation_path("demo", 12)

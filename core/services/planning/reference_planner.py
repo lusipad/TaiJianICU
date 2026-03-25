@@ -1,10 +1,20 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from core.models.reference_profile import ReferenceProfile
 from core.models.world_model import WorldModel
 
 
 class ReferencePlanner:
+    def load_profiles(self, reference_dir: Path) -> list[ReferenceProfile]:
+        if not reference_dir.exists():
+            return []
+        return [
+            ReferenceProfile.model_validate_json(path.read_text(encoding="utf-8"))
+            for path in sorted(reference_dir.glob("*.json"))
+        ]
+
     def select_profiles(
         self,
         *,

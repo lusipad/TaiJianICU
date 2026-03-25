@@ -1,4 +1,5 @@
 from core.models.chapter_brief import ExpansionBudget
+from core.models.reference_profile import ReferenceProfile, ReferenceTrait
 from core.models.story_state import StoryThread
 from core.models.world_model import ExpansionSlot, WorldModel
 from core.services.planning import ArcPlanner, ChapterAllocator, ExpansionAllocator
@@ -101,3 +102,40 @@ def test_chapter_allocator_produces_brief() -> None:
     assert brief.focus_threads == ["family_politics", "mysterious_teacher"]
     assert brief.allowed_expansion.new_character is True
     assert brief.constraints[0].label == "arc_alignment"
+
+
+def test_chapter_allocator_injects_reference_constraints() -> None:
+    world_model = build_world_model()
+    budget = ExpansionBudget(
+        mode="balanced",
+        expansion_mode="medium",
+        new_character_budget=1,
+        new_location_budget=0,
+        new_faction_budget=0,
+        twist_budget=1,
+        reveal_budget=1,
+    )
+    outline = ArcPlanner().plan(
+        world_model=world_model,
+        start_chapter=51,
+        arc_length=3,
+        expansion_budget=budget,
+    )
+
+    brief = ChapterAllocator().allocate(
+        world_model=world_model,
+        arc_outline=outline,
+        chapter_number=52,
+        expansion_budget=budget,
+        reference_profiles=[
+            ReferenceProfile(
+                name="结构压强参考",
+                reference_type="structure",
+                abstract_traits=[ReferenceTrait(label="加压点", description="每章必须加压")],
+                allowed_influences=["章节节奏"],
+            )
+        ],
+    )
+
+    assert "结构压强参考" in brief.chapter_note
+    assert any(item.label == "reference_1" for item in brief.constraints)

@@ -6,7 +6,9 @@ import cli.inspect_cmd
 from cli.main import app
 from core.models.arc_outline import ArcOutline
 from core.models.chapter_brief import ChapterBrief
+from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle, LorebookEntry
+from core.models.reference_profile import ReferenceProfile
 from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.story_state import StoryThread, StoryWorldState
 from core.models.world_model import WorldModel
@@ -54,6 +56,12 @@ def test_inspect_command_prints_v2_artifacts(tmp_path: Path, monkeypatch) -> Non
         ),
     )
     store.save_model(
+        store.selected_references_path("demo"),
+        cli.inspect_cmd.ReferenceProfileBundle(
+            profiles=[ReferenceProfile(name="世界扩张参考", reference_type="world")]
+        ),
+    )
+    store.save_model(
         store.arc_outline_path("demo", "arc_0001_0003"),
         ArcOutline(
             arc_id="arc_0001_0003",
@@ -66,6 +74,10 @@ def test_inspect_command_prints_v2_artifacts(tmp_path: Path, monkeypatch) -> Non
         store.chapter_brief_path("demo", 1),
         ChapterBrief(chapter_number=1, chapter_goal="让主角拿到第一条硬线索"),
     )
+    store.save_model(
+        store.chapter_evaluation_path("demo", 1),
+        ChapterEvaluation(chapter_number=1, summary="推进稳定"),
+    )
     store.save_unresolved_threads(
         "demo",
         [StoryThread(id="T001", description="黑玉去向", introduced_at=1, last_advanced=1)],
@@ -77,5 +89,7 @@ def test_inspect_command_prints_v2_artifacts(tmp_path: Path, monkeypatch) -> Non
     assert result.exit_code == 0
     assert "world_model" in result.stdout
     assert "lorebook" in result.stdout
+    assert "selected_references" in result.stdout
     assert "arc_0001_0003" in result.stdout
     assert "chapter_brief" in result.stdout
+    assert "chapter_evaluation" in result.stdout

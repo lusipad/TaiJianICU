@@ -1,0 +1,25 @@
+{
+  "name": "世界扩张参考",
+  "reference_type": "world",
+  "mode": "assist",
+  "abstract_traits": [
+    {
+      "label": "外部舞台递进开放",
+      "description": "新地图必须承接旧冲突，不能平地起高楼。"
+    },
+    {
+      "label": "势力压强逐层抬升",
+      "description": "通过更大的外部压力逼出主角与旧格局的变化。"
+    }
+  ],
+  "allowed_influences": [
+    "地图扩张节奏",
+    "势力登场顺序"
+  ],
+  "forbidden_copying": [
+    "直接照搬已有作品的地图名称或组织结构",
+    "复制具体桥段和反转设计"
+  ],
+  "use_scope": "arc",
+  "notes": "只影响规划层，不直接要求正文模仿来源文风。"
+}

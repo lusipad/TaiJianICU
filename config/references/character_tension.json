@@ -1,0 +1,25 @@
+{
+  "name": "人物张力参考",
+  "reference_type": "character",
+  "mode": "assist",
+  "abstract_traits": [
+    {
+      "label": "关系变化通过行动显形",
+      "description": "人物关系的变化要通过选择和后果呈现，而不是空口说明。"
+    },
+    {
+      "label": "主配角互相牵制",
+      "description": "让配角的目标对主角形成真实阻力或推动。"
+    }
+  ],
+  "allowed_influences": [
+    "人物弧线",
+    "关系张力"
+  ],
+  "forbidden_copying": [
+    "复制角色设定和人物命运",
+    "照搬经典对手戏"
+  ],
+  "use_scope": "arc",
+  "notes": "用于高层人物弧线规划，不用于正文模仿。"
+}

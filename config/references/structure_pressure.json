@@ -1,0 +1,25 @@
+{
+  "name": "结构压强参考",
+  "reference_type": "structure",
+  "mode": "assist",
+  "abstract_traits": [
+    {
+      "label": "每章都有明确加压点",
+      "description": "每章必须让冲突更尖锐，而不是原地踏步。"
+    },
+    {
+      "label": "中段转折先埋后爆",
+      "description": "中段先制造局面失衡，再把 payoff 留到 arc 后半。"
+    }
+  ],
+  "allowed_influences": [
+    "章节节奏",
+    "arc 结构"
+  ],
+  "forbidden_copying": [
+    "照搬现成的场景编排",
+    "复刻具体情节点顺序"
+  ],
+  "use_scope": "arc",
+  "notes": "强调结构推进，不提供可直接复写的桥段。"
+}

@@ -9,12 +9,15 @@ from pydantic import BaseModel, Field
 from config.settings import AppSettings, get_settings
 from core.llm.litellm_client import LLMUsageSummary, LiteLLMService
 from core.models.chapter_brief import ChapterBrief
+from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
+from core.models.reference_profile import ReferenceProfile
 from core.models.skeleton import ChapterSkeleton
 from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
 from core.models.world_model import WorldModel
-from core.services.planning import ArcPlanner, ChapterAllocator, ExpansionAllocator
+from core.services.planning import ArcPlanner, ChapterAllocator, ExpansionAllocator, ReferencePlanner
+from core.services.reflection import ReflectionUpdater
 from core.services.world import LorebookManager, MemoryCompressor, WorldRefreshService
 from core.storage.lightrag_store import LightRAGStore
 from core.storage.session_store import SessionStore
@@ -37,6 +40,7 @@ class ChapterRunResult(BaseModel):
     output_path: str | None = None
     quality_report: QualityReport | None = None
     consistency_report: ConsistencyReport | None = None
+    chapter_evaluation: ChapterEvaluation | None = None
     status: str = "completed"
     chapter_goal: str | None = None
     usage_summary: LLMUsageSummary = Field(default_factory=LLMUsageSummary)
@@ -57,6 +61,10 @@ class PipelineRunResult(BaseModel):
     status: str = "completed"
 
 
+class ReferenceProfileBundle(BaseModel):
+    profiles: list[ReferenceProfile] = Field(default_factory=list)
+
+
 class TaiJianOrchestrator:
     def __init__(self, settings: AppSettings | None = None):
         self.settings = settings or get_settings()
@@ -75,6 +83,8 @@ class TaiJianOrchestrator:
         self.expansion_allocator = ExpansionAllocator()
         self.arc_planner = ArcPlanner()
         self.chapter_allocator = ChapterAllocator()
+        self.reference_planner = ReferencePlanner()
+        self.reflection_updater = ReflectionUpdater()
         self.agent_service = AgentNodeService(
             self.settings,
             self.llm_service,
@@ -508,6 +518,15 @@ class TaiJianOrchestrator:
             self.session_store.lorebook_path(session_name),
             lorebook,
         )
+        selected_references = self.reference_planner.select_profiles(
+            world_model=world_model,
+            reference_profiles=self.reference_planner.load_profiles(self.settings.references_dir),
+            limit=2,
+        )
+        self.session_store.save_model(
+            self.session_store.selected_references_path(session_name),
+            ReferenceProfileBundle(profiles=selected_references),
+        )
         arc_length = min(max(1, chapters), 5)
         expansion_budget = self.expansion_allocator.allocate(
             world_model=world_model,
@@ -543,6 +562,7 @@ class TaiJianOrchestrator:
                 arc_outline=arc_outline,
                 chapter_number=chapter_number,
                 expansion_budget=expansion_budget,
+                reference_profiles=selected_references,
             )
             chapter_brief = self._apply_chapter_brief_overrides(
                 chapter_brief=chapter_brief,
@@ -666,6 +686,19 @@ class TaiJianOrchestrator:
 
             chapter_result.output_path = str(output_path)
             chapter_result.quality_report = quality_report
+            chapter_result.chapter_evaluation = self.reflection_updater.evaluate_chapter(
+                chapter_number=chapter_number,
+                chapter_brief=chapter_brief,
+                world_model=world_model,
+                skeleton=skeleton,
+                consistency_report=consistency_report,
+                quality_report=quality_report,
+                final_text=final_text,
+            )
+            self.session_store.save_model(
+                self.session_store.chapter_evaluation_path(session_name, chapter_number),
+                chapter_result.chapter_evaluation,
+            )
             chapter_result.status = (
                 "completed"
                 if quality_report.verdict == "pass" and consistency_report.passed

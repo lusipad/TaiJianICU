@@ -78,6 +78,9 @@ class SessionStore:
     def lorebook_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "lorebook.json"
 
+    def selected_references_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "selected_references.json"
+
     def chapter_brief_path(self, session_name: str, chapter_number: int) -> Path:
         return self.session_dir(session_name) / f"chapter_{chapter_number}_brief.json"
 

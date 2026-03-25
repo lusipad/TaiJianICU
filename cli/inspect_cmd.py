@@ -4,6 +4,7 @@ import asyncio
 from pathlib import Path
 
 import typer
+from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.table import Table
 
@@ -11,8 +12,10 @@ from config.settings import get_settings
 from core.inspection import StoryGraphChapter, export_story_mermaid
 from core.models.arc_outline import ArcOutline
 from core.models.chapter_brief import ChapterBrief
+from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.llm.litellm_client import LiteLLMService
+from core.models.reference_profile import ReferenceProfile
 from core.models.skeleton import ChapterSkeleton
 from core.models.style_profile import ExtractionSnapshot
 from core.models.world_model import WorldModel
@@ -22,6 +25,10 @@ from core.storage.session_store import SessionStore
 
 console = Console()
 app = typer.Typer(help="查看阶段产物或查询 LightRAG")
+
+
+class ReferenceProfileBundle(BaseModel):
+    profiles: list[ReferenceProfile] = Field(default_factory=list)
 
 
 @app.command("inspect")
@@ -51,6 +58,10 @@ def inspect_command(
     lorebook = session_store.load_model(
         session_store.lorebook_path(session_name),
         LorebookBundle,
+    )
+    selected_references = session_store.load_model(
+        session_store.selected_references_path(session_name),
+        ReferenceProfileBundle,
     )
     manifest = session_store._read_json(session_store.run_manifest_path(session_name), {})
     threads = session_store.load_unresolved_threads(session_name)
@@ -112,6 +123,8 @@ def inspect_command(
         console.print({"world_model": world_model.model_dump(mode="json")})
     if lorebook:
         console.print({"lorebook": lorebook.model_dump(mode="json")})
+    if selected_references:
+        console.print({"selected_references": selected_references.model_dump(mode="json")})
 
     if arc_outlines:
         arc_table = Table(title=f"{session_name} Arc 规划")
@@ -150,6 +163,12 @@ def inspect_command(
         )
         if skeleton:
             console.print({"chapter_skeleton": skeleton.model_dump(mode="json")})
+        evaluation = session_store.load_model(
+            session_store.chapter_evaluation_path(session_name, chapter),
+            ChapterEvaluation,
+        )
+        if evaluation:
+            console.print({"chapter_evaluation": evaluation.model_dump(mode="json")})
         draft_path = session_store.chapter_draft_path(session_name, chapter)
         if draft_path.exists():
             console.print({"draft_path": str(draft_path), "draft_preview": draft_path.read_text(encoding="utf-8")[:1000]})

@@ -67,6 +67,7 @@ class AppSettings(BaseSettings):
     web_uploads_dir: Path = ROOT_DIR / "data" / "web" / "uploads"
     web_runs_dir: Path = ROOT_DIR / "data" / "web" / "runs"
     prompts_dir: Path = ROOT_DIR / "config" / "prompts"
+    references_dir: Path = ROOT_DIR / "config" / "references"
     web_host: str = "127.0.0.1"
     web_port: int = 8000
     web_allowed_origins: str = (
@@ -92,6 +93,7 @@ class AppSettings(BaseSettings):
             self.web_dir,
             self.web_uploads_dir,
             self.web_runs_dir,
+            self.references_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
 

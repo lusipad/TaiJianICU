@@ -14,6 +14,8 @@
 - 阶段 2：LangGraph 多 Agent 情节博弈，输出 `ChapterSkeleton`
 - 阶段 3：按骨架生成章节正文，做一次轻量润色，并运行质量检查
 - V2 执行层已接入 `WorldModel`、`ArcOutline`、`ChapterBrief` 与 `Lorebook` 命中结果，不再只把它们落盘而不参与主链路
+- V2 参考层已接入默认 `ReferenceProfile`，只作用于规划层抽象约束，不直接要求正文模仿
+- 每章结束后会生成 `ChapterEvaluation`，为后续 rerank / reflection / 工作台展示提供结构化评估
 - 基准：内置“系统 vs 单模型 baseline vs 真实后续”对照实验
 - Web：上传 `.txt`、提交任务、轮询进度、查看摘要/产物路径/历史任务
 - CLI：`taijian run` / `taijian benchmark` / `taijian web` / `taijian inspect` / `taijian intervene`
@@ -130,9 +132,12 @@ taijian web
 ## 会话目录
 
 - `data/sessions/<session>/stage1_snapshot.json`
+- `data/sessions/<session>/selected_references.json`
 - `data/sessions/<session>/chapter_N_config.json`
+- `data/sessions/<session>/chapter_N_brief.json`
 - `data/sessions/<session>/chapter_N_skeleton.json`
 - `data/sessions/<session>/chapter_N_draft.md`
+- `data/sessions/<session>/chapter_N_evaluation.json`
 - `data/sessions/<session>/run_manifest.json`
 - `data/output/<session>/chapter_N.md`
 - `data/web/uploads/*.txt`
