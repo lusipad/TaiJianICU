@@ -53,6 +53,15 @@ DEEPSEEK_API_KEY=...
 
 当前默认 embedding 后端是 `local-hash`，这样只用 DeepSeek Key 就能先跑通 MVP。后续如果切到 `openai`，再补 `OPENAI_API_KEY`。
 
+如果要把 Web 版公开到公网，建议额外设置最小门禁：
+
+```env
+TAIJIAN_WEB_USERNAME=admin
+TAIJIAN_WEB_PASSWORD=change_me
+```
+
+设置后，除 `/health` 和 `/ready` 外，其余页面和 API 都会启用 HTTP Basic Auth。
+
 如需调整 DeepSeek 调用容错，可额外配置：
 
 ```env
@@ -139,6 +148,46 @@ taijian web
 - `GET /api/benchmarks`
 - `GET /api/benchmarks/{dataset_name}/{case_name}`
 - `POST /api/runs`
+
+## 免费公网部署
+
+当前仓库已经补了 [render.yaml](D:/Repos/TaiJianKiller/render.yaml) 和 [Dockerfile](D:/Repos/TaiJianKiller/Dockerfile)，可直接部署到 Render，也可复用到 Hugging Face Docker Spaces。
+
+### Render
+
+1. 把仓库导入 Render，创建 `Web Service`
+2. Render 会自动识别 [render.yaml](D:/Repos/TaiJianKiller/render.yaml)
+3. 至少配置这些环境变量：
+
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key
+TAIJIAN_WEB_PASSWORD=change_me
+TAIJIAN_WEB_ALLOWED_ORIGINS=https://your-service.onrender.com
+```
+
+4. 部署完成后访问 Render 分配的公网域名
+
+注意：
+
+- 免费实例会休眠
+- `data/` 下的本地文件在平台重启后可能丢失
+- 当前方案适合演示，不适合长期保存用户续写记录
+
+### Hugging Face Spaces
+
+1. 新建 `Docker Space`
+2. 把当前仓库内容推到 Space 仓库
+3. 在 Space Secrets 里配置：
+
+```env
+DEEPSEEK_API_KEY=your_deepseek_api_key
+TAIJIAN_WEB_PASSWORD=change_me
+TAIJIAN_WEB_ALLOWED_ORIGINS=https://<your-space>.hf.space
+```
+
+4. Space 会直接使用仓库内的 [Dockerfile](D:/Repos/TaiJianKiller/Dockerfile)
+
+容器默认监听 `7860` 端口，也兼容 Render 注入的 `PORT`。
 
 ## 会话目录
 

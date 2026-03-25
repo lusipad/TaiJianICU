@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import base64
+import secrets
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from config.settings import AppSettings, get_settings
@@ -17,6 +19,38 @@ from webapp.models import (
     WebRunRequest,
     WebRunSummary,
 )
+
+_AUTH_EXEMPT_PATHS = frozenset({"/health", "/ready"})
+
+
+def _unauthorized_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=401,
+        content={"title": "Unauthorized", "status": 401, "detail": "需要认证后才能访问。"},
+        headers={"WWW-Authenticate": 'Basic realm="TaiJianKiller"'},
+    )
+
+
+def _is_authorized(request: Request, settings: AppSettings) -> bool:
+    if not settings.web_password:
+        return True
+    if request.url.path in _AUTH_EXEMPT_PATHS:
+        return True
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Basic "):
+        return False
+    encoded = auth_header[6:].strip()
+    try:
+        decoded = base64.b64decode(encoded).decode("utf-8")
+    except Exception:
+        return False
+    username, separator, password = decoded.partition(":")
+    if not separator:
+        return False
+    return secrets.compare_digest(username, settings.web_username) and secrets.compare_digest(
+        password,
+        settings.web_password,
+    )
 
 
 def create_app(
@@ -39,6 +73,12 @@ def create_app(
         allow_headers=["*"],
     )
     register_error_handlers(app)
+
+    @app.middleware("http")
+    async def basic_auth_guard(request: Request, call_next):
+        if not _is_authorized(request, app.state.settings):
+            return _unauthorized_response()
+        return await call_next(request)
 
     @app.get("/health")
     async def health() -> dict[str, str]:

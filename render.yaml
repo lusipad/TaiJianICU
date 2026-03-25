@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: taijianicu
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: TAIJIAN_WEB_USERNAME
+        value: admin
+      - key: TAIJIAN_WEB_PASSWORD
+        sync: false
+      - key: TAIJIAN_WEB_ALLOWED_ORIGINS
+        sync: false

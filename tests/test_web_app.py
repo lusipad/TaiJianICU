@@ -105,6 +105,34 @@ def test_web_health_and_index() -> None:
     assert "image/svg+xml" in favicon.headers["content-type"]
 
 
+def test_web_requires_basic_auth_when_password_configured() -> None:
+    settings = AppSettings(TAIJIAN_WEB_PASSWORD="secret123")
+    app = create_app(settings=settings, run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    assert client.get("/health").status_code == 200
+    index_response = client.get("/")
+    assert index_response.status_code == 401
+    assert "Basic" in index_response.headers["www-authenticate"]
+
+    authed_response = client.get("/", auth=("admin", "secret123"))
+    assert authed_response.status_code == 200
+    assert "TaiJianKiller Studio" in authed_response.text
+
+
+def test_api_requires_basic_auth_when_password_configured() -> None:
+    settings = AppSettings(TAIJIAN_WEB_PASSWORD="secret123")
+    app = create_app(settings=settings, run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/runs")
+    assert response.status_code == 401
+
+    authed = client.get("/api/runs", auth=("admin", "secret123"))
+    assert authed.status_code == 200
+    assert authed.json()[0]["id"] == "run-1"
+
+
 def test_create_run_rejects_non_txt_upload() -> None:
     app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
     client = TestClient(app)
