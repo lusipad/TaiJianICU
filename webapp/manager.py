@@ -219,6 +219,8 @@ class WebRunManager:
         latest_brief_path = None
         latest_evaluation = None
         latest_evaluation_path = None
+        latest_skeleton_candidate_paths: list[str] = []
+        latest_draft_candidate_paths: list[str] = []
         latest_draft_path = None
         latest_output_string = str(latest_output_path) if latest_output_path is not None else None
         chapter_source = manifest.chapters if manifest else result.chapters
@@ -240,6 +242,22 @@ class WebRunManager:
                 latest_evaluation_path,
                 ChapterEvaluation,
             )
+            latest_skeleton_candidate_paths = [
+                str(path)
+                for path in sorted(
+                    (session_dir / "candidates").glob(
+                        f"chapter_{last.chapter_number}_skeleton_candidate_*.json"
+                    )
+                )
+            ]
+            latest_draft_candidate_paths = [
+                str(path)
+                for path in sorted(
+                    (session_dir / "candidates").glob(
+                        f"chapter_{last.chapter_number}_draft_candidate_*.md"
+                    )
+                )
+            ]
             latest_brief = (
                 latest_brief_model.model_dump(mode="json") if latest_brief_model else None
             )
@@ -305,6 +323,8 @@ class WebRunManager:
             arc_outlines=arc_outlines,
             latest_chapter_brief=latest_brief,
             latest_chapter_evaluation=latest_evaluation,
+            latest_skeleton_candidate_paths=latest_skeleton_candidate_paths,
+            latest_draft_candidate_paths=latest_draft_candidate_paths,
             latest_output_preview=latest_output_preview,
             latest_quality_report=latest_quality,
             latest_consistency_report=latest_consistency,

@@ -109,6 +109,8 @@ class WebRunDetail(WebRunSummary):
     arc_outlines: list[dict] = Field(default_factory=list)
     latest_chapter_brief: dict | None = None
     latest_chapter_evaluation: dict | None = None
+    latest_skeleton_candidate_paths: list[str] = Field(default_factory=list)
+    latest_draft_candidate_paths: list[str] = Field(default_factory=list)
     latest_output_preview: str | None = None
     latest_quality_report: dict | None = None
     latest_consistency_report: dict | None = None

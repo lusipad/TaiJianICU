@@ -763,6 +763,14 @@ class TaiJianOrchestrator:
                 chapter_number,
             )
             self.session_store.save_unresolved_threads(session_name, current_threads)
+            world_model = self.world_refresh.refresh_with_chapter(
+                previous=world_model,
+                chapter_text=final_text,
+                active_threads=current_threads,
+                chapter_number=chapter_number,
+                chapter_goal=chapter_goal,
+            )
+            self.session_store.save_model(world_model_path, world_model)
 
             chapter_result.output_path = str(output_path)
             chapter_result.quality_report = quality_report

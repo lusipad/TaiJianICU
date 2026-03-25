@@ -41,3 +41,4 @@
 ## Git 与危险操作
 
 - 涉及 `git reset --hard`、删除文件/目录、批量不可逆修改时，必须先明确确认。
+- 不要并行执行有状态的 Git 命令，尤其是 `git add`、`git commit`、`git push`、`git rebase`、`git merge`，避免再次触发 `.git/index.lock` 冲突。

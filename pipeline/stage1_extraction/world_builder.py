@@ -53,6 +53,57 @@ class WorldBuilder:
             last_refreshed_chapter=max(previous.last_refreshed_chapter, current.last_refreshed_chapter),
         )
 
+    def update_from_chapter(
+        self,
+        previous: WorldModel,
+        *,
+        chapter_text: str,
+        active_threads: list[StoryThread],
+        chapter_number: int,
+        chapter_goal: str = "",
+    ) -> WorldModel:
+        summary = self._chapter_summary(chapter_text, chapter_goal)
+        updated_characters = []
+        for item in previous.main_characters:
+            if item.character_name and item.character_name in chapter_text:
+                updated_characters.append(
+                    item.model_copy(
+                        update={
+                            "current_state": summary,
+                            "recent_change": f"第{chapter_number}章出场并推进当前情节",
+                        }
+                    )
+                )
+            else:
+                updated_characters.append(item)
+
+        current_stage = LocationState(
+            name="current_stage",
+            location_type="dynamic",
+            importance="high",
+            story_function="当前剧情主舞台",
+            current_status=summary,
+        )
+        known_locations = self._merge_named(previous.known_locations, [current_stage])
+        world_tensions = previous.world_tensions[:]
+        if chapter_goal and chapter_goal not in world_tensions:
+            world_tensions.append(chapter_goal)
+
+        return previous.model_copy(
+            update={
+                "summary": summary,
+                "main_characters": updated_characters,
+                "known_locations": known_locations,
+                "world_tensions": world_tensions[-5:],
+                "open_mysteries": [item.description for item in active_threads if item.status != "closed"],
+                "expansion_slots": self._build_expansion_slots(
+                    [item for item in active_threads if item.status != "closed"]
+                ),
+                "active_threads": active_threads,
+                "last_refreshed_chapter": max(previous.last_refreshed_chapter, chapter_number),
+            }
+        )
+
     def _build_canon_facts(self, world_rules: list[str]) -> list[CanonFact]:
         return [
             CanonFact(
@@ -122,6 +173,13 @@ class WorldBuilder:
         for item in current:
             merged[item.character_name] = item
         return list(merged.values())
+
+    @staticmethod
+    def _chapter_summary(chapter_text: str, chapter_goal: str) -> str:
+        normalized = " ".join(chapter_text.split())
+        if normalized:
+            return normalized[:180]
+        return chapter_goal or "章节已推进"
 
     @staticmethod
     def _merge_named(previous: list, current: list) -> list:

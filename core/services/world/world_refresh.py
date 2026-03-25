@@ -18,3 +18,20 @@ class WorldRefreshService:
     ) -> WorldModel:
         current = self.builder.from_snapshot(snapshot, chapter_number=chapter_number)
         return self.builder.merge(previous, current)
+
+    def refresh_with_chapter(
+        self,
+        *,
+        previous: WorldModel,
+        chapter_text: str,
+        active_threads,
+        chapter_number: int,
+        chapter_goal: str = "",
+    ) -> WorldModel:
+        return self.builder.update_from_chapter(
+            previous,
+            chapter_text=chapter_text,
+            active_threads=active_threads,
+            chapter_number=chapter_number,
+            chapter_goal=chapter_goal,
+        )

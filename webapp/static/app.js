@@ -34,6 +34,8 @@ const elements = {
   goalSummary: document.getElementById("goal-summary"),
   briefSummary: document.getElementById("brief-summary"),
   evaluationSummary: document.getElementById("evaluation-summary"),
+  skeletonCandidateList: document.getElementById("skeleton-candidate-list"),
+  draftCandidateList: document.getElementById("draft-candidate-list"),
   artifactList: document.getElementById("artifact-list"),
   referenceList: document.getElementById("reference-list"),
   arcList: document.getElementById("arc-list"),
@@ -257,6 +259,24 @@ function renderArtifacts(paths) {
     .join("");
 }
 
+function renderCandidatePaths(element, paths, emptyLabel) {
+  element.innerHTML = "";
+  if (!paths?.length) {
+    element.innerHTML = `<div class="path-line"><strong>${escapeHtml(emptyLabel)}</strong></div>`;
+    return;
+  }
+  element.innerHTML = paths
+    .map(
+      (value, index) => `
+        <div class="path-line">
+          <strong>Candidate ${index + 1}</strong>
+          <code>${escapeHtml(value)}</code>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function renderReferences(references) {
   elements.referenceList.innerHTML = "";
   if (!references?.length) {
@@ -384,6 +404,8 @@ function renderRun(run) {
   elements.outputPreview.textContent = run.latest_output_preview || "-";
 
   renderArtifacts(run.artifact_paths);
+  renderCandidatePaths(elements.skeletonCandidateList, run.latest_skeleton_candidate_paths, "暂无骨架候选");
+  renderCandidatePaths(elements.draftCandidateList, run.latest_draft_candidate_paths, "暂无正文候选");
   renderReferences(run.selected_references);
   renderArcList(run.arc_outlines);
   renderThreads(run.unresolved_threads);

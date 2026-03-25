@@ -113,6 +113,10 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
         ChapterEvaluation(chapter_number=1, summary="推进稳定").model_dump_json(indent=2),
         encoding="utf-8",
     )
+    candidates_dir = session_dir / "candidates"
+    candidates_dir.mkdir(exist_ok=True)
+    (candidates_dir / "chapter_1_skeleton_candidate_1.json").write_text("{}", encoding="utf-8")
+    (candidates_dir / "chapter_1_draft_candidate_1.md").write_text("候选正文", encoding="utf-8")
     arcs_dir = session_dir / "arcs"
     arcs_dir.mkdir(exist_ok=True)
     (arcs_dir / "arc_0001_0003.json").write_text(
@@ -182,3 +186,5 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
     assert detail.arc_outlines[0]["arc_id"] == "arc_0001_0003"
     assert detail.latest_chapter_brief["chapter_goal"] == "拿到线索"
     assert detail.latest_chapter_evaluation["summary"] == "推进稳定"
+    assert detail.latest_skeleton_candidate_paths[0].endswith("chapter_1_skeleton_candidate_1.json")
+    assert detail.latest_draft_candidate_paths[0].endswith("chapter_1_draft_candidate_1.md")

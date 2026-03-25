@@ -84,3 +84,28 @@ def test_memory_compressor_builds_layered_snapshot() -> None:
     assert snapshot.middle_summary
     assert "第一章 雨夜" in snapshot.long_term_summary
     assert snapshot.lore_candidates
+
+
+def test_world_refresh_updates_state_after_generated_chapter() -> None:
+    previous = WorldBuilder().from_snapshot(build_snapshot(), chapter_number=50)
+
+    refreshed = WorldRefreshService().refresh_with_chapter(
+        previous=previous,
+        chapter_text="萧炎在夜色中现身，与萧战商议后决定继续追查神秘老师留下的线索。",
+        active_threads=[
+            StoryThread(
+                id="T001",
+                description="神秘老师的真实来历",
+                introduced_at=1,
+                last_advanced=51,
+                status="advanced",
+            )
+        ],
+        chapter_number=51,
+        chapter_goal="推进神秘老师线索",
+    )
+
+    assert refreshed.last_refreshed_chapter == 51
+    assert refreshed.main_characters[0].recent_change == "第51章出场并推进当前情节"
+    assert refreshed.open_mysteries == ["神秘老师的真实来历"]
+    assert refreshed.known_locations[0].current_status
