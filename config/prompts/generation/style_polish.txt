@@ -1,0 +1,22 @@
+请对下面续写正文做一次轻量润色。
+
+[风格画像]
+{style_profile}
+
+[世界层约束]
+{world_model}
+
+[章节 brief]
+{chapter_brief}
+
+[Lorebook 命中]
+{lorebook_context}
+
+[润色要求]
+- 保持剧情事实不变
+- 去掉明显 AI 套话
+- 保留网文节奏和情绪推进
+- 不要扩写过头
+
+[正文]
+{draft_text}

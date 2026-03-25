@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TaiJianKiller Studio</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">TaiJianKiller Studio</p>
+          <h1>把原著丢进来，系统自己拆解、续写、落盘。</h1>
+          <p class="hero-text">
+            Web 端直接接现有编排器。上传 `.txt` 后，系统会依次完成风格画像、故事状态刷新、多 Agent
+            情节博弈、章节正文生成、质检与会话持久化。
+          </p>
+          <div class="hero-pills">
+            <span>DeepSeek First</span>
+            <span>多阶段 Agent</span>
+            <span>本地会话持久化</span>
+            <span>TXT 直传</span>
+          </div>
+        </div>
+
+        <div class="hero-rail">
+          <article class="rail-card">
+            <p class="label">Pipeline</p>
+            <strong>分析</strong>
+            <span>提取文风、世界状态、角色卡与未收束伏笔</span>
+          </article>
+          <article class="rail-card">
+            <p class="label">Planner</p>
+            <strong>辩论</strong>
+            <span>围绕指定目标形成章节骨架，并做一致性校验</span>
+          </article>
+          <article class="rail-card">
+            <p class="label">Writer</p>
+            <strong>续写</strong>
+            <span>生成草稿、润色、质检，并写入会话目录</span>
+          </article>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="panel form-panel">
+          <div class="panel-head">
+            <p class="section-kicker">New Run</p>
+            <h2>提交原著文本</h2>
+          </div>
+
+          <form id="run-form" class="run-form">
+            <label class="field upload-field">
+              <span>原著文本</span>
+              <div class="upload-box">
+                <input id="file-input" name="file" type="file" accept=".txt,text/plain" required />
+                <strong id="selected-file-name">选择一个 `.txt` 文件</strong>
+                <small>支持 UTF-8 / UTF-8-SIG / GB18030 / GBK，上传后统一转为 UTF-8。</small>
+              </div>
+            </label>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>会话名</span>
+                <input name="session_name" type="text" placeholder="留空则自动按文件名加时间戳生成" />
+              </label>
+
+              <label class="field">
+                <span>章节数</span>
+                <input name="chapters" type="number" min="1" max="20" value="1" required />
+              </label>
+
+              <label class="field">
+                <span>起始章节</span>
+                <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>章节目标提示</span>
+              <textarea
+                name="goal_hint"
+                rows="4"
+                placeholder="可选。比如：先推进主角与反派的正面碰撞，再回收一个旧伏笔。"
+              ></textarea>
+            </label>
+
+            <div class="toggle-row">
+              <label class="toggle">
+                <input name="use_existing_index" type="checkbox" />
+                <span>复用已有索引</span>
+              </label>
+              <label class="toggle">
+                <input name="overwrite" type="checkbox" />
+                <span>允许覆盖同名产物</span>
+              </label>
+            </div>
+
+            <div class="action-row">
+              <button id="submit-button" type="submit">开始分析并续写</button>
+              <p id="form-status" class="hint">提交后会自动轮询任务进度。</p>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel status-panel">
+          <div class="panel-head">
+            <p class="section-kicker">Runboard</p>
+            <h2>任务看板</h2>
+          </div>
+
+          <div id="empty-state" class="empty-state">
+            <p>还没有选中任务。提交一个文本文件，或从右侧最近任务中打开已有结果。</p>
+          </div>
+
+          <div id="run-view" class="run-view hidden">
+            <div id="error-banner" class="status-banner hidden"></div>
+
+            <div class="run-meta">
+              <div>
+                <p class="label">任务 ID</p>
+                <strong id="run-id">-</strong>
+              </div>
+              <div>
+                <p class="label">会话名</p>
+                <strong id="run-session">-</strong>
+              </div>
+              <div>
+                <p class="label">状态</p>
+                <strong id="run-status">-</strong>
+              </div>
+            </div>
+
+            <div class="progress-wrap">
+              <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+              </div>
+              <div class="progress-meta">
+                <span id="progress-message">等待开始</span>
+                <span id="progress-percent">0%</span>
+              </div>
+              <div class="progress-note">
+                <span id="progress-count">0/0</span>
+              </div>
+            </div>
+
+            <div class="stats-grid">
+              <article class="stat-card">
+                <p class="label">总调用</p>
+                <strong id="metric-calls">0</strong>
+              </article>
+              <article class="stat-card">
+                <p class="label">总 Tokens</p>
+                <strong id="metric-tokens">0</strong>
+              </article>
+              <article class="stat-card">
+                <p class="label">总成本</p>
+                <strong id="metric-cost">$0.000000</strong>
+              </article>
+              <article class="stat-card">
+                <p class="label">章节进度</p>
+                <strong id="metric-chapters">0 / 0</strong>
+              </article>
+              <article class="stat-card">
+                <p class="label">最新质检</p>
+                <strong id="metric-quality">-</strong>
+              </article>
+              <article class="stat-card">
+                <p class="label">一致性</p>
+                <strong id="metric-consistency">-</strong>
+              </article>
+            </div>
+
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">风格摘要</p>
+                <pre id="style-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">故事状态</p>
+                <pre id="story-summary">-</pre>
+              </article>
+            </div>
+
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">最新章节目标</p>
+                <pre id="goal-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">运行产物</p>
+                <div id="artifact-list" class="path-list"></div>
+              </article>
+            </div>
+
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">质检</p>
+                <pre id="quality-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">一致性</p>
+                <pre id="consistency-summary">-</pre>
+              </article>
+            </div>
+
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">未收束伏笔</p>
+                <div id="threads-list" class="thread-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">章节结果</p>
+                <div id="chapter-list" class="chapter-list"></div>
+              </article>
+            </div>
+
+            <article class="result-card preview-card">
+              <div class="card-headline">
+                <p class="label">正文预览</p>
+                <span id="output-path">-</span>
+              </div>
+              <pre id="output-preview">-</pre>
+            </article>
+
+            <article class="result-card logs-card">
+              <p class="label">运行日志</p>
+              <div id="run-logs" class="log-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <aside class="panel recent-panel">
+          <div class="panel-head">
+            <p class="section-kicker">History</p>
+            <h2>最近任务</h2>
+          </div>
+          <div id="run-list" class="run-list">
+            <p class="hint">正在加载历史任务...</p>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

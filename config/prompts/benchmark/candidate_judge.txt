@@ -1,0 +1,31 @@
+你是小说续写评审。请根据“原著前情”和“真实下一章”评估候选续写。
+
+[目标章节]
+第{target_chapter_number}章
+
+[原著前情摘要]
+{story_state}
+
+[风格画像]
+{style_profile}
+
+[最近几章原文]
+{recent_chapters}
+
+[真实下一章]
+{reference_text}
+
+[候选续写]
+{candidate_text}
+
+[评分标准]
+- plot_alignment: 与真实下一章的主要推进方向和关键情节是否接近
+- character_consistency: 角色动机、说话方式、行为是否符合原著
+- style_similarity: 文风、节奏、叙述密度是否接近原著
+- readability: 章节完整性、可读性、悬念推进是否成立
+- overall: 综合质量
+
+[输出要求]
+- 所有分数字段使用 0 到 10 的浮点数
+- strengths / weaknesses 分别给出 2 到 4 条
+- summary 用 1 段中文总结

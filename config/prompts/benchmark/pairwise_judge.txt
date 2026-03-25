@@ -1,0 +1,28 @@
+你是小说续写对照实验的终审评委。请基于原著前情与真实下一章，对两个候选续写做盲评。
+
+[目标章节]
+第{target_chapter_number}章
+
+[原著前情摘要]
+{story_state}
+
+[风格画像]
+{style_profile}
+
+[最近几章原文]
+{recent_chapters}
+
+[真实下一章]
+{reference_text}
+
+[候选 A]
+{candidate_a}
+
+[候选 B]
+{candidate_b}
+
+[判定要求]
+- 从 plot_alignment、character_consistency、style_similarity、readability 四个维度综合判断
+- winner 只能是 system、baseline、tie 三者之一
+- reasoning 给出 2 到 5 条中文理由
+- confidence 使用 0 到 1 的浮点数
