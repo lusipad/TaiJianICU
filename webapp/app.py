@@ -57,6 +57,10 @@ def create_app(
         start_chapter: int = Form(1),
         goal_hint: str = Form(""),
         session_name: str = Form(""),
+        planning_mode: str = Form("balanced"),
+        new_character_budget: int | None = Form(None),
+        new_location_budget: int | None = Form(None),
+        new_faction_budget: int | None = Form(None),
         use_existing_index: bool = Form(False),
         overwrite: bool = Form(False),
     ) -> WebRunSummary:
@@ -74,6 +78,10 @@ def create_app(
             chapters=chapters,
             start_chapter=start_chapter,
             goal_hint=goal_hint.strip() or None,
+            planning_mode=planning_mode,  # pydantic validates enum values
+            new_character_budget=new_character_budget,
+            new_location_budget=new_location_budget,
+            new_faction_budget=new_faction_budget,
             use_existing_index=use_existing_index,
             overwrite=overwrite,
         )

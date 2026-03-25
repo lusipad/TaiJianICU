@@ -77,6 +77,32 @@
               </label>
             </div>
 
+            <div class="field-grid">
+              <label class="field">
+                <span>规划模式</span>
+                <select name="planning_mode">
+                  <option value="balanced">balanced</option>
+                  <option value="strict">strict</option>
+                  <option value="expansive">expansive</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>新人物预算</span>
+                <input name="new_character_budget" type="number" min="0" max="5" placeholder="自动" />
+              </label>
+              <label class="field">
+                <span>新地图预算</span>
+                <input name="new_location_budget" type="number" min="0" max="5" placeholder="自动" />
+              </label>
+            </div>
+
+            <div class="field-grid single-tail">
+              <label class="field">
+                <span>新势力预算</span>
+                <input name="new_faction_budget" type="number" min="0" max="5" placeholder="自动" />
+              </label>
+            </div>
+
             <label class="field">
               <span>章节目标提示</span>
               <textarea

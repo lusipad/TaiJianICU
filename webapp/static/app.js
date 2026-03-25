@@ -460,6 +460,11 @@ elements.fileInput.addEventListener("change", () => {
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(elements.form);
+  for (const key of ["new_character_budget", "new_location_budget", "new_faction_budget"]) {
+    if (!String(formData.get(key) || "").trim()) {
+      formData.delete(key);
+    }
+  }
   elements.submitButton.disabled = true;
   setFormStatus("正在创建任务...");
 

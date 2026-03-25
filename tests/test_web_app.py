@@ -28,6 +28,7 @@ class FakeRunManager:
             latest_output_preview="示例正文",
         )
         self.start_calls = 0
+        self.last_request = None
 
     def list_runs(self):
         return [WebRunSummary.model_validate(self.detail.model_dump(mode="json"))]
@@ -41,6 +42,7 @@ class FakeRunManager:
 
     def start_run(self, *, input_path: Path, input_filename: str, request: WebRunRequest):
         self.start_calls += 1
+        self.last_request = request
         return WebRunSummary.model_validate(self.detail.model_dump(mode="json"))
 
 
@@ -78,7 +80,14 @@ def test_create_run_accepts_txt_upload() -> None:
     response = client.post(
         "/api/runs",
         files={"file": ("demo.txt", "第一章 测试".encode("utf-8"), "text/plain")},
-        data={"chapters": "1", "start_chapter": "1"},
+        data={
+            "chapters": "1",
+            "start_chapter": "1",
+            "planning_mode": "expansive",
+            "new_character_budget": "2",
+            "new_location_budget": "1",
+            "new_faction_budget": "1",
+        },
     )
 
     assert response.status_code == 201
@@ -86,3 +95,7 @@ def test_create_run_accepts_txt_upload() -> None:
     assert response.json()["progress"]["percent"] == 100.0
     assert response.json()["progress"]["completed_label"] == "5/5"
     assert manager.start_calls == 1
+    assert manager.last_request.planning_mode == "expansive"
+    assert manager.last_request.new_character_budget == 2
+    assert manager.last_request.new_location_budget == 1
+    assert manager.last_request.new_faction_budget == 1

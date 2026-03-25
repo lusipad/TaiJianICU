@@ -42,6 +42,7 @@ body {
 }
 
 button,
+select,
 input,
 textarea {
   font: inherit;
@@ -225,6 +226,7 @@ h2 {
 
 .field input[type="text"],
 .field input[type="number"],
+.field select,
 .field textarea,
 .upload-box {
   width: 100%;
@@ -239,6 +241,7 @@ h2 {
 
 .field input[type="text"]:focus,
 .field input[type="number"]:focus,
+.field select:focus,
 .field textarea:focus,
 .upload-box:focus-within {
   outline: none;
@@ -249,6 +252,11 @@ h2 {
 .field textarea {
   resize: vertical;
   min-height: 126px;
+}
+
+.single-tail {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: calc((100% - 28px) / 3);
 }
 
 .upload-box {

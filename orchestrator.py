@@ -479,6 +479,10 @@ class TaiJianOrchestrator:
         chapters: int = 1,
         session_name: str | None = None,
         goal_hint: str | None = None,
+        planning_mode: str = "balanced",
+        new_character_budget: int | None = None,
+        new_location_budget: int | None = None,
+        new_faction_budget: int | None = None,
         use_existing_index: bool = False,
         refresh_snapshot: bool = False,
         pause_after_skeleton: bool = False,
@@ -530,9 +534,18 @@ class TaiJianOrchestrator:
         arc_length = min(max(1, chapters), 5)
         expansion_budget = self.expansion_allocator.allocate(
             world_model=world_model,
-            mode="balanced",
+            mode=planning_mode,
             arc_length=arc_length,
         )
+        budget_updates: dict[str, int] = {}
+        if new_character_budget is not None:
+            budget_updates["new_character_budget"] = new_character_budget
+        if new_location_budget is not None:
+            budget_updates["new_location_budget"] = new_location_budget
+        if new_faction_budget is not None:
+            budget_updates["new_faction_budget"] = new_faction_budget
+        if budget_updates:
+            expansion_budget = expansion_budget.model_copy(update=budget_updates)
         arc_outline = self.arc_planner.plan(
             world_model=world_model,
             start_chapter=start_chapter,

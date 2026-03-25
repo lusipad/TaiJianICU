@@ -16,6 +16,10 @@ class WebRunRequest(BaseModel):
     chapters: int = Field(default=1, ge=1, le=20)
     start_chapter: int = Field(default=1, ge=1, le=9999)
     goal_hint: str | None = None
+    planning_mode: Literal["strict", "balanced", "expansive"] = "balanced"
+    new_character_budget: int | None = Field(default=None, ge=0, le=5)
+    new_location_budget: int | None = Field(default=None, ge=0, le=5)
+    new_faction_budget: int | None = Field(default=None, ge=0, le=5)
     use_existing_index: bool = False
     overwrite: bool = False
 
