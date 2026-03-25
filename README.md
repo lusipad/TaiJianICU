@@ -16,6 +16,7 @@
 - V2 执行层已接入 `WorldModel`、`ArcOutline`、`ChapterBrief` 与 `Lorebook` 命中结果，不再只把它们落盘而不参与主链路
 - V2 参考层已接入默认 `ReferenceProfile`，只作用于规划层抽象约束，不直接要求正文模仿
 - 每章结束后会生成 `ChapterEvaluation`，为后续 rerank / reflection / 工作台展示提供结构化评估
+- 执行层支持 skeleton / draft 多候选生成与 rerank，可通过 CLI / Web 配置候选数
 - 基准：内置“系统 vs 单模型 baseline vs 真实后续”对照实验
 - Web：上传 `.txt`、提交任务、轮询进度、查看摘要/产物路径/历史任务
 - CLI：`taijian run` / `taijian benchmark` / `taijian web` / `taijian inspect` / `taijian intervene`
@@ -64,6 +65,12 @@ TAIJIAN_LLM_RETRY_BACKOFF_SECONDS=2
 
 ```powershell
 taijian run --input data/input/novel.txt --chapters 1
+```
+
+配置规划模式、预算和候选数：
+
+```powershell
+taijian run --input data/input/novel.txt --chapters 1 --planning-mode expansive --new-character-budget 2 --skeleton-candidates 2 --draft-candidates 3
 ```
 
 续跑或断点恢复：

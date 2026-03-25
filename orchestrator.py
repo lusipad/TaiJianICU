@@ -17,7 +17,7 @@ from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
 from core.models.world_model import WorldModel
 from core.services.planning import ArcPlanner, ChapterAllocator, ExpansionAllocator, ReferencePlanner
-from core.services.reflection import ReflectionUpdater
+from core.services.reflection import CandidateRanker, DraftCandidate, ReflectionUpdater, SkeletonCandidate
 from core.services.world import LorebookManager, MemoryCompressor, WorldRefreshService
 from core.storage.lightrag_store import LightRAGStore
 from core.storage.session_store import SessionStore
@@ -85,6 +85,7 @@ class TaiJianOrchestrator:
         self.chapter_allocator = ChapterAllocator()
         self.reference_planner = ReferencePlanner()
         self.reflection_updater = ReflectionUpdater()
+        self.candidate_ranker = CandidateRanker()
         self.agent_service = AgentNodeService(
             self.settings,
             self.llm_service,
@@ -363,6 +364,7 @@ class TaiJianOrchestrator:
         lorebook_context: LorebookBundle,
         snapshot: ExtractionSnapshot,
         focus_threads: list[StoryThread],
+        candidate_count: int,
         resume: bool,
         overwrite: bool,
     ) -> tuple[ChapterSkeleton, ConsistencyReport]:
@@ -373,16 +375,40 @@ class TaiJianOrchestrator:
             report = self.consistency_checker.check(skeleton, focus_threads)
             return skeleton, report
 
-        skeleton, report = await self.debate_graph.plan_chapter(
-            session_name=session_name,
-            chapter_number=chapter_number,
-            chapter_goal=chapter_goal,
-            story_state=snapshot.story_state,
-            world_model=world_model,
+        candidates: list[SkeletonCandidate] = []
+        for candidate_number in range(1, max(1, candidate_count) + 1):
+            skeleton, report = await self.debate_graph.plan_chapter(
+                session_name=session_name,
+                chapter_number=chapter_number,
+                chapter_goal=chapter_goal,
+                story_state=snapshot.story_state,
+                world_model=world_model,
+                chapter_brief=chapter_brief,
+                lorebook_context=lorebook_context,
+                focus_threads=focus_threads,
+            )
+            self.session_store.save_model(
+                self.session_store.chapter_skeleton_candidate_path(
+                    session_name,
+                    chapter_number,
+                    candidate_number,
+                ),
+                skeleton,
+            )
+            candidates.append(
+                SkeletonCandidate(
+                    skeleton=skeleton,
+                    consistency_report=report,
+                    candidate_number=candidate_number,
+                )
+            )
+        ranked = self.candidate_ranker.rank_skeletons(
             chapter_brief=chapter_brief,
-            lorebook_context=lorebook_context,
             focus_threads=focus_threads,
+            candidates=candidates,
         )
+        skeleton = ranked[0].skeleton
+        report = ranked[0].consistency_report
         skeleton = self.intervention.apply_skeleton_override(
             session_name,
             chapter_number,
@@ -402,6 +428,7 @@ class TaiJianOrchestrator:
         lorebook_context: LorebookBundle,
         snapshot: ExtractionSnapshot,
         style_samples: list[str],
+        candidate_count: int,
         resume: bool,
         overwrite: bool,
     ) -> tuple[str, Path]:
@@ -409,14 +436,42 @@ class TaiJianOrchestrator:
         if resume and draft_path.exists() and not overwrite:
             return draft_path.read_text(encoding="utf-8"), draft_path
 
-        draft_text = await self.chapter_generator.generate(
-            skeleton=skeleton,
-            style_profile=snapshot.style_profile,
-            style_samples=style_samples,
-            world_model=world_model,
+        draft_candidates: list[DraftCandidate] = []
+        for candidate_number in range(1, max(1, candidate_count) + 1):
+            draft_text = await self.chapter_generator.generate(
+                skeleton=skeleton,
+                style_profile=snapshot.style_profile,
+                style_samples=style_samples,
+                world_model=world_model,
+                chapter_brief=chapter_brief,
+                lorebook_context=lorebook_context,
+            )
+            self.session_store.save_text(
+                self.session_store.chapter_draft_candidate_path(
+                    session_name,
+                    chapter_number,
+                    candidate_number,
+                ),
+                draft_text,
+            )
+            quality_report = await self.quality_checker.evaluate(
+                skeleton=skeleton,
+                draft_text=draft_text,
+                style_samples=style_samples,
+            )
+            draft_candidates.append(
+                DraftCandidate(
+                    draft_text=draft_text,
+                    quality_report=quality_report,
+                    candidate_number=candidate_number,
+                )
+            )
+        ranked = self.candidate_ranker.rank_drafts(
             chapter_brief=chapter_brief,
-            lorebook_context=lorebook_context,
+            skeleton=skeleton,
+            candidates=draft_candidates,
         )
+        draft_text = ranked[0].draft_text
         draft_text = self.intervention.apply_draft_override(
             session_name,
             chapter_number,
@@ -483,6 +538,8 @@ class TaiJianOrchestrator:
         new_character_budget: int | None = None,
         new_location_budget: int | None = None,
         new_faction_budget: int | None = None,
+        skeleton_candidates: int | None = None,
+        draft_candidates: int | None = None,
         use_existing_index: bool = False,
         refresh_snapshot: bool = False,
         pause_after_skeleton: bool = False,
@@ -495,6 +552,14 @@ class TaiJianOrchestrator:
         session_name = session_name or self._default_session_name(input_path)
         run_started_at = datetime.now(timezone.utc)
         overall_usage_mark = self.llm_service.usage_mark()
+        skeleton_candidate_count = max(
+            1,
+            skeleton_candidates or self.settings.tuning.skeleton_candidate_count,
+        )
+        draft_candidate_count = max(
+            1,
+            draft_candidates or self.settings.tuning.draft_candidate_count,
+        )
 
         self._emit(progress_callback, "阶段1：索引与风格分析")
         index_result, snapshot, snapshot_path = await self._stage1(
@@ -631,6 +696,7 @@ class TaiJianOrchestrator:
                 lorebook_context=lorebook_context,
                 snapshot=snapshot,
                 focus_threads=focus_threads,
+                candidate_count=skeleton_candidate_count,
                 resume=resume,
                 overwrite=overwrite,
             )
@@ -660,6 +726,7 @@ class TaiJianOrchestrator:
                 lorebook_context=lorebook_context,
                 snapshot=snapshot,
                 style_samples=style_samples,
+                candidate_count=draft_candidate_count,
                 resume=resume,
                 overwrite=overwrite,
             )

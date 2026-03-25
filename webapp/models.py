@@ -20,6 +20,8 @@ class WebRunRequest(BaseModel):
     new_character_budget: int | None = Field(default=None, ge=0, le=5)
     new_location_budget: int | None = Field(default=None, ge=0, le=5)
     new_faction_budget: int | None = Field(default=None, ge=0, le=5)
+    skeleton_candidates: int | None = Field(default=None, ge=1, le=5)
+    draft_candidates: int | None = Field(default=None, ge=1, le=5)
     use_existing_index: bool = False
     overwrite: bool = False
 

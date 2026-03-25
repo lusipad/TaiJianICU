@@ -349,6 +349,8 @@ class WebRunManager:
                 new_character_budget=current.request.new_character_budget,
                 new_location_budget=current.request.new_location_budget,
                 new_faction_budget=current.request.new_faction_budget,
+                skeleton_candidates=current.request.skeleton_candidates,
+                draft_candidates=current.request.draft_candidates,
                 use_existing_index=current.request.use_existing_index,
                 overwrite=current.request.overwrite,
                 start_chapter=current.request.start_chapter,

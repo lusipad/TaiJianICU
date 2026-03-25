@@ -460,7 +460,13 @@ elements.fileInput.addEventListener("change", () => {
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(elements.form);
-  for (const key of ["new_character_budget", "new_location_budget", "new_faction_budget"]) {
+  for (const key of [
+    "new_character_budget",
+    "new_location_budget",
+    "new_faction_budget",
+    "skeleton_candidates",
+    "draft_candidates",
+  ]) {
     if (!String(formData.get(key) || "").trim()) {
       formData.delete(key);
     }

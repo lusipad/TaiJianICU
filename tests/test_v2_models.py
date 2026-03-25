@@ -139,3 +139,11 @@ def test_session_store_v2_paths(tmp_path: Path) -> None:
         store.chapter_evaluation_path("demo", 12)
         == tmp_path / "demo" / "chapter_12_evaluation.json"
     )
+    assert (
+        store.chapter_skeleton_candidate_path("demo", 12, 2)
+        == tmp_path / "demo" / "candidates" / "chapter_12_skeleton_candidate_2.json"
+    )
+    assert (
+        store.chapter_draft_candidate_path("demo", 12, 3)
+        == tmp_path / "demo" / "candidates" / "chapter_12_draft_candidate_3.md"
+    )

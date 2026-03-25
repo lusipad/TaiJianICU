@@ -87,6 +87,8 @@ def test_create_run_accepts_txt_upload() -> None:
             "new_character_budget": "2",
             "new_location_budget": "1",
             "new_faction_budget": "1",
+            "skeleton_candidates": "2",
+            "draft_candidates": "3",
         },
     )
 
@@ -99,3 +101,5 @@ def test_create_run_accepts_txt_upload() -> None:
     assert manager.last_request.new_character_budget == 2
     assert manager.last_request.new_location_budget == 1
     assert manager.last_request.new_faction_budget == 1
+    assert manager.last_request.skeleton_candidates == 2
+    assert manager.last_request.draft_candidates == 3

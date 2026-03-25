@@ -61,6 +61,8 @@ def create_app(
         new_character_budget: int | None = Form(None),
         new_location_budget: int | None = Form(None),
         new_faction_budget: int | None = Form(None),
+        skeleton_candidates: int | None = Form(None),
+        draft_candidates: int | None = Form(None),
         use_existing_index: bool = Form(False),
         overwrite: bool = Form(False),
     ) -> WebRunSummary:
@@ -82,6 +84,8 @@ def create_app(
             new_character_budget=new_character_budget,
             new_location_budget=new_location_budget,
             new_faction_budget=new_faction_budget,
+            skeleton_candidates=skeleton_candidates,
+            draft_candidates=draft_candidates,
             use_existing_index=use_existing_index,
             overwrite=overwrite,
         )

@@ -63,8 +63,32 @@ class SessionStore:
     def chapter_skeleton_path(self, session_name: str, chapter_number: int) -> Path:
         return self.session_dir(session_name) / f"chapter_{chapter_number}_skeleton.json"
 
+    def chapter_skeleton_candidate_path(
+        self,
+        session_name: str,
+        chapter_number: int,
+        candidate_number: int,
+    ) -> Path:
+        return (
+            self.session_dir(session_name)
+            / "candidates"
+            / f"chapter_{chapter_number}_skeleton_candidate_{candidate_number}.json"
+        )
+
     def chapter_draft_path(self, session_name: str, chapter_number: int) -> Path:
         return self.session_dir(session_name) / f"chapter_{chapter_number}_draft.md"
+
+    def chapter_draft_candidate_path(
+        self,
+        session_name: str,
+        chapter_number: int,
+        candidate_number: int,
+    ) -> Path:
+        return (
+            self.session_dir(session_name)
+            / "candidates"
+            / f"chapter_{chapter_number}_draft_candidate_{candidate_number}.md"
+        )
 
     def stage1_snapshot_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "stage1_snapshot.json"

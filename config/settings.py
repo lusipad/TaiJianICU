@@ -42,6 +42,8 @@ class RuntimeTuning(BaseModel):
     chunk_top_k: int = 5
     quality_threshold: float = 0.65
     quality_retry_limit: int = 1
+    skeleton_candidate_count: int = 1
+    draft_candidate_count: int = 1
     llm_request_timeout_seconds: float = 180.0
     llm_retry_attempts: int = 4
     llm_retry_backoff_seconds: float = 2.0
@@ -160,6 +162,18 @@ def get_settings() -> AppSettings:
     )
     settings.tuning.embedding_dim = int(
         os.getenv("TAIJIAN_EMBEDDING_DIM", str(settings.tuning.embedding_dim))
+    )
+    settings.tuning.skeleton_candidate_count = int(
+        os.getenv(
+            "TAIJIAN_SKELETON_CANDIDATES",
+            str(settings.tuning.skeleton_candidate_count),
+        )
+    )
+    settings.tuning.draft_candidate_count = int(
+        os.getenv(
+            "TAIJIAN_DRAFT_CANDIDATES",
+            str(settings.tuning.draft_candidate_count),
+        )
     )
     settings.ensure_directories()
     return settings

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from config.settings import AppSettings, RuntimeTuning
 from core.models.chapter_brief import ChapterBrief
 from core.models.story_state import StoryThread
 from core.llm.litellm_client import LLMUsageSummary
@@ -128,3 +129,15 @@ def test_apply_chapter_brief_overrides_and_build_goal() -> None:
     assert "必须发生：主角拿到线索；反派必须露面" in goal
     assert "优先推进伏笔：T001:黑玉去向" in goal
     assert "不可破坏设定：黑玉不能突然完整出现" in goal
+
+
+def test_settings_candidate_counts_can_be_overridden() -> None:
+    settings = AppSettings(
+        tuning=RuntimeTuning(
+            skeleton_candidate_count=2,
+            draft_candidate_count=3,
+        )
+    )
+
+    assert settings.tuning.skeleton_candidate_count == 2
+    assert settings.tuning.draft_candidate_count == 3
