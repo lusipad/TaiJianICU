@@ -10,7 +10,13 @@ from fastapi.staticfiles import StaticFiles
 from config.settings import AppSettings, get_settings
 from webapp.errors import ApiError, register_error_handlers
 from webapp.manager import WebRunManager
-from webapp.models import WebRunDetail, WebRunRequest, WebRunSummary
+from webapp.models import (
+    WebBenchmarkDetail,
+    WebBenchmarkSummary,
+    WebRunDetail,
+    WebRunRequest,
+    WebRunSummary,
+)
 
 
 def create_app(
@@ -49,6 +55,14 @@ def create_app(
     @app.get("/api/runs/{run_id}", response_model=WebRunDetail)
     async def get_run(run_id: str) -> WebRunDetail:
         return app.state.run_manager.get_run(run_id)
+
+    @app.get("/api/benchmarks", response_model=list[WebBenchmarkSummary])
+    async def list_benchmarks() -> list[WebBenchmarkSummary]:
+        return app.state.run_manager.list_benchmarks()
+
+    @app.get("/api/benchmarks/{dataset_name}/{case_name}", response_model=WebBenchmarkDetail)
+    async def get_benchmark(dataset_name: str, case_name: str) -> WebBenchmarkDetail:
+        return app.state.run_manager.get_benchmark(dataset_name, case_name)
 
     @app.post("/api/runs", response_model=WebRunSummary, status_code=201)
     async def create_run(

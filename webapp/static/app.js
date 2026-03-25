@@ -1,6 +1,8 @@
 const state = {
   activeRunId: null,
+  activeBenchmarkKey: null,
   pollTimer: null,
+  benchmarkCache: [],
   runCache: [],
 };
 
@@ -11,6 +13,8 @@ const elements = {
   fileInput: document.getElementById("file-input"),
   selectedFileName: document.getElementById("selected-file-name"),
   runList: document.getElementById("run-list"),
+  benchmarkList: document.getElementById("benchmark-list"),
+  benchmarkSummary: document.getElementById("benchmark-summary"),
   emptyState: document.getElementById("empty-state"),
   runView: document.getElementById("run-view"),
   errorBanner: document.getElementById("error-banner"),
@@ -210,6 +214,63 @@ function renderRunList(runs) {
   for (const item of elements.runList.querySelectorAll(".run-item")) {
     item.addEventListener("click", () => loadRun(item.dataset.runId));
   }
+}
+
+function renderBenchmarkList(items) {
+  state.benchmarkCache = items || [];
+  if (!items?.length) {
+    elements.benchmarkList.innerHTML = '<p class="hint">暂无 benchmark 报告。</p>';
+    elements.benchmarkSummary.textContent = "-";
+    state.activeBenchmarkKey = null;
+    return;
+  }
+  elements.benchmarkList.innerHTML = items
+    .map(
+      (item) => `
+        <article
+          class="run-item benchmark-item${state.activeBenchmarkKey === `${item.dataset_name}/${item.case_name}` ? " active" : ""}"
+          data-dataset="${escapeHtml(item.dataset_name)}"
+          data-case="${escapeHtml(item.case_name)}"
+        >
+          <span class="label">${escapeHtml(item.winner)}</span>
+          <strong>${escapeHtml(item.dataset_name)} / ${escapeHtml(item.case_name)}</strong>
+          <p>prefix ${escapeHtml(item.prefix_chapter_count)} -> target ${escapeHtml(item.target_chapter_number)}</p>
+          <p>confidence ${escapeHtml(Number(item.confidence).toFixed(2))}</p>
+        </article>
+      `
+    )
+    .join("");
+  for (const item of elements.benchmarkList.querySelectorAll(".benchmark-item")) {
+    item.addEventListener("click", () => loadBenchmark(item.dataset.dataset, item.dataset.case));
+  }
+}
+
+function renderBenchmarkDetail(detail) {
+  elements.benchmarkSummary.textContent = [
+    `数据集：${detail.dataset_name}`,
+    `Case：${detail.case_name}`,
+    `Winner：${detail.winner}`,
+    `Confidence：${Number(detail.confidence).toFixed(2)}`,
+    `System Score：${Number(detail.system_score).toFixed(2)}`,
+    `Baseline Score：${Number(detail.baseline_score).toFixed(2)}`,
+    `System Summary：${detail.system_summary || "-"}`,
+    `Baseline Summary：${detail.baseline_summary || "-"}`,
+    `System Strengths：${detail.system_strengths?.length ? detail.system_strengths.join("；") : "-"}`,
+    `Baseline Strengths：${detail.baseline_strengths?.length ? detail.baseline_strengths.join("；") : "-"}`,
+    `System Weaknesses：${detail.system_weaknesses?.length ? detail.system_weaknesses.join("；") : "-"}`,
+    `Baseline Weaknesses：${detail.baseline_weaknesses?.length ? detail.baseline_weaknesses.join("；") : "-"}`,
+    `System Elapsed：${formatDuration(detail.system_elapsed_seconds)}`,
+    `Baseline Elapsed：${formatDuration(detail.baseline_elapsed_seconds)}`,
+    `Total Cost：${formatCurrency(detail.total_cost_usd)}`,
+    `Total Tokens：${formatNumber(detail.total_tokens)}`,
+    `System Output：${detail.system_output_path}`,
+    `Baseline Output：${detail.baseline_output_path}`,
+    `Reference：${detail.reference_path}`,
+    `Report JSON：${detail.report_json_path}`,
+    `Report Markdown：${detail.report_markdown_path}`,
+    `Reasoning：`,
+    ...(detail.pairwise_reasoning?.length ? detail.pairwise_reasoning : ["-"]),
+  ].join("\n");
 }
 
 function renderLogs(lines) {
@@ -438,6 +499,30 @@ async function refreshRuns({ autoSelect = false } = {}) {
   }
 }
 
+async function refreshBenchmarks() {
+  const items = await fetchJson("/api/benchmarks");
+  renderBenchmarkList(items);
+  if (!items.length) {
+    return;
+  }
+  const fallback = items[0];
+  const [datasetName, caseName] = state.activeBenchmarkKey?.split("/") || [];
+  const current =
+    items.find((item) => item.dataset_name === datasetName && item.case_name === caseName) || fallback;
+  await loadBenchmark(current.dataset_name, current.case_name, { rerenderList: false });
+}
+
+async function loadBenchmark(datasetName, caseName, { rerenderList = true } = {}) {
+  const detail = await fetchJson(
+    `/api/benchmarks/${encodeURIComponent(datasetName)}/${encodeURIComponent(caseName)}`
+  );
+  state.activeBenchmarkKey = `${detail.dataset_name}/${detail.case_name}`;
+  renderBenchmarkDetail(detail);
+  if (rerenderList) {
+    renderBenchmarkList(state.benchmarkCache);
+  }
+}
+
 async function loadRun(runId) {
   const run = await fetchJson(`/api/runs/${runId}`);
   state.activeRunId = runId;
@@ -514,6 +599,7 @@ elements.form.addEventListener("submit", async (event) => {
 window.addEventListener("load", async () => {
   try {
     await refreshRuns({ autoSelect: true });
+    await refreshBenchmarks();
   } catch (error) {
     setFormStatus(`初始化失败：${error.message}`, "tone-error");
   }

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from config.settings import AppSettings
 from webapp.app import create_app
-from webapp.models import WebRunDetail, WebRunProgress, WebRunRequest, WebRunSummary
+from webapp.models import WebBenchmarkDetail, WebRunDetail, WebRunProgress, WebRunRequest, WebRunSummary
 
 
 class FakeRunManager:
@@ -33,6 +33,50 @@ class FakeRunManager:
     def list_runs(self):
         return [WebRunSummary.model_validate(self.detail.model_dump(mode="json"))]
 
+    def list_benchmarks(self):
+        return [
+            {
+                "dataset_name": "demo",
+                "case_name": "1_to_2",
+                "target_chapter_number": 2,
+                "prefix_chapter_count": 1,
+                "winner": "system",
+                "confidence": 0.9,
+                "report_json_path": "benchmark_report.json",
+                "report_markdown_path": "benchmark_report.md",
+            }
+        ]
+
+    def get_benchmark(self, dataset_name: str, case_name: str):
+        assert dataset_name == "demo"
+        assert case_name == "1_to_2"
+        return WebBenchmarkDetail(
+            dataset_name="demo",
+            case_name="1_to_2",
+            target_chapter_number=2,
+            prefix_chapter_count=1,
+            winner="system",
+            confidence=0.9,
+            report_json_path="benchmark_report.json",
+            report_markdown_path="benchmark_report.md",
+            system_output_path="system.md",
+            baseline_output_path="baseline.md",
+            reference_path="reference.md",
+            pairwise_reasoning=["更稳"],
+            system_score=0.85,
+            baseline_score=0.6,
+            system_summary="更稳",
+            baseline_summary="一般",
+            system_strengths=["剧情推进稳"],
+            baseline_strengths=["语言顺"],
+            system_weaknesses=["爆点稍弱"],
+            baseline_weaknesses=["偏离原著"],
+            system_elapsed_seconds=12.3,
+            baseline_elapsed_seconds=8.4,
+            total_cost_usd=0.12,
+            total_tokens=1234,
+        )
+
     def get_run(self, run_id: str):
         assert run_id == "run-1"
         return self.detail
@@ -56,6 +100,9 @@ def test_web_health_and_index() -> None:
     assert response.status_code == 200
     assert "TaiJianKiller Studio" in response.text
     assert "世界模型" in response.text
+    favicon = client.get("/static/favicon.svg")
+    assert favicon.status_code == 200
+    assert "image/svg+xml" in favicon.headers["content-type"]
 
 
 def test_create_run_rejects_non_txt_upload() -> None:
@@ -103,3 +150,23 @@ def test_create_run_accepts_txt_upload() -> None:
     assert manager.last_request.new_faction_budget == 1
     assert manager.last_request.skeleton_candidates == 2
     assert manager.last_request.draft_candidates == 3
+
+
+def test_list_benchmarks_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/benchmarks")
+
+    assert response.status_code == 200
+    assert response.json()[0]["dataset_name"] == "demo"
+
+
+def test_get_benchmark_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/benchmarks/demo/1_to_2")
+
+    assert response.status_code == 200
+    assert response.json()["system_summary"] == "更稳"

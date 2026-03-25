@@ -125,3 +125,33 @@ class ApiErrorResponse(BaseModel):
     title: str
     status: int
     detail: str
+
+
+class WebBenchmarkSummary(BaseModel):
+    dataset_name: str
+    case_name: str
+    target_chapter_number: int
+    prefix_chapter_count: int
+    winner: str
+    confidence: float
+    report_json_path: str
+    report_markdown_path: str
+
+
+class WebBenchmarkDetail(WebBenchmarkSummary):
+    system_output_path: str
+    baseline_output_path: str
+    reference_path: str
+    pairwise_reasoning: list[str] = Field(default_factory=list)
+    system_score: float = 0.0
+    baseline_score: float = 0.0
+    system_summary: str = ""
+    baseline_summary: str = ""
+    system_strengths: list[str] = Field(default_factory=list)
+    baseline_strengths: list[str] = Field(default_factory=list)
+    system_weaknesses: list[str] = Field(default_factory=list)
+    baseline_weaknesses: list[str] = Field(default_factory=list)
+    system_elapsed_seconds: float = 0.0
+    baseline_elapsed_seconds: float = 0.0
+    total_cost_usd: float = 0.0
+    total_tokens: int = 0

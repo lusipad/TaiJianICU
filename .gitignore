@@ -4,11 +4,13 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .deepeval/
+.playwright-cli/
 .env
 *.pyc
 *.pyo
 *.pyd
 *.egg-info/
+output/playwright/
 data/lightrag/
 data/output/
 data/sessions/

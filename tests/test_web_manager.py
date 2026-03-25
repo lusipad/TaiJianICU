@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config.settings import AppSettings
+from core.benchmarking.runner import BenchmarkReport, CandidateReport, CandidateScore, PairwiseJudgement
+from core.llm.litellm_client import LLMUsageSummary
 from core.models.arc_outline import ArcOutline
 from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation
@@ -188,3 +190,68 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
     assert detail.latest_chapter_evaluation["summary"] == "推进稳定"
     assert detail.latest_skeleton_candidate_paths[0].endswith("chapter_1_skeleton_candidate_1.json")
     assert detail.latest_draft_candidate_paths[0].endswith("chapter_1_draft_candidate_1.md")
+
+
+def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    report_dir = settings.benchmarks_dir / "demo" / "cases" / "1_to_2" / "report"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report = BenchmarkReport(
+        dataset_name="demo",
+        case_name="1_to_2",
+        prefix_chapter_count=1,
+        target_chapter_number=2,
+        source_path="source.txt",
+        prefix_path="prefix.txt",
+        reference_path="reference.txt",
+        system_session_name="demo-session",
+        system_manifest_path="manifest.json",
+        system_output_path="system.md",
+        baseline_output_path="baseline.md",
+        pairwise=PairwiseJudgement(winner="system", confidence=0.9, reasoning=["更稳", "更像原著"]),
+        system_report=CandidateReport(
+            label="system",
+            output_path="system.md",
+            score=CandidateScore(
+                plot_alignment=0.9,
+                character_consistency=0.9,
+                style_similarity=0.8,
+                readability=0.8,
+                overall=0.85,
+                strengths=["剧情推进稳"],
+                weaknesses=["爆点稍弱"],
+                summary="更稳",
+            ),
+            elapsed_seconds=12.3,
+        ),
+        baseline_report=CandidateReport(
+            label="baseline",
+            output_path="baseline.md",
+            score=CandidateScore(
+                plot_alignment=0.6,
+                character_consistency=0.6,
+                style_similarity=0.6,
+                readability=0.6,
+                overall=0.6,
+                strengths=["语言顺"],
+                weaknesses=["偏离原著"],
+                summary="一般",
+            ),
+            elapsed_seconds=8.4,
+        ),
+        total_usage=LLMUsageSummary(total_tokens=1234, total_cost_usd=0.12),
+        report_markdown_path=str(report_dir / "benchmark_report.md"),
+        report_json_path=str(report_dir / "benchmark_report.json"),
+    )
+    (report_dir / "benchmark_report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+    summaries = manager.list_benchmarks()
+    detail = manager.get_benchmark("demo", "1_to_2")
+
+    assert summaries[0].dataset_name == "demo"
+    assert summaries[0].winner == "system"
+    assert detail.system_score == 0.85
+    assert detail.system_strengths == ["剧情推进稳"]
+    assert detail.baseline_weaknesses == ["偏离原著"]
+    assert detail.pairwise_reasoning == ["更稳", "更像原著"]

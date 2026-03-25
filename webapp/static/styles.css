@@ -408,8 +408,13 @@ button:active {
 }
 
 .preview-card,
-.logs-card {
+.logs-card,
+.benchmark-card {
   margin-top: 14px;
+}
+
+.benchmark-head {
+  margin-top: 22px;
 }
 
 pre {

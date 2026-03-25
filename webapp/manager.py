@@ -11,6 +11,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from config.settings import AppSettings
+from core.benchmarking.runner import BenchmarkReport
 from core.models.arc_outline import ArcOutline
 from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation
@@ -22,6 +23,8 @@ from core.models.world_model import WorldModel
 from orchestrator import PipelineRunResult, TaiJianOrchestrator
 from webapp.errors import ApiError
 from webapp.models import (
+    WebBenchmarkDetail,
+    WebBenchmarkSummary,
     WebChapterSummary,
     WebRunArtifactPaths,
     WebRunDetail,
@@ -44,6 +47,13 @@ class WebRunManager:
 
     def _run_file(self, run_id: str) -> Path:
         return self.settings.web_runs_dir / f"{run_id}.json"
+
+    def _benchmark_report_files(self) -> list[Path]:
+        return sorted(
+            self.settings.benchmarks_dir.glob("*/cases/*/report/benchmark_report.json"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
 
     def _load_existing_runs(self) -> None:
         for path in sorted(self.settings.web_runs_dir.glob("*.json")):
@@ -91,6 +101,66 @@ class WebRunManager:
             if run is None:
                 raise ApiError("找不到对应的运行任务。", 404, "Not Found")
             return run.model_copy(deep=True)
+
+    def list_benchmarks(self) -> list[WebBenchmarkSummary]:
+        items: list[WebBenchmarkSummary] = []
+        for path in self._benchmark_report_files():
+            try:
+                report = BenchmarkReport.model_validate_json(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            items.append(
+                WebBenchmarkSummary(
+                    dataset_name=report.dataset_name,
+                    case_name=report.case_name,
+                    target_chapter_number=report.target_chapter_number,
+                    prefix_chapter_count=report.prefix_chapter_count,
+                    winner=report.pairwise.winner,
+                    confidence=report.pairwise.confidence,
+                    report_json_path=report.report_json_path,
+                    report_markdown_path=report.report_markdown_path,
+                )
+            )
+        return items
+
+    def get_benchmark(self, dataset_name: str, case_name: str) -> WebBenchmarkDetail:
+        path = (
+            self.settings.benchmarks_dir
+            / dataset_name
+            / "cases"
+            / case_name
+            / "report"
+            / "benchmark_report.json"
+        )
+        if not path.exists():
+            raise ApiError("找不到对应的 benchmark 报告。", 404, "Not Found")
+        report = BenchmarkReport.model_validate_json(path.read_text(encoding="utf-8"))
+        return WebBenchmarkDetail(
+            dataset_name=report.dataset_name,
+            case_name=report.case_name,
+            target_chapter_number=report.target_chapter_number,
+            prefix_chapter_count=report.prefix_chapter_count,
+            winner=report.pairwise.winner,
+            confidence=report.pairwise.confidence,
+            report_json_path=report.report_json_path,
+            report_markdown_path=report.report_markdown_path,
+            system_output_path=report.system_output_path,
+            baseline_output_path=report.baseline_output_path,
+            reference_path=report.reference_path,
+            pairwise_reasoning=report.pairwise.reasoning,
+            system_score=report.system_report.score.overall,
+            baseline_score=report.baseline_report.score.overall,
+            system_summary=report.system_report.score.summary,
+            baseline_summary=report.baseline_report.score.summary,
+            system_strengths=report.system_report.score.strengths,
+            baseline_strengths=report.baseline_report.score.strengths,
+            system_weaknesses=report.system_report.score.weaknesses,
+            baseline_weaknesses=report.baseline_report.score.weaknesses,
+            system_elapsed_seconds=report.system_report.elapsed_seconds,
+            baseline_elapsed_seconds=report.baseline_report.elapsed_seconds,
+            total_cost_usd=report.total_usage.total_cost_usd,
+            total_tokens=report.total_usage.total_tokens,
+        )
 
     def start_run(
         self,

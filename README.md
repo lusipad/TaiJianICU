@@ -20,6 +20,7 @@
 - 章节完成后会增量刷新 `WorldModel`，并把候选骨架 / 候选正文落盘到会话目录
 - 基准：内置“系统 vs 单模型 baseline vs 真实后续”对照实验
 - Web：上传 `.txt`、提交任务、轮询进度、查看摘要/产物路径/历史任务
+- Web：侧边栏可直接查看 Benchmark Lab 对照报告、胜负结论、分项摘要和落盘路径
 - CLI：`taijian run` / `taijian benchmark` / `taijian web` / `taijian inspect` / `taijian intervene`
 - 会话：保存阶段 1 快照、每章骨架、草稿、输出正文、伏笔状态
 
@@ -135,6 +136,8 @@ taijian web
 - `GET /ready`
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`
+- `GET /api/benchmarks`
+- `GET /api/benchmarks/{dataset_name}/{case_name}`
 - `POST /api/runs`
 
 ## 会话目录
