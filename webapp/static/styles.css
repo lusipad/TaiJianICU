@@ -464,6 +464,11 @@ pre {
   gap: 6px;
 }
 
+.thread-item span,
+.chapter-item span {
+  line-height: 1.55;
+}
+
 .thread-item strong,
 .chapter-item strong,
 .path-line strong {

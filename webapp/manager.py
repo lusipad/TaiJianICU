@@ -8,9 +8,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from pydantic import BaseModel, Field
+
 from config.settings import AppSettings
+from core.models.arc_outline import ArcOutline
+from core.models.chapter_brief import ChapterBrief
+from core.models.evaluation import ChapterEvaluation
+from core.models.lorebook import LorebookBundle
+from core.models.reference_profile import ReferenceProfile
 from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
+from core.models.world_model import WorldModel
 from orchestrator import PipelineRunResult, TaiJianOrchestrator
 from webapp.errors import ApiError
 from webapp.models import (
@@ -162,15 +170,35 @@ class WebRunManager:
             for item in manifest.chapters
         ]
 
+    @staticmethod
+    def _load_json_model(path: Path, model_cls):
+        if not path.exists():
+            return None
+        return model_cls.model_validate_json(path.read_text(encoding="utf-8"))
+
     def _populate_outputs(self, run_id: str, result: PipelineRunResult) -> None:
         snapshot_path = Path(result.stage1_snapshot_path)
-        snapshot = None
-        if snapshot_path.exists():
-            snapshot = ExtractionSnapshot.model_validate_json(snapshot_path.read_text(encoding="utf-8"))
+        session_dir = self.settings.sessions_dir / result.session_name
+        snapshot = self._load_json_model(snapshot_path, ExtractionSnapshot)
+        world_model = self._load_json_model(session_dir / "world_model.json", WorldModel)
+        lorebook = self._load_json_model(session_dir / "lorebook.json", LorebookBundle)
+        selected_references_bundle = self._load_json_model(
+            session_dir / "selected_references.json",
+            _ReferenceProfileBundle,
+        )
+        arc_outlines = [
+            ArcOutline.model_validate_json(path.read_text(encoding="utf-8")).model_dump(mode="json")
+            for path in sorted((session_dir / "arcs").glob("*.json"))
+        ]
         manifest_path = self.settings.sessions_dir / result.session_name / "run_manifest.json"
         manifest = None
         if manifest_path.exists():
-            manifest = PipelineRunResult.model_validate_json(manifest_path.read_text(encoding="utf-8"))
+            try:
+                manifest = PipelineRunResult.model_validate_json(
+                    manifest_path.read_text(encoding="utf-8")
+                )
+            except Exception:
+                manifest = None
         latest_output_path = next(
             (
                 Path(item.output_path)
@@ -187,6 +215,10 @@ class WebRunManager:
         latest_consistency = None
         latest_chapter_goal = None
         latest_skeleton_path = None
+        latest_brief = None
+        latest_brief_path = None
+        latest_evaluation = None
+        latest_evaluation_path = None
         latest_draft_path = None
         latest_output_string = str(latest_output_path) if latest_output_path is not None else None
         chapter_source = manifest.chapters if manifest else result.chapters
@@ -201,6 +233,21 @@ class WebRunManager:
             latest_chapter_goal = last.chapter_goal
             latest_skeleton_path = last.skeleton_path
             latest_draft_path = last.draft_path
+            latest_brief_path = session_dir / f"chapter_{last.chapter_number}_brief.json"
+            latest_evaluation_path = session_dir / f"chapter_{last.chapter_number}_evaluation.json"
+            latest_brief_model = self._load_json_model(latest_brief_path, ChapterBrief)
+            latest_evaluation_model = self._load_json_model(
+                latest_evaluation_path,
+                ChapterEvaluation,
+            )
+            latest_brief = (
+                latest_brief_model.model_dump(mode="json") if latest_brief_model else None
+            )
+            latest_evaluation = (
+                latest_evaluation_model.model_dump(mode="json")
+                if latest_evaluation_model
+                else None
+            )
 
         unresolved_threads_path = self.settings.sessions_dir / result.session_name / "unresolved_threads.json"
         unresolved_threads: list[StoryThread] = []
@@ -249,6 +296,15 @@ class WebRunManager:
             output_paths=[item.output_path for item in result.chapters if item.output_path],
             style_profile=snapshot.style_profile.model_dump(mode="json") if snapshot else None,
             story_state=snapshot.story_state.model_dump(mode="json") if snapshot else None,
+            world_model=world_model.model_dump(mode="json") if world_model else None,
+            lorebook=lorebook.model_dump(mode="json") if lorebook else None,
+            selected_references=[
+                item.model_dump(mode="json")
+                for item in (selected_references_bundle.profiles if selected_references_bundle else [])
+            ],
+            arc_outlines=arc_outlines,
+            latest_chapter_brief=latest_brief,
+            latest_chapter_evaluation=latest_evaluation,
             latest_output_preview=latest_output_preview,
             latest_quality_report=latest_quality,
             latest_consistency_report=latest_consistency,
@@ -257,7 +313,20 @@ class WebRunManager:
             artifact_paths=WebRunArtifactPaths(
                 manifest=str(manifest_path),
                 stage1_snapshot=result.stage1_snapshot_path,
+                world_model=str(session_dir / "world_model.json") if (session_dir / "world_model.json").exists() else None,
+                lorebook=str(session_dir / "lorebook.json") if (session_dir / "lorebook.json").exists() else None,
+                selected_references=(
+                    str(session_dir / "selected_references.json")
+                    if (session_dir / "selected_references.json").exists()
+                    else None
+                ),
                 latest_skeleton=latest_skeleton_path,
+                latest_chapter_brief=str(latest_brief_path) if latest_brief_path and latest_brief_path.exists() else None,
+                latest_chapter_evaluation=(
+                    str(latest_evaluation_path)
+                    if latest_evaluation_path and latest_evaluation_path.exists()
+                    else None
+                ),
                 latest_draft=latest_draft_path,
                 latest_output=latest_output_string,
                 story_graph=str(story_graph_path) if story_graph_path.exists() else None,
@@ -293,3 +362,7 @@ class WebRunManager:
                 error_message=str(exc),
                 progress=self.get_run(run_id).progress.model_copy(update={"message": "运行失败"}),
             )
+
+
+class _ReferenceProfileBundle(BaseModel):
+    profiles: list[ReferenceProfile] = Field(default_factory=list)

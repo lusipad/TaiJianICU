@@ -67,7 +67,12 @@ class WebRunMetrics(BaseModel):
 class WebRunArtifactPaths(BaseModel):
     manifest: str | None = None
     stage1_snapshot: str | None = None
+    world_model: str | None = None
+    lorebook: str | None = None
+    selected_references: str | None = None
     latest_skeleton: str | None = None
+    latest_chapter_brief: str | None = None
+    latest_chapter_evaluation: str | None = None
     latest_draft: str | None = None
     latest_output: str | None = None
     story_graph: str | None = None
@@ -92,6 +97,12 @@ class WebRunDetail(WebRunSummary):
     output_paths: list[str] = Field(default_factory=list)
     style_profile: dict | None = None
     story_state: dict | None = None
+    world_model: dict | None = None
+    lorebook: dict | None = None
+    selected_references: list[dict] = Field(default_factory=list)
+    arc_outlines: list[dict] = Field(default_factory=list)
+    latest_chapter_brief: dict | None = None
+    latest_chapter_evaluation: dict | None = None
     latest_output_preview: str | None = None
     latest_quality_report: dict | None = None
     latest_consistency_report: dict | None = None

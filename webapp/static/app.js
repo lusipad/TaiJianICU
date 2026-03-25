@@ -29,8 +29,14 @@ const elements = {
   metricConsistency: document.getElementById("metric-consistency"),
   styleSummary: document.getElementById("style-summary"),
   storySummary: document.getElementById("story-summary"),
+  worldSummary: document.getElementById("world-summary"),
+  lorebookSummary: document.getElementById("lorebook-summary"),
   goalSummary: document.getElementById("goal-summary"),
+  briefSummary: document.getElementById("brief-summary"),
+  evaluationSummary: document.getElementById("evaluation-summary"),
   artifactList: document.getElementById("artifact-list"),
+  referenceList: document.getElementById("reference-list"),
+  arcList: document.getElementById("arc-list"),
   qualitySummary: document.getElementById("quality-summary"),
   consistencySummary: document.getElementById("consistency-summary"),
   threadsList: document.getElementById("threads-list"),
@@ -108,6 +114,61 @@ function formatStorySummary(storyState) {
   return lines.join("\n\n");
 }
 
+function formatWorldSummary(worldModel) {
+  if (!worldModel) return "-";
+  const lines = [];
+  if (worldModel.summary) lines.push(worldModel.summary);
+  if (worldModel.world_tensions?.length) lines.push(`世界张力：${worldModel.world_tensions.join("；")}`);
+  if (worldModel.open_mysteries?.length) lines.push(`未解谜团：${worldModel.open_mysteries.join("；")}`);
+  if (worldModel.canon_facts?.length) {
+    lines.push(
+      `硬设定：\n- ${worldModel.canon_facts
+        .slice(0, 4)
+        .map((item) => item.statement)
+        .join("\n- ")}`
+    );
+  }
+  return lines.join("\n\n");
+}
+
+function formatLorebookSummary(lorebook) {
+  if (!lorebook?.entries?.length) return "-";
+  return lorebook.entries
+    .slice(0, 6)
+    .map((entry) => `${entry.hard_constraint ? "[硬约束]" : "[参考]"} ${entry.title}：${entry.content}`)
+    .join("\n\n");
+}
+
+function formatBriefSummary(brief) {
+  if (!brief) return "-";
+  const lines = [];
+  if (brief.chapter_goal) lines.push(`目标：${brief.chapter_goal}`);
+  if (brief.chapter_note) lines.push(`备注：${brief.chapter_note}`);
+  if (brief.must_happen?.length) lines.push(`必须发生：\n- ${brief.must_happen.join("\n- ")}`);
+  if (brief.constraints?.length) {
+    lines.push(`约束：\n- ${brief.constraints.map((item) => item.content).join("\n- ")}`);
+  }
+  return lines.join("\n\n");
+}
+
+function formatEvaluationSummary(evaluation) {
+  if (!evaluation) return "-";
+  const score = evaluation.score || {};
+  const lines = [
+    `摘要：${evaluation.summary || "-"}`,
+    `Continuity：${Number(score.continuity_score || 0).toFixed(2)}`,
+    `Character：${Number(score.character_score || 0).toFixed(2)}`,
+    `World：${Number(score.world_consistency_score || 0).toFixed(2)}`,
+    `Novelty：${Number(score.novelty_score || 0).toFixed(2)}`,
+    `Arc Progress：${Number(score.arc_progress_score || 0).toFixed(2)}`,
+    `需重试：${evaluation.should_retry ? "是" : "否"}`,
+  ];
+  if (evaluation.flags?.length) {
+    lines.push(`Flags：\n- ${evaluation.flags.map((item) => `${item.code} ${item.message}`).join("\n- ")}`);
+  }
+  return lines.join("\n");
+}
+
 function formatQualitySummary(report) {
   if (!report) return "-";
   const lines = [`分数：${Number(report.score || 0).toFixed(3)}`, `结论：${report.verdict || "-"}`];
@@ -168,7 +229,12 @@ function renderArtifacts(paths) {
   const mapping = [
     ["run_manifest.json", paths?.manifest],
     ["stage1_snapshot.json", paths?.stage1_snapshot],
+    ["world_model.json", paths?.world_model],
+    ["lorebook.json", paths?.lorebook],
+    ["selected_references.json", paths?.selected_references],
     ["latest skeleton", paths?.latest_skeleton],
+    ["latest chapter brief", paths?.latest_chapter_brief],
+    ["latest chapter evaluation", paths?.latest_chapter_evaluation],
     ["latest draft", paths?.latest_draft],
     ["latest output", paths?.latest_output],
     ["story_graph.mmd", paths?.story_graph],
@@ -185,6 +251,47 @@ function renderArtifacts(paths) {
         <div class="path-line">
           <strong>${escapeHtml(label)}</strong>
           <code>${escapeHtml(value)}</code>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderReferences(references) {
+  elements.referenceList.innerHTML = "";
+  if (!references?.length) {
+    elements.referenceList.innerHTML = '<div class="thread-item"><strong>当前没有选中的参考策略</strong></div>';
+    return;
+  }
+  elements.referenceList.innerHTML = references
+    .map(
+      (item) => `
+        <div class="thread-item">
+          <strong>${escapeHtml(item.name)} · ${escapeHtml(item.reference_type)}</strong>
+          <span>${escapeHtml((item.abstract_traits || []).map((trait) => trait.label).join("；") || "无抽象特征")}</span>
+          <span>${escapeHtml((item.allowed_influences || []).join("；") || "无影响域")}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderArcList(arcs) {
+  elements.arcList.innerHTML = "";
+  if (!arcs?.length) {
+    elements.arcList.innerHTML = '<div class="chapter-item"><strong>当前没有 arc 规划</strong></div>';
+    return;
+  }
+  elements.arcList.innerHTML = arcs
+    .map(
+      (arc) => `
+        <div class="chapter-item">
+          <strong>${escapeHtml(arc.arc_id)} · ${escapeHtml((arc.chapters_span || []).join("-"))}</strong>
+          <div class="chapter-meta">
+            <span>${escapeHtml(arc.phase || "-")}</span>
+            <span>${escapeHtml(arc.arc_theme || "-")}</span>
+          </div>
+          <span>${escapeHtml(arc.arc_goal || arc.summary || "-")}</span>
         </div>
       `
     )
@@ -263,7 +370,11 @@ function renderRun(run) {
 
   elements.styleSummary.textContent = formatStyleSummary(run.style_profile);
   elements.storySummary.textContent = formatStorySummary(run.story_state);
+  elements.worldSummary.textContent = formatWorldSummary(run.world_model);
+  elements.lorebookSummary.textContent = formatLorebookSummary(run.lorebook);
   elements.goalSummary.textContent = run.latest_chapter_goal || "-";
+  elements.briefSummary.textContent = formatBriefSummary(run.latest_chapter_brief);
+  elements.evaluationSummary.textContent = formatEvaluationSummary(run.latest_chapter_evaluation);
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
   const latestOutputPath =
@@ -273,6 +384,8 @@ function renderRun(run) {
   elements.outputPreview.textContent = run.latest_output_preview || "-";
 
   renderArtifacts(run.artifact_paths);
+  renderReferences(run.selected_references);
+  renderArcList(run.arc_outlines);
   renderThreads(run.unresolved_threads);
   renderChapterList(run.chapter_summaries);
   renderLogs(run.log_messages || []);

@@ -53,6 +53,7 @@ def test_web_health_and_index() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "TaiJianKiller Studio" in response.text
+    assert "世界模型" in response.text
 
 
 def test_create_run_rejects_non_txt_upload() -> None:
