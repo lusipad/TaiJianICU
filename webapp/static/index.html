@@ -13,7 +13,7 @@
         <div class="studio-topbar-copy">
           <p class="studio-brand">TaiJianKiller Studio</p>
           <h1>续写工作台</h1>
-          <p>上传文本、选择模型、查看规划与正文，不再把营销文案塞进产品界面。</p>
+          <p>上传文本、选择模型、查看规划与正文，把工作面板做得更像 IDE，而不是一页堆满卡片。</p>
         </div>
         <div class="studio-topbar-actions">
           <a class="studio-link" href="/">返回 Landing</a>
@@ -30,155 +30,167 @@
           </div>
 
           <form id="run-form" class="run-form">
-            <section class="form-section form-section-primary">
-              <div class="form-section-head">
-                <div>
-                  <p class="section-kicker">Input</p>
-                  <h3>文本与会话</h3>
+            <details class="form-section form-section-primary" open>
+              <summary class="form-section-summary">
+                <div class="form-section-head">
+                  <div>
+                    <p class="section-kicker">Input</p>
+                    <h3>文本与会话</h3>
+                  </div>
+                  <span class="field-note">先选原著，再定义这次运行的范围。</span>
                 </div>
-                <span class="field-note">先选原著，再定义这次运行的范围。</span>
-              </div>
+              </summary>
+              <div class="form-section-body">
+                <label class="field upload-field">
+                  <span>原著文本</span>
+                  <div class="upload-box">
+                    <input id="file-input" name="file" type="file" accept=".txt,text/plain" required />
+                    <strong id="selected-file-name">选择一个 `.txt` 文件</strong>
+                    <small>支持 UTF-8 / UTF-8-SIG / GB18030 / GBK，上传后统一转为 UTF-8。</small>
+                  </div>
+                </label>
 
-              <label class="field upload-field">
-                <span>原著文本</span>
-                <div class="upload-box">
-                  <input id="file-input" name="file" type="file" accept=".txt,text/plain" required />
-                  <strong id="selected-file-name">选择一个 `.txt` 文件</strong>
-                  <small>支持 UTF-8 / UTF-8-SIG / GB18030 / GBK，上传后统一转为 UTF-8。</small>
+                <div class="field-grid">
+                  <label class="field">
+                    <span>会话名</span>
+                    <input name="session_name" type="text" placeholder="留空则自动按文件名加时间戳生成" />
+                  </label>
+
+                  <label class="field">
+                    <span>章节数</span>
+                    <input name="chapters" type="number" min="1" max="20" value="1" required />
+                  </label>
+
+                  <label class="field">
+                    <span>起始章节</span>
+                    <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
+                  </label>
                 </div>
-              </label>
-
-              <div class="field-grid">
-                <label class="field">
-                  <span>会话名</span>
-                  <input name="session_name" type="text" placeholder="留空则自动按文件名加时间戳生成" />
-                </label>
-
-                <label class="field">
-                  <span>章节数</span>
-                  <input name="chapters" type="number" min="1" max="20" value="1" required />
-                </label>
-
-                <label class="field">
-                  <span>起始章节</span>
-                  <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
-                </label>
               </div>
-            </section>
+            </details>
 
-            <section class="form-section">
-              <div class="form-section-head">
-                <div>
-                  <p class="section-kicker">Planning</p>
-                  <h3>规划与候选</h3>
+            <details class="form-section">
+              <summary class="form-section-summary">
+                <div class="form-section-head">
+                  <div>
+                    <p class="section-kicker">Planning</p>
+                    <h3>规划与候选</h3>
+                  </div>
+                  <span class="field-note">把预算和候选数收在一个控制段里。</span>
                 </div>
-                <span class="field-note">把预算和候选数收在一个控制段里。</span>
-              </div>
-
-              <div class="field-grid">
-                <label class="field">
-                  <span>规划模式</span>
-                  <select name="planning_mode">
-                    <option value="balanced">balanced</option>
-                    <option value="strict">strict</option>
-                    <option value="expansive">expansive</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span>新人物预算</span>
-                  <input name="new_character_budget" type="number" min="0" max="5" placeholder="自动" />
-                </label>
-                <label class="field">
-                  <span>新地图预算</span>
-                  <input name="new_location_budget" type="number" min="0" max="5" placeholder="自动" />
-                </label>
-              </div>
-
-              <div class="field-grid field-grid-slim">
-                <label class="field">
-                  <span>新势力预算</span>
-                  <input name="new_faction_budget" type="number" min="0" max="5" placeholder="自动" />
-                </label>
-                <label class="field">
-                  <span>骨架候选数</span>
-                  <input name="skeleton_candidates" type="number" min="1" max="5" placeholder="默认" />
-                </label>
-                <label class="field">
-                  <span>正文候选数</span>
-                  <input name="draft_candidates" type="number" min="1" max="5" placeholder="默认" />
-                </label>
-              </div>
-            </section>
-
-            <section class="form-section">
-              <div class="form-section-head">
-                <div>
-                  <p class="section-kicker">Model Routing</p>
-                  <h3>模型配置</h3>
+              </summary>
+              <div class="form-section-body">
+                <div class="field-grid">
+                  <label class="field">
+                    <span>规划模式</span>
+                    <select name="planning_mode">
+                      <option value="balanced">balanced</option>
+                      <option value="strict">strict</option>
+                      <option value="expansive">expansive</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>新人物预算</span>
+                    <input name="new_character_budget" type="number" min="0" max="5" placeholder="自动" />
+                  </label>
+                  <label class="field">
+                    <span>新地图预算</span>
+                    <input name="new_location_budget" type="number" min="0" max="5" placeholder="自动" />
+                  </label>
                 </div>
-                <span class="field-note">候选来自部署配置，也支持手动覆盖本次运行。</span>
-              </div>
 
-              <div class="field-grid model-grid">
-                <label class="field">
-                  <span>风格分析模型</span>
-                  <input id="style-model-input" name="style_model" type="text" list="model-options" />
-                </label>
-                <label class="field">
-                  <span>情节规划模型</span>
-                  <input id="plot-model-input" name="plot_model" type="text" list="model-options" />
-                </label>
-                <label class="field">
-                  <span>正文生成模型</span>
-                  <input id="draft-model-input" name="draft_model" type="text" list="model-options" />
-                </label>
-                <label class="field">
-                  <span>质检评估模型</span>
-                  <input id="quality-model-input" name="quality_model" type="text" list="model-options" />
-                </label>
-                <label class="field model-span-wide">
-                  <span>LightRAG 模型名</span>
-                  <input id="lightrag-model-input" name="lightrag_model_name" type="text" list="model-options" />
-                </label>
+                <div class="field-grid field-grid-slim">
+                  <label class="field">
+                    <span>新势力预算</span>
+                    <input name="new_faction_budget" type="number" min="0" max="5" placeholder="自动" />
+                  </label>
+                  <label class="field">
+                    <span>骨架候选数</span>
+                    <input name="skeleton_candidates" type="number" min="1" max="5" placeholder="默认" />
+                  </label>
+                  <label class="field">
+                    <span>正文候选数</span>
+                    <input name="draft_candidates" type="number" min="1" max="5" placeholder="默认" />
+                  </label>
+                </div>
               </div>
-            </section>
+            </details>
+
+            <details class="form-section">
+              <summary class="form-section-summary">
+                <div class="form-section-head">
+                  <div>
+                    <p class="section-kicker">Model Routing</p>
+                    <h3>模型配置</h3>
+                  </div>
+                  <span class="field-note">候选来自部署配置，也支持手动覆盖本次运行。</span>
+                </div>
+              </summary>
+              <div class="form-section-body">
+                <div class="field-grid model-grid">
+                  <label class="field">
+                    <span>风格分析模型</span>
+                    <input id="style-model-input" name="style_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field">
+                    <span>情节规划模型</span>
+                    <input id="plot-model-input" name="plot_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field">
+                    <span>正文生成模型</span>
+                    <input id="draft-model-input" name="draft_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field">
+                    <span>质检评估模型</span>
+                    <input id="quality-model-input" name="quality_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field model-span-wide">
+                    <span>LightRAG 模型名</span>
+                    <input id="lightrag-model-input" name="lightrag_model_name" type="text" list="model-options" />
+                  </label>
+                </div>
+              </div>
+            </details>
 
             <datalist id="model-options"></datalist>
 
-            <section class="form-section form-section-final">
-              <div class="form-section-head">
-                <div>
-                  <p class="section-kicker">Intent</p>
-                  <h3>目标与执行</h3>
+            <details class="form-section form-section-final" open>
+              <summary class="form-section-summary">
+                <div class="form-section-head">
+                  <div>
+                    <p class="section-kicker">Intent</p>
+                    <h3>目标与执行</h3>
+                  </div>
+                  <span class="field-note">最后补一条目标提示，再决定是否复用索引。</span>
                 </div>
-                <span class="field-note">最后补一条目标提示，再决定是否复用索引。</span>
-              </div>
-
-              <label class="field">
-                <span>章节目标提示</span>
-                <textarea
-                  name="goal_hint"
-                  rows="4"
-                  placeholder="可选。比如：先推进主角与反派的正面碰撞，再回收一个旧伏笔。"
-                ></textarea>
-              </label>
-
-              <div class="toggle-row">
-                <label class="toggle">
-                  <input name="use_existing_index" type="checkbox" />
-                  <span>复用已有索引</span>
+              </summary>
+              <div class="form-section-body">
+                <label class="field">
+                  <span>章节目标提示</span>
+                  <textarea
+                    name="goal_hint"
+                    rows="4"
+                    placeholder="可选。比如：先推进主角与反派的正面碰撞，再回收一个旧伏笔。"
+                  ></textarea>
                 </label>
-                <label class="toggle">
-                  <input name="overwrite" type="checkbox" />
-                  <span>允许覆盖同名产物</span>
-                </label>
-              </div>
 
-              <div class="action-row action-row-sticky">
-                <button id="submit-button" type="submit">开始分析并续写</button>
-                <p id="form-status" class="hint">提交后会自动轮询任务进度。</p>
+                <div class="toggle-row">
+                  <label class="toggle">
+                    <input name="use_existing_index" type="checkbox" />
+                    <span>复用已有索引</span>
+                  </label>
+                  <label class="toggle">
+                    <input name="overwrite" type="checkbox" />
+                    <span>允许覆盖同名产物</span>
+                  </label>
+                </div>
+
+                <div class="action-row action-row-sticky">
+                  <button id="submit-button" type="submit">开始分析并续写</button>
+                  <p id="form-status" class="hint">提交后会自动轮询任务进度。</p>
+                </div>
               </div>
-            </section>
+            </details>
           </form>
         </aside>
 
@@ -197,6 +209,12 @@
 
           <div id="run-view" class="run-view hidden">
             <div id="error-banner" class="status-banner hidden"></div>
+
+            <nav class="workspace-tabs" aria-label="工作台分区">
+              <button type="button" class="workspace-tab is-active" data-tab-target="overview">总览</button>
+              <button type="button" class="workspace-tab" data-tab-target="planning">规划</button>
+              <button type="button" class="workspace-tab" data-tab-target="diagnostics">诊断</button>
+            </nav>
 
             <section class="workspace-block workspace-block-primary">
               <div class="run-meta run-meta-wide">
@@ -255,24 +273,24 @@
               </div>
             </section>
 
-            <section class="workspace-block workspace-block-feature">
-              <div class="workspace-block-head">
-                <div>
-                  <p class="section-kicker">Primary Output</p>
-                  <h3>正文预览</h3>
-                </div>
-                <span id="output-path" class="workspace-path">-</span>
-              </div>
-              <pre id="output-preview">-</pre>
-            </section>
-
-            <section class="workspace-block">
+            <section class="workspace-block" data-tab-panel="overview">
               <div class="workspace-block-head">
                 <div>
                   <p class="section-kicker">Core Context</p>
                   <h3>风格、故事与当前目标</h3>
                 </div>
               </div>
+
+              <section class="workspace-block workspace-block-feature workspace-block-nested">
+                <div class="workspace-block-head">
+                  <div>
+                    <p class="section-kicker">Primary Output</p>
+                    <h3>正文预览</h3>
+                  </div>
+                  <span id="output-path" class="workspace-path">-</span>
+                </div>
+                <pre id="output-preview">-</pre>
+              </section>
 
               <div class="result-grid result-grid-emphasis">
                 <article class="result-card result-card-feature">
@@ -301,7 +319,7 @@
               </div>
             </section>
 
-            <section class="workspace-block">
+            <section class="workspace-block" data-tab-panel="planning">
               <div class="workspace-block-head">
                 <div>
                   <p class="section-kicker">Planning Layer</p>
@@ -354,7 +372,7 @@
               </div>
             </section>
 
-            <section class="workspace-block">
+            <section class="workspace-block" data-tab-panel="diagnostics">
               <div class="workspace-block-head">
                 <div>
                   <p class="section-kicker">Diagnostics</p>
@@ -394,24 +412,37 @@
 
         <aside class="panel recent-panel">
           <div class="panel-head">
-            <p class="section-kicker">History</p>
-            <h2>最近任务</h2>
+            <p class="section-kicker">Inspector</p>
+            <h2>侧边栏</h2>
           </div>
-          <div id="run-list" class="run-list">
-            <p class="hint">正在加载历史任务...</p>
-          </div>
+          <nav class="inspector-tabs" aria-label="侧边栏分区">
+            <button type="button" class="inspector-tab is-active" data-sidebar-target="runs">任务</button>
+            <button type="button" class="inspector-tab" data-sidebar-target="benchmarks">评测</button>
+          </nav>
 
-          <div class="panel-head benchmark-head">
-            <p class="section-kicker">Benchmark Lab</p>
-            <h2>对照报告</h2>
-          </div>
-          <div id="benchmark-list" class="run-list">
-            <p class="hint">正在加载 benchmark...</p>
-          </div>
-          <article class="result-card benchmark-card">
-            <p class="label">Benchmark 详情</p>
-            <pre id="benchmark-summary">-</pre>
-          </article>
+          <section data-sidebar-panel="runs">
+            <div class="panel-head panel-head-compact">
+              <p class="section-kicker">History</p>
+              <h2>最近任务</h2>
+            </div>
+            <div id="run-list" class="run-list">
+              <p class="hint">正在加载历史任务...</p>
+            </div>
+          </section>
+
+          <section data-sidebar-panel="benchmarks" class="hidden">
+            <div class="panel-head panel-head-compact">
+              <p class="section-kicker">Benchmark Lab</p>
+              <h2>对照报告</h2>
+            </div>
+            <div id="benchmark-list" class="run-list">
+              <p class="hint">正在加载 benchmark...</p>
+            </div>
+            <article class="result-card benchmark-card">
+              <p class="label">Benchmark 详情</p>
+              <pre id="benchmark-summary">-</pre>
+            </article>
+          </section>
         </aside>
       </main>
     </div>

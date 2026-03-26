@@ -113,7 +113,8 @@ def test_web_health_and_index() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "TaiJianKiller" in response.text
-    assert "开箱即用示例" in response.text
+    assert "把被腰斩的故事，接回原来的呼吸里。" in response.text
+    assert "进入续写工作台" in response.text
     studio = client.get("/studio")
     assert studio.status_code == 200
     assert "TaiJianKiller Studio" in studio.text
@@ -135,7 +136,7 @@ def test_web_requires_basic_auth_when_password_configured() -> None:
 
     authed_response = client.get("/", auth=("admin", "secret123"))
     assert authed_response.status_code == 200
-    assert "开箱即用示例" in authed_response.text
+    assert "把被腰斩的故事，接回原来的呼吸里。" in authed_response.text
 
     studio_response = client.get("/studio", auth=("admin", "secret123"))
     assert studio_response.status_code == 200

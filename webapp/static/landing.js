@@ -1,4 +1,5 @@
 const benchmarkContainer = document.getElementById("landing-benchmark-list");
+const revealNodes = Array.from(document.querySelectorAll("[data-reveal]"));
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -70,4 +71,25 @@ async function renderBenchmarks() {
   }
 }
 
-window.addEventListener("load", renderBenchmarks);
+function setupReveal() {
+  if (!revealNodes.length) return;
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      }
+    },
+    { threshold: 0.18 }
+  );
+  for (const node of revealNodes) {
+    observer.observe(node);
+  }
+}
+
+window.addEventListener("load", () => {
+  setupReveal();
+  renderBenchmarks();
+});

@@ -1,6 +1,8 @@
 const state = {
   activeRunId: null,
   activeBenchmarkKey: null,
+  activeWorkspaceTab: "overview",
+  activeSidebarTab: "runs",
   pollTimer: null,
   benchmarkCache: [],
   runtimeConfig: null,
@@ -58,6 +60,10 @@ const elements = {
   qualityModelInput: document.getElementById("quality-model-input"),
   lightragModelInput: document.getElementById("lightrag-model-input"),
   modelOptions: document.getElementById("model-options"),
+  workspaceTabs: Array.from(document.querySelectorAll(".workspace-tab")),
+  workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
+  sidebarTabs: Array.from(document.querySelectorAll(".inspector-tab")),
+  sidebarPanels: Array.from(document.querySelectorAll("[data-sidebar-panel]")),
 };
 
 function escapeHtml(value) {
@@ -228,6 +234,26 @@ function applyRuntimeConfig(config) {
   elements.modelOptions.innerHTML = (config.model_options || [])
     .map((item) => `<option value="${escapeHtml(item)}"></option>`)
     .join("");
+}
+
+function setWorkspaceTab(tabName) {
+  state.activeWorkspaceTab = tabName;
+  for (const tab of elements.workspaceTabs) {
+    tab.classList.toggle("is-active", tab.dataset.tabTarget === tabName);
+  }
+  for (const panel of elements.workspacePanels) {
+    panel.classList.toggle("hidden", panel.dataset.tabPanel !== tabName);
+  }
+}
+
+function setSidebarTab(tabName) {
+  state.activeSidebarTab = tabName;
+  for (const tab of elements.sidebarTabs) {
+    tab.classList.toggle("is-active", tab.dataset.sidebarTarget === tabName);
+  }
+  for (const panel of elements.sidebarPanels) {
+    panel.classList.toggle("hidden", panel.dataset.sidebarPanel !== tabName);
+  }
 }
 
 function renderRunList(runs) {
@@ -644,6 +670,14 @@ elements.form.addEventListener("submit", async (event) => {
 
 window.addEventListener("load", async () => {
   try {
+    for (const tab of elements.workspaceTabs) {
+      tab.addEventListener("click", () => setWorkspaceTab(tab.dataset.tabTarget));
+    }
+    for (const tab of elements.sidebarTabs) {
+      tab.addEventListener("click", () => setSidebarTab(tab.dataset.sidebarTarget));
+    }
+    setWorkspaceTab(state.activeWorkspaceTab);
+    setSidebarTab(state.activeSidebarTab);
     await loadRuntimeConfig();
     await refreshRuns({ autoSelect: true });
     await refreshBenchmarks();

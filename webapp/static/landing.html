@@ -12,60 +12,110 @@
       <header class="landing-topbar">
         <p class="landing-brand">TaiJianKiller</p>
         <div class="landing-topbar-actions">
-          <a class="studio-link" href="#showcase">示例</a>
-          <a class="studio-link" href="#benchmark">对照</a>
-          <a class="landing-button landing-button-primary" href="/studio">打开 Studio</a>
+          <a class="studio-link" href="#showcase">续写示例</a>
+          <a class="studio-link" href="#benchmark">对照评测</a>
+          <a class="landing-button landing-button-primary" href="/studio">进入 Studio</a>
         </div>
       </header>
 
       <section class="landing-hero">
-        <div class="landing-hero-copy">
-          <p class="section-kicker">Original Samples + Benchmark + Studio</p>
-          <h1>先看效果，再决定要不要把自己的文本丢进来。</h1>
+        <div class="landing-hero-copy" data-reveal>
+          <p class="section-kicker">续写工作台 · 原著风格 · 世界状态 · 对照评测</p>
+          <h1>把被腰斩的故事，接回原来的呼吸里。</h1>
           <p class="landing-summary">
-            首页只做三件事：展示原创样例的续写质感、展示现成 benchmark 的对照结论、把你送到真正的工作台。
+            TaiJianKiller 不是随便续一段，而是先读原著、抽取风格和世界状态，再围绕当前冲突生成章节骨架、正文候选和对照评测。它更像一间给太监文续命的编辑室，而不是一个只会吐字的聊天框。
           </p>
           <div class="landing-actions">
-            <a class="landing-button landing-button-primary" href="/studio">进入工作台</a>
-            <a class="landing-button landing-button-secondary" href="#showcase">先看示例</a>
+            <a class="landing-button landing-button-primary" href="/studio">进入续写工作台</a>
+            <a class="landing-button landing-button-secondary" href="#showcase">先看续写效果</a>
           </div>
+          <p class="landing-subnote">支持自定义部署端点和模型路由。先看示例，再进 Studio 自己配置。</p>
         </div>
 
-        <div class="landing-hero-rail">
-          <div class="hero-rail-block hero-rail-block-compact">
-            <p class="label">Input</p>
-            <strong>原创样例直看效果</strong>
-            <span>不先填表，直接看输入片段、骨架和续写正文的落差。</span>
+        <div class="landing-hero-visual" data-reveal>
+          <div class="hero-visual-frame">
+            <div class="hero-visual-toolbar">
+              <span class="hero-visual-dot"></span>
+              <span class="hero-visual-dot"></span>
+              <span class="hero-visual-dot"></span>
+              <strong>Studio / Overview</strong>
+              <span>真实工作台截图</span>
+            </div>
+            <img src="/static/studio-overview.png" alt="TaiJianKiller Studio 总览真实截图" />
           </div>
-          <div class="hero-rail-stats">
-            <article>
-              <p class="showcase-label">示例类型</p>
-              <strong>原创悬疑样例</strong>
+
+          <div class="hero-proof-strip">
+            <article class="hero-proof-card">
+              <p class="showcase-label">Promise</p>
+              <strong>不是“像 AI 写的”，而是“像原书还能继续写”</strong>
+              <span>先稳住叙事气味、人物关系和未收束伏笔，再生成正文。</span>
             </article>
-            <article>
-              <p class="showcase-label">Benchmark</p>
-              <strong>2 组现成对照</strong>
-            </article>
-            <article>
-              <p class="showcase-label">入口</p>
-              <strong>/studio</strong>
+            <article class="hero-proof-card">
+              <p class="showcase-label">适合谁</p>
+              <strong>网文作者、同人实验、续写爱好者</strong>
+              <span>先看对照效果，再决定要不要把自己的文本丢进来。</span>
             </article>
           </div>
         </div>
       </section>
 
-      <section id="showcase" class="landing-section">
+      <section class="workflow-strip" data-reveal>
+        <article class="workflow-step">
+          <p class="label">01</p>
+          <strong>读原著，不先乱写</strong>
+          <span>先抽风格、故事状态、世界模型和未收束伏笔，建立这次续写的上下文。</span>
+        </article>
+        <article class="workflow-step">
+          <p class="label">02</p>
+          <strong>先做规划，再放正文</strong>
+          <span>Arc、章节 brief、骨架候选与正文候选分层展示，不让好坏混在一屏里。</span>
+        </article>
+        <article class="workflow-step">
+          <p class="label">03</p>
+          <strong>直接给对照，不靠自夸</strong>
+          <span>把 system 和 baseline 摆到一起评，连成本、耗时和评审摘要一起看。</span>
+        </article>
+      </section>
+
+      <section class="landing-product" data-reveal>
+        <div class="landing-section-head">
+          <p class="section-kicker">Product</p>
+          <h2>不是聊天页，而是一套真正可操作的续写控制台</h2>
+          <p>首页负责转化，Studio 负责干活。输入、模型、规划、候选、正文、评测都被拆到清晰层级里，而不是一整页平铺。</p>
+        </div>
+
+        <div class="product-shot-grid">
+          <figure class="product-shot-card">
+            <img src="/static/studio-overview.png" alt="TaiJianKiller Studio 总览截图" />
+            <figcaption>
+              <p class="showcase-label">Overview</p>
+              <strong>正文、进度、关键指标优先</strong>
+              <span>首屏先判断这次运行靠不靠谱，再决定要不要继续往下看细节。</span>
+            </figcaption>
+          </figure>
+          <figure class="product-shot-card">
+            <img src="/static/studio-planning.png" alt="TaiJianKiller Studio 规划区截图" />
+            <figcaption>
+              <p class="showcase-label">Planning</p>
+              <strong>规划层和候选结果分开看</strong>
+              <span>Arc、Lorebook、骨架候选和正文候选收进规划分区，不再与正文主视图抢注意力。</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="showcase" class="landing-section" data-reveal>
         <div class="landing-section-head">
           <p class="section-kicker">Showcase</p>
-          <h2>开箱即用示例</h2>
-          <p>示例内容来自仓库内原创样例 `sample_novel.txt` 与本地 smoke 运行结果。</p>
+          <h2>先看“续写有没有那个味儿”</h2>
+          <p>示例全部来自仓库内原创样例 `sample_novel.txt` 与本地 smoke 结果，避免版权风险，也能直接看出从原文到系统续写的质感落差。</p>
         </div>
 
         <div class="showcase-grid">
           <article class="showcase-card">
             <div class="showcase-head">
               <p class="label">Example A</p>
-              <strong>义庄悬疑开场</strong>
+              <strong>从原文气味切入</strong>
             </div>
             <div class="showcase-columns">
               <div>
@@ -94,7 +144,7 @@
           <article class="showcase-card">
             <div class="showcase-head">
               <p class="label">Example B</p>
-              <strong>骨架到正文的落差</strong>
+              <strong>先有章节骨架，再落成正文</strong>
             </div>
             <div class="showcase-columns">
               <div>
@@ -122,11 +172,11 @@
         </div>
       </section>
 
-      <section id="benchmark" class="landing-section benchmark-section">
+      <section id="benchmark" class="landing-section benchmark-section" data-reveal>
         <div class="landing-section-head">
           <p class="section-kicker">Benchmark</p>
-          <h2>现成对照结果</h2>
-          <p>这里直接读取仓库现有 benchmark 报告，只展示评测摘要、分数和胜负。</p>
+          <h2>不是只给你看正文，还给你看它为什么赢</h2>
+          <p>这里直接读取仓库现有 benchmark 报告，展示系统版与 baseline 的胜负、分数和评审摘要。外部作品只展示评测结论，不直接铺正文。</p>
         </div>
 
         <div id="landing-benchmark-list" class="landing-benchmark-list">
@@ -134,14 +184,14 @@
         </div>
       </section>
 
-      <section class="landing-section cta-section">
+      <section class="landing-section cta-section" data-reveal>
         <div class="cta-panel">
           <div>
             <p class="section-kicker">Studio</p>
-            <h2>想自己配模型、上传文本、跑一轮对比</h2>
-            <p>直接进入工作台。默认值由部署配置提供，界面可以按次覆盖模型路由。</p>
+            <h2>拿你自己的原著片段，试一次真正的续写工作流</h2>
+            <p>进入 Studio 后可以上传文本、选择模型、看规划、看候选、看正文、看 benchmark，不需要把所有判断都交给一段黑盒回复。</p>
           </div>
-          <a class="landing-button landing-button-primary" href="/studio">打开 Studio</a>
+          <a class="landing-button landing-button-primary" href="/studio">去 Studio 开始</a>
         </div>
       </section>
     </div>
