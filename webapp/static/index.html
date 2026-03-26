@@ -79,16 +79,16 @@
           </div>
 
           <form id="run-form" class="run-form">
-            <section class="quickstart-card">
+            <section class="quickstart-card quickstart-card-prominent">
               <div class="quickstart-copy">
-                <p class="section-kicker">Quick Start</p>
-                <h3>第一次用，先别研究全部参数</h3>
-                <p class="hint">先试跑原创样例，确认效果和工作流，再回头上传你自己的原著文本。</p>
+                <p class="section-kicker">快速开始</p>
+                <h3>第一次用？先一键试跑，看看效果</h3>
+                <p class="hint">用内置原创样例体验完整流程，确认效果后再上传自己的原著文本。</p>
               </div>
               <div class="quickstart-steps">
-                <span>1. 一键试跑</span>
-                <span>2. 看总览和规划</span>
-                <span>3. 再改模型或目标</span>
+                <span>1. 点击下方按钮，一键试跑</span>
+                <span>2. 切换右侧「总览 / 规划 / 诊断」查看结果</span>
+                <span>3. 满意后再上传自己的 .txt 开始正式续写</span>
               </div>
               <div class="quickstart-actions">
                 <button id="try-example-button" type="button">一键试跑原创样例</button>
@@ -96,16 +96,17 @@
               </div>
             </section>
 
-            <details class="form-section form-section-primary" open>
-              <summary class="form-section-summary">
+            <!-- 基础配置（始终展开） -->
+            <div class="form-section form-section-primary form-section-basic">
+              <div class="form-section-summary">
                 <div class="form-section-head">
                   <div>
                     <p class="section-kicker">Input</p>
-                    <h3>文本与会话</h3>
+                    <h3>文本与章节</h3>
                   </div>
-                  <span class="field-note">先选原著，再定义这次运行的范围。</span>
+                  <span class="field-note">上传原著文件，设置续写章节数，就可以开始了。</span>
                 </div>
-              </summary>
+              </div>
               <div class="form-section-body">
                 <label class="field upload-field">
                   <span>原著文本</span>
@@ -118,11 +119,6 @@
 
                 <div class="field-grid">
                   <label class="field">
-                    <span>会话名</span>
-                    <input name="session_name" type="text" placeholder="留空则自动按文件名加时间戳生成" />
-                  </label>
-
-                  <label class="field">
                     <span>章节数</span>
                     <input name="chapters" type="number" min="1" max="20" value="1" required />
                   </label>
@@ -132,133 +128,127 @@
                     <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
                   </label>
                 </div>
-              </div>
-            </details>
-
-            <details class="form-section">
-              <summary class="form-section-summary">
-                <div class="form-section-head">
-                  <div>
-                    <p class="section-kicker">Planning</p>
-                    <h3>规划与候选</h3>
-                  </div>
-                  <span class="field-note">把预算和候选数收在一个控制段里。</span>
-                </div>
-              </summary>
-              <div class="form-section-body">
-                <div class="field-grid">
-                  <label class="field">
-                    <span>规划模式</span>
-                    <select name="planning_mode">
-                      <option value="balanced">balanced</option>
-                      <option value="strict">strict</option>
-                      <option value="expansive">expansive</option>
-                    </select>
-                  </label>
-                  <label class="field">
-                    <span>新人物预算</span>
-                    <input name="new_character_budget" type="number" min="0" max="5" placeholder="自动" />
-                  </label>
-                  <label class="field">
-                    <span>新地图预算</span>
-                    <input name="new_location_budget" type="number" min="0" max="5" placeholder="自动" />
-                  </label>
-                </div>
-
-                <div class="field-grid field-grid-slim">
-                  <label class="field">
-                    <span>新势力预算</span>
-                    <input name="new_faction_budget" type="number" min="0" max="5" placeholder="自动" />
-                  </label>
-                  <label class="field">
-                    <span>骨架候选数</span>
-                    <input name="skeleton_candidates" type="number" min="1" max="5" placeholder="默认" />
-                  </label>
-                  <label class="field">
-                    <span>正文候选数</span>
-                    <input name="draft_candidates" type="number" min="1" max="5" placeholder="默认" />
-                  </label>
-                </div>
-              </div>
-            </details>
-
-            <details class="form-section">
-              <summary class="form-section-summary">
-                <div class="form-section-head">
-                  <div>
-                    <p class="section-kicker">Model Routing</p>
-                    <h3>模型配置</h3>
-                  </div>
-                  <span class="field-note">候选来自部署配置，也支持手动覆盖本次运行。</span>
-                </div>
-              </summary>
-              <div class="form-section-body">
-                <div class="form-inline-actions">
-                  <button id="reset-models-button" class="utility-button" type="button">恢复部署默认模型</button>
-                  <span id="runtime-model-hint" class="field-note">当前使用部署默认模型。</span>
-                </div>
-                <div class="field-grid model-grid">
-                  <label class="field">
-                    <span>风格分析模型</span>
-                    <input id="style-model-input" name="style_model" type="text" list="model-options" />
-                  </label>
-                  <label class="field">
-                    <span>情节规划模型</span>
-                    <input id="plot-model-input" name="plot_model" type="text" list="model-options" />
-                  </label>
-                  <label class="field">
-                    <span>正文生成模型</span>
-                    <input id="draft-model-input" name="draft_model" type="text" list="model-options" />
-                  </label>
-                  <label class="field">
-                    <span>质检评估模型</span>
-                    <input id="quality-model-input" name="quality_model" type="text" list="model-options" />
-                  </label>
-                  <label class="field model-span-wide">
-                    <span>LightRAG 模型名</span>
-                    <input id="lightrag-model-input" name="lightrag_model_name" type="text" list="model-options" />
-                  </label>
-                </div>
-              </div>
-            </details>
-
-            <datalist id="model-options"></datalist>
-
-            <details class="form-section form-section-final" open>
-              <summary class="form-section-summary">
-                <div class="form-section-head">
-                  <div>
-                    <p class="section-kicker">Intent</p>
-                    <h3>目标与执行</h3>
-                  </div>
-                  <span class="field-note">最后补一条目标提示，再决定是否复用索引。</span>
-                </div>
-              </summary>
-              <div class="form-section-body">
-                <label class="field">
-                  <span>章节目标提示</span>
-                  <textarea
-                    name="goal_hint"
-                    rows="4"
-                    placeholder="可选。比如：先推进主角与反派的正面碰撞，再回收一个旧伏笔。"
-                  ></textarea>
-                </label>
-
-                <div class="toggle-row">
-                  <label class="toggle">
-                    <input name="use_existing_index" type="checkbox" />
-                    <span>复用已有索引</span>
-                  </label>
-                  <label class="toggle">
-                    <input name="overwrite" type="checkbox" />
-                    <span>允许覆盖同名产物</span>
-                  </label>
-                </div>
 
                 <div class="action-row action-row-sticky">
                   <button id="submit-button" type="submit">开始分析并续写</button>
                   <p id="form-status" class="hint">提交后会自动轮询任务进度。</p>
                 </div>
+              </div>
+            </div>
+
+            <!-- 高级配置（折叠，有默认值） -->
+            <details class="form-section form-section-advanced">
+              <summary class="form-section-summary">
+                <div class="form-section-head">
+                  <div>
+                    <p class="section-kicker">高级选项</p>
+                    <h3>规划、模型与执行</h3>
+                  </div>
+                  <span class="field-note">可选 · 全部已有默认值，无需修改即可运行。</span>
+                </div>
+              </summary>
+              <div class="form-section-body">
+
+                <!-- 会话名 -->
+                <label class="field">
+                  <span>会话名</span>
+                  <input name="session_name" type="text" placeholder="留空则自动按文件名加时间戳生成" />
+                </label>
+
+                <!-- 规划与候选 -->
+                <div class="form-subgroup">
+                  <p class="form-subgroup-label">规划与候选</p>
+                  <div class="field-grid">
+                    <label class="field">
+                      <span>规划模式 <button type="button" class="field-tooltip" title="balanced：平衡（推荐新手）/ strict：严格遵循原著风格 / expansive：允许大胆创新">?</button></span>
+                      <select name="planning_mode">
+                        <option value="balanced">balanced（推荐）</option>
+                        <option value="strict">strict</option>
+                        <option value="expansive">expansive</option>
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>提纲草稿数 <button type="button" class="field-tooltip" title="生成几个提纲草稿供选择，默认 1 个，越多越慢">?</button></span>
+                      <input name="skeleton_candidates" type="number" min="1" max="5" placeholder="默认" />
+                    </label>
+                    <label class="field">
+                      <span>续写候选数 <button type="button" class="field-tooltip" title="生成几个续写版本，默认 1 个，越多 token 消耗越高">?</button></span>
+                      <input name="draft_candidates" type="number" min="1" max="5" placeholder="默认" />
+                    </label>
+                  </div>
+                  <div class="field-grid field-grid-slim">
+                    <label class="field">
+                      <span>新人物预算 <button type="button" class="field-tooltip" title="允许续写中新增几个角色。0 = 不新增，留空 = 系统自动决定">?</button></span>
+                      <input name="new_character_budget" type="number" min="0" max="5" placeholder="自动" />
+                    </label>
+                    <label class="field">
+                      <span>新地点预算 <button type="button" class="field-tooltip" title="允许续写中新增几个地点。留空 = 系统自动决定">?</button></span>
+                      <input name="new_location_budget" type="number" min="0" max="5" placeholder="自动" />
+                    </label>
+                    <label class="field">
+                      <span>新势力预算 <button type="button" class="field-tooltip" title="允许续写中新增几个阵营或势力。留空 = 系统自动决定">?</button></span>
+                      <input name="new_faction_budget" type="number" min="0" max="5" placeholder="自动" />
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 模型配置 -->
+                <div class="form-subgroup">
+                  <p class="form-subgroup-label">模型配置</p>
+                  <div class="form-inline-actions">
+                    <button id="reset-models-button" class="utility-button" type="button">恢复部署默认模型</button>
+                    <span id="runtime-model-hint" class="field-note">当前使用部署默认模型。</span>
+                  </div>
+                  <div class="field-grid model-grid">
+                    <label class="field">
+                      <span>风格分析模型</span>
+                      <input id="style-model-input" name="style_model" type="text" list="model-options" />
+                    </label>
+                    <label class="field">
+                      <span>情节规划模型</span>
+                      <input id="plot-model-input" name="plot_model" type="text" list="model-options" />
+                    </label>
+                    <label class="field">
+                      <span>正文生成模型</span>
+                      <input id="draft-model-input" name="draft_model" type="text" list="model-options" />
+                    </label>
+                    <label class="field">
+                      <span>质检评估模型</span>
+                      <input id="quality-model-input" name="quality_model" type="text" list="model-options" />
+                    </label>
+                    <label class="field model-span-wide">
+                      <span>原著索引模型</span>
+                      <input id="lightrag-model-input" name="lightrag_model_name" type="text" list="model-options" />
+                    </label>
+                  </div>
+                </div>
+
+                <datalist id="model-options"></datalist>
+
+                <!-- 目标与执行 -->
+                <div class="form-subgroup">
+                  <p class="form-subgroup-label">目标与执行</p>
+                  <label class="field">
+                    <span>章节目标提示</span>
+                    <textarea
+                      name="goal_hint"
+                      rows="4"
+                      placeholder="可选。比如：先推进主角与反派的正面碰撞，再回收一个旧伏笔。"
+                    ></textarea>
+                  </label>
+
+                  <div class="toggle-row">
+                    <label class="toggle">
+                      <input name="use_existing_index" type="checkbox" />
+                      <span>复用已有索引 <button type="button" class="field-tooltip" title="勾选后跳过原著索引步骤，适合同一文本的多次续写">?</button></span>
+                    </label>
+                    <label class="toggle">
+                      <input name="overwrite" type="checkbox" />
+                      <span>允许覆盖同名产物</span>
+                    </label>
+                  </div>
+                </div>
+
               </div>
             </details>
           </form>
