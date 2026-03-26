@@ -9,13 +9,21 @@
   </head>
   <body class="landing-body">
     <div class="landing-shell">
+      <header class="landing-topbar">
+        <p class="landing-brand">TaiJianKiller</p>
+        <div class="landing-topbar-actions">
+          <a class="studio-link" href="#showcase">示例</a>
+          <a class="studio-link" href="#benchmark">对照</a>
+          <a class="landing-button landing-button-primary" href="/studio">打开 Studio</a>
+        </div>
+      </header>
+
       <section class="landing-hero">
         <div class="landing-hero-copy">
-          <p class="landing-brand">TaiJianKiller</p>
-          <h1>把原著片段、模型路由、对照评测放进同一个续写工作流。</h1>
+          <p class="section-kicker">Original Samples + Benchmark + Studio</p>
+          <h1>先看效果，再决定要不要把自己的文本丢进来。</h1>
           <p class="landing-summary">
-            从原创样例体验输入到续写的完整落差，再进入工作台选择模型、提交文本、查看 benchmark
-            结论和落盘产物。
+            首页只做三件事：展示原创样例的续写质感、展示现成 benchmark 的对照结论、把你送到真正的工作台。
           </p>
           <div class="landing-actions">
             <a class="landing-button landing-button-primary" href="/studio">进入工作台</a>
@@ -24,20 +32,24 @@
         </div>
 
         <div class="landing-hero-rail">
-          <div class="hero-rail-block">
+          <div class="hero-rail-block hero-rail-block-compact">
             <p class="label">Input</p>
             <strong>原创样例直看效果</strong>
-            <span>开箱即用看原文片段、章节骨架、续写结果，不先填表。</span>
+            <span>不先填表，直接看输入片段、骨架和续写正文的落差。</span>
           </div>
-          <div class="hero-rail-block">
-            <p class="label">Routing</p>
-            <strong>模型配置可切换</strong>
-            <span>风格、规划、正文、质检、LightRAG 路由都能按次覆盖。</span>
-          </div>
-          <div class="hero-rail-block">
-            <p class="label">Benchmark</p>
-            <strong>对照结论直接可看</strong>
-            <span>外部 benchmark 只展示评测摘要、胜负和分数，不直接铺原文。</span>
+          <div class="hero-rail-stats">
+            <article>
+              <p class="showcase-label">示例类型</p>
+              <strong>原创悬疑样例</strong>
+            </article>
+            <article>
+              <p class="showcase-label">Benchmark</p>
+              <strong>2 组现成对照</strong>
+            </article>
+            <article>
+              <p class="showcase-label">入口</p>
+              <strong>/studio</strong>
+            </article>
           </div>
         </div>
       </section>
@@ -110,7 +122,7 @@
         </div>
       </section>
 
-      <section class="landing-section benchmark-section">
+      <section id="benchmark" class="landing-section benchmark-section">
         <div class="landing-section-head">
           <p class="section-kicker">Benchmark</p>
           <h2>现成对照结果</h2>
