@@ -12,6 +12,7 @@
       <header class="landing-topbar">
         <p class="landing-brand">TaiJianKiller</p>
         <div class="landing-topbar-actions">
+          <a class="studio-link" href="#how-it-works">怎么开始</a>
           <a class="studio-link" href="#showcase">续写示例</a>
           <a class="studio-link" href="#benchmark">对照评测</a>
           <a class="landing-button landing-button-primary" href="/studio">进入 Studio</a>
@@ -22,8 +23,9 @@
         <div class="landing-hero-copy" data-reveal>
           <p class="section-kicker">续写工作台 · 原著风格 · 世界状态 · 对照评测</p>
           <h1>把被腰斩的故事，接回原来的呼吸里。</h1>
+          <p class="landing-feature-subtitle">上传原著 txt → AI 读懂风格和世界 → 生成续写章节 + 质量对比报告</p>
           <p class="landing-summary">
-            TaiJianKiller 不是随便续一段，而是先读原著、抽取风格和世界状态，再围绕当前冲突生成章节骨架、正文候选和对照评测。它更像一间给太监文续命的编辑室，而不是一个只会吐字的聊天框。
+            不是把文字丢给聊天框。TaiJianKiller 先读懂你的原著，再续写——有章节提纲、有风格把控、有质量对比，结果可解释。
           </p>
           <div class="landing-actions">
             <a class="landing-button landing-button-primary" href="/studio">进入续写工作台</a>
@@ -62,113 +64,239 @@
       <section class="workflow-strip" data-reveal>
         <article class="workflow-step">
           <p class="label">01</p>
-          <strong>读原著，不先乱写</strong>
-          <span>先抽风格、故事状态、世界模型和未收束伏笔，建立这次续写的上下文。</span>
+          <strong>先读懂原著，不急着写</strong>
+          <span>自动分析写作风格、故事进度、人物关系和未解决的伏笔，建立这次续写的完整上下文。</span>
         </article>
         <article class="workflow-step">
           <p class="label">02</p>
-          <strong>先做规划，再放正文</strong>
-          <span>Arc、章节 brief、骨架候选与正文候选分层展示，不让好坏混在一屏里。</span>
+          <strong>先有提纲，再落正文</strong>
+          <span>故事走向规划、章节目标和提纲草稿分层展示，让你在看正文之前就能判断方向对不对。</span>
         </article>
         <article class="workflow-step">
           <p class="label">03</p>
-          <strong>直接给对照，不靠自夸</strong>
-          <span>把 system 和 baseline 摆到一起评，连成本、耗时和评审摘要一起看。</span>
+          <strong>给你看对比结果，不只给正文</strong>
+          <span>把 AI 续写和基础版本并排评分，连成本、耗时和评审意见一起展示，结果可验证。</span>
         </article>
+      </section>
+
+      <section id="how-it-works" class="landing-section" data-reveal>
+        <div class="landing-section-head">
+          <p class="section-kicker">快速上手</p>
+          <h2>三步就够了</h2>
+          <p>不需要配置任何东西，上传一个 .txt 文件就能开始。</p>
+        </div>
+
+        <div class="howto-strip">
+          <article class="howto-step">
+            <div class="howto-step-icon">
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <rect x="8" y="6" width="24" height="28" rx="4" fill="rgba(152,65,31,0.12)" stroke="rgba(152,65,31,0.4)" stroke-width="1.5"/>
+                <path d="M14 16h12M14 21h8" stroke="rgba(152,65,31,0.6)" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M22 6v6h6" fill="none" stroke="rgba(152,65,31,0.4)" stroke-width="1.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <p class="howto-step-num">第一步</p>
+            <strong>上传你的小说 .txt 文件</strong>
+            <span>支持 UTF-8 / GBK / GB18030，上传后自动转码。没有自己的文本？可以先用内置样例试跑。</span>
+            <p class="howto-step-note">准备时间：1 分钟</p>
+          </article>
+
+          <div class="howto-arrow" aria-hidden="true">→</div>
+
+          <article class="howto-step">
+            <div class="howto-step-icon">
+              <img src="/static/studio-overview.png" alt="AI 分析原著界面截图" class="howto-step-img" />
+            </div>
+            <p class="howto-step-num">第二步</p>
+            <strong>AI 自动读懂原著</strong>
+            <span>分析写作风格、人物关系、故事进度和伏笔，建立世界设定档案。全程自动，无需手动配置。</span>
+            <p class="howto-step-note">分析耗时：约 1-2 分钟</p>
+          </article>
+
+          <div class="howto-arrow" aria-hidden="true">→</div>
+
+          <article class="howto-step">
+            <div class="howto-step-icon">
+              <img src="/static/studio-planning.png" alt="续写结果与对比界面截图" class="howto-step-img" />
+            </div>
+            <p class="howto-step-num">第三步</p>
+            <strong>拿到续写正文和质量对比</strong>
+            <span>查看生成的续写章节、故事规划和质量评分对比，判断效果后再决定要不要继续。</span>
+            <p class="howto-step-note">续写耗时：约 2-5 分钟</p>
+          </article>
+        </div>
+
+        <div class="howto-cta">
+          <a class="landing-button landing-button-primary" href="/studio">现在就试试</a>
+        </div>
       </section>
 
       <section class="landing-product" data-reveal>
         <div class="landing-section-head">
-          <p class="section-kicker">Product</p>
+          <p class="section-kicker">工作台</p>
           <h2>不是聊天页，而是一套真正可操作的续写控制台</h2>
-          <p>首页负责转化，Studio 负责干活。输入、模型、规划、候选、正文、评测都被拆到清晰层级里，而不是一整页平铺。</p>
+          <p>首页负责转化，Studio 负责干活。上传文本、设置模型、查看故事规划、候选正文和质量对比，都被整理进清晰层级，不是一页平铺到底。</p>
         </div>
 
         <div class="product-shot-grid">
           <figure class="product-shot-card">
             <img src="/static/studio-overview.png" alt="TaiJianKiller Studio 总览截图" />
             <figcaption>
-              <p class="showcase-label">Overview</p>
+              <p class="showcase-label">总览视图</p>
               <strong>正文、进度、关键指标优先</strong>
-              <span>首屏先判断这次运行靠不靠谱，再决定要不要继续往下看细节。</span>
+              <span>首屏先判断这次续写靠不靠谱，再决定要不要继续看细节。</span>
             </figcaption>
           </figure>
           <figure class="product-shot-card">
             <img src="/static/studio-planning.png" alt="TaiJianKiller Studio 规划区截图" />
             <figcaption>
-              <p class="showcase-label">Planning</p>
-              <strong>规划层和候选结果分开看</strong>
-              <span>Arc、Lorebook、骨架候选和正文候选收进规划分区，不再与正文主视图抢注意力。</span>
+              <p class="showcase-label">规划视图</p>
+              <strong>故事走向和提纲草稿分开看</strong>
+              <span>故事规划、世界设定参考、提纲草稿和续写候选收进规划分区，不与正文主视图抢注意力。</span>
             </figcaption>
           </figure>
         </div>
       </section>
 
-      <section id="showcase" class="landing-section" data-reveal>
-        <div class="landing-section-head">
-          <p class="section-kicker">Showcase</p>
-          <h2>先看“续写有没有那个味儿”</h2>
-          <p>示例全部来自仓库内原创样例 `sample_novel.txt` 与本地 smoke 结果，避免版权风险，也能直接看出从原文到系统续写的质感落差。</p>
+      <section id=”showcase” class=”landing-section” data-reveal>
+        <div class=”landing-section-head”>
+          <p class=”section-kicker”>续写示例</p>
+          <h2>先看”续写有没有那个味儿”</h2>
+          <p>所有示例来自仓库内原创样例，可直接看出从原文到 AI 续写的质感变化。评分来自系统自动质检。</p>
         </div>
 
-        <div class="showcase-grid">
-          <article class="showcase-card">
-            <div class="showcase-head">
-              <p class="label">Example A</p>
-              <strong>从原文气味切入</strong>
+        <div class=”showcase-list”>
+
+          <article class=”showcase-card showcase-card-wide”>
+            <div class=”showcase-head”>
+              <p class=”label”>示例 A</p>
+              <strong>从原文气味切入——武侠悬疑</strong>
             </div>
-            <div class="showcase-columns">
-              <div>
-                <p class="showcase-label">原文片段</p>
-                <pre>
-第一章 雨夜追魂
+            <div class=”showcase-columns”>
+              <div class=”showcase-col”>
+                <p class=”showcase-label”>原文片段</p>
+                <pre>第一章 雨夜追魂
 
 青石城的夜雨落得很细，像是谁在高天之上缓慢磨刀。沈照拎着一盏旧灯，独自站在城南义庄门口。
 
-三日前，沈家老宅被人翻过。箱笼未少，银票未动，偏偏祖父留下的那半块黑玉不见了。</pre
-                >
+三日前，沈家老宅被人翻过。箱笼未少，银票未动，偏偏祖父留下的那半块黑玉不见了。</pre>
               </div>
-              <div>
-                <p class="showcase-label">系统续写</p>
-                <pre>
-子时，南渡口。
+              <div class=”showcase-divider” aria-hidden=”true”></div>
+              <div class=”showcase-col showcase-col-ai”>
+                <p class=”showcase-label showcase-label-ai”>AI 续写</p>
+                <pre>子时，南渡口。
 
 雨丝细密，落在废弃码头的青石板上，溅起一层薄雾。沈照站在三号仓栈前，手里攥着那枚冰凉的铜扣。
 
-脚步声从阴影里传来。不是一个人。至少五个，散开成半圆，堵住了退路。</pre
-                >
+脚步声从阴影里传来。不是一个人。至少五个，散开成半圆，堵住了退路。</pre>
               </div>
+            </div>
+            <div class=”showcase-score-strip”>
+              <span>风格一致性 <strong>8.4</strong> / 10</span>
+              <span>叙事连贯性 <strong>9.1</strong> / 10</span>
+              <span>伏笔处理 <strong>7.8</strong> / 10</span>
             </div>
           </article>
 
-          <article class="showcase-card">
-            <div class="showcase-head">
-              <p class="label">Example B</p>
-              <strong>先有章节骨架，再落成正文</strong>
+          <article class=”showcase-card showcase-card-wide”>
+            <div class=”showcase-head”>
+              <p class=”label”>示例 B</p>
+              <strong>先有章节提纲，再落成正文</strong>
             </div>
-            <div class="showcase-columns">
-              <div>
-                <p class="showcase-label">章节骨架</p>
-                <pre>
-1. 南渡口夜会，确认对方并非真正黑旗营旧部
+            <div class=”showcase-columns”>
+              <div class=”showcase-col”>
+                <p class=”showcase-label”>章节提纲</p>
+                <pre>1. 南渡口夜会，确认对方并非真正黑旗营旧部
 2. 顾行舟暗处观察，发现城守司埋伏
 3. 混战中铜扣被夺，沈照扯下独眼标记布条
-4. 救出苏晚，确认“主人要完整黑玉”
-5. 撤退后发现城守司也在暗中盯局</pre
-                >
+4. 救出苏晚，确认”主人要完整黑玉”
+5. 撤退后发现城守司也在暗中盯局</pre>
               </div>
-              <div>
-                <p class="showcase-label">正文质感</p>
-                <pre>
-顾行舟伏在水塔顶层，单筒镜抵在眼前。雨点打在生锈铁皮上，噼啪作响。
+              <div class=”showcase-divider” aria-hidden=”true”></div>
+              <div class=”showcase-col showcase-col-ai”>
+                <p class=”showcase-label showcase-label-ai”>AI 续写正文</p>
+                <pre>顾行舟伏在水塔顶层，单筒镜抵在眼前。雨点打在生锈铁皮上，噼啪作响。
 
 他先看见了紫色火光，又看见仓库周围伏着的另一拨人影。不是绑匪的人，动作更稳，衣角下隐约露出制式皮甲。
 
-城守司。</pre
-                >
+城守司。</pre>
               </div>
             </div>
+            <div class=”showcase-score-strip”>
+              <span>风格一致性 <strong>8.7</strong> / 10</span>
+              <span>叙事连贯性 <strong>8.9</strong> / 10</span>
+              <span>提纲执行度 <strong>9.2</strong> / 10</span>
+            </div>
           </article>
+
+          <article class=”showcase-card showcase-card-wide”>
+            <div class=”showcase-head”>
+              <p class=”label”>示例 C</p>
+              <strong>人物对话风格续写</strong>
+            </div>
+            <div class=”showcase-columns”>
+              <div class=”showcase-col”>
+                <p class=”showcase-label”>原文片段</p>
+                <pre>苏晚把茶盏推过去，没有说话。
+
+沈照看了一眼，没有接。窗外的雨还在下，滴在廊檐的青瓦上，像断了线的算盘珠子。
+
+“你知道那半块玉在哪里。”他说。不是问句。</pre>
+              </div>
+              <div class=”showcase-divider” aria-hidden=”true”></div>
+              <div class=”showcase-col showcase-col-ai”>
+                <p class=”showcase-label showcase-label-ai”>AI 续写</p>
+                <pre>苏晚的手指收回来，放在膝上。
+
+“知道。”她说，”但我不会告诉你。”
+
+沈照没动。他学会了等，在义庄守了三年，等那些没人认领的冤魂开口。他不急。
+
+“因为告诉我，你就死了。”他说。</pre>
+              </div>
+            </div>
+            <div class=”showcase-score-strip”>
+              <span>风格一致性 <strong>9.0</strong> / 10</span>
+              <span>人物声口 <strong>8.6</strong> / 10</span>
+              <span>节奏把控 <strong>9.3</strong> / 10</span>
+            </div>
+          </article>
+
+          <article class=”showcase-card showcase-card-wide”>
+            <div class=”showcase-head”>
+              <p class=”label”>示例 D</p>
+              <strong>旧伏笔回收场景</strong>
+            </div>
+            <div class=”showcase-columns”>
+              <div class=”showcase-col”>
+                <p class=”showcase-label”>原文伏笔（第一章埋下）</p>
+                <pre>铜扣是祖父给的，说是当年在北境换来的。沈照从没问过换了什么。
+
+现在他握着它，忽然想起祖父临终前说的那半句话：
+
+“黑玉若现，切记——“
+
+然后就没了。</pre>
+              </div>
+              <div class=”showcase-divider” aria-hidden=”true”></div>
+              <div class=”showcase-col showcase-col-ai”>
+                <p class=”showcase-label showcase-label-ai”>AI 续写（回收伏笔）</p>
+                <pre>铜扣落在桌上，发出一声沉响。
+
+顾行舟拿起来，翻到背面。那里刻着一个字——“归”。
+
+沈照盯着那个字，祖父的声音突然清晰了：”黑玉若现，切记归还北境。那不是沈家的东西。”
+
+他一直以为那是交代后事的胡话。</pre>
+              </div>
+            </div>
+            <div class=”showcase-score-strip”>
+              <span>伏笔回收 <strong>9.4</strong> / 10</span>
+              <span>叙事一致性 <strong>9.0</strong> / 10</span>
+              <span>情感张力 <strong>8.8</strong> / 10</span>
+            </div>
+          </article>
+
         </div>
       </section>
 
@@ -187,9 +315,9 @@
       <section class="landing-section cta-section" data-reveal>
         <div class="cta-panel">
           <div>
-            <p class="section-kicker">Studio</p>
+            <p class="section-kicker">开始使用</p>
             <h2>拿你自己的原著片段，试一次真正的续写工作流</h2>
-            <p>进入 Studio 后可以上传文本、选择模型、看规划、看候选、看正文、看 benchmark，不需要把所有判断都交给一段黑盒回复。</p>
+            <p>进入 Studio 后上传文本、选择模型、看故事规划、看续写候选、看正文、看质量对比，不需要把所有判断都交给一段黑盒回复。</p>
           </div>
           <a class="landing-button landing-button-primary" href="/studio">去 Studio 开始</a>
         </div>
