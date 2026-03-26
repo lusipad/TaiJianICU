@@ -15,6 +15,7 @@ from webapp.manager import WebRunManager
 from webapp.models import (
     WebBenchmarkDetail,
     WebBenchmarkSummary,
+    WebRuntimeConfig,
     WebRunDetail,
     WebRunRequest,
     WebRunSummary,
@@ -104,6 +105,10 @@ def create_app(
     async def get_benchmark(dataset_name: str, case_name: str) -> WebBenchmarkDetail:
         return app.state.run_manager.get_benchmark(dataset_name, case_name)
 
+    @app.get("/api/config", response_model=WebRuntimeConfig)
+    async def get_runtime_config() -> WebRuntimeConfig:
+        return app.state.run_manager.get_runtime_config()
+
     @app.post("/api/runs", response_model=WebRunSummary, status_code=201)
     async def create_run(
         file: UploadFile = File(...),
@@ -117,6 +122,11 @@ def create_app(
         new_faction_budget: int | None = Form(None),
         skeleton_candidates: int | None = Form(None),
         draft_candidates: int | None = Form(None),
+        style_model: str = Form(""),
+        plot_model: str = Form(""),
+        draft_model: str = Form(""),
+        quality_model: str = Form(""),
+        lightrag_model_name: str = Form(""),
         use_existing_index: bool = Form(False),
         overwrite: bool = Form(False),
     ) -> WebRunSummary:
@@ -140,6 +150,11 @@ def create_app(
             new_faction_budget=new_faction_budget,
             skeleton_candidates=skeleton_candidates,
             draft_candidates=draft_candidates,
+            style_model=style_model.strip() or None,
+            plot_model=plot_model.strip() or None,
+            draft_model=draft_model.strip() or None,
+            quality_model=quality_model.strip() or None,
+            lightrag_model_name=lightrag_model_name.strip() or None,
             use_existing_index=use_existing_index,
             overwrite=overwrite,
         )

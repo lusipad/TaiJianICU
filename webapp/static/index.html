@@ -115,6 +115,39 @@
               </label>
             </div>
 
+            <div class="panel-head sub-panel-head">
+              <p class="section-kicker">Model Routing</p>
+              <h2>模型配置</h2>
+            </div>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>风格分析模型</span>
+                <input id="style-model-input" name="style_model" type="text" list="model-options" />
+              </label>
+              <label class="field">
+                <span>情节规划模型</span>
+                <input id="plot-model-input" name="plot_model" type="text" list="model-options" />
+              </label>
+              <label class="field">
+                <span>正文生成模型</span>
+                <input id="draft-model-input" name="draft_model" type="text" list="model-options" />
+              </label>
+            </div>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>质检评估模型</span>
+                <input id="quality-model-input" name="quality_model" type="text" list="model-options" />
+              </label>
+              <label class="field">
+                <span>LightRAG 模型名</span>
+                <input id="lightrag-model-input" name="lightrag_model_name" type="text" list="model-options" />
+              </label>
+            </div>
+
+            <datalist id="model-options"></datalist>
+
             <label class="field">
               <span>章节目标提示</span>
               <textarea
@@ -222,6 +255,10 @@
             </div>
 
             <div class="result-grid">
+              <article class="result-card">
+                <p class="label">模型路由</p>
+                <pre id="model-summary">-</pre>
+              </article>
               <article class="result-card">
                 <p class="label">最新章节目标</p>
                 <pre id="goal-summary">-</pre>

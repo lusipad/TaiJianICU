@@ -417,6 +417,10 @@ button:active {
   margin-top: 22px;
 }
 
+.sub-panel-head {
+  margin-top: 18px;
+}
+
 pre {
   margin: 8px 0 0;
   white-space: pre-wrap;

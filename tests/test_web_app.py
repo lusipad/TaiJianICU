@@ -33,6 +33,20 @@ class FakeRunManager:
     def list_runs(self):
         return [WebRunSummary.model_validate(self.detail.model_dump(mode="json"))]
 
+    def get_runtime_config(self):
+        return {
+            "style_model": "deepseek/deepseek-chat",
+            "plot_model": "deepseek/deepseek-chat",
+            "draft_model": "deepseek/deepseek-chat",
+            "quality_model": "deepseek/deepseek-chat",
+            "lightrag_model_name": "deepseek-chat",
+            "model_options": [
+                "deepseek/deepseek-chat",
+                "deepseek/deepseek-reasoner",
+                "openai/gpt-4.1-mini",
+            ],
+        }
+
     def list_benchmarks(self):
         return [
             {
@@ -164,6 +178,11 @@ def test_create_run_accepts_txt_upload() -> None:
             "new_faction_budget": "1",
             "skeleton_candidates": "2",
             "draft_candidates": "3",
+            "style_model": "openai/gpt-4.1-mini",
+            "plot_model": "openai/gpt-4.1-mini",
+            "draft_model": "deepseek/deepseek-chat",
+            "quality_model": "deepseek/deepseek-chat",
+            "lightrag_model_name": "openai/gpt-4.1-mini",
         },
     )
 
@@ -178,6 +197,20 @@ def test_create_run_accepts_txt_upload() -> None:
     assert manager.last_request.new_faction_budget == 1
     assert manager.last_request.skeleton_candidates == 2
     assert manager.last_request.draft_candidates == 3
+    assert manager.last_request.style_model == "openai/gpt-4.1-mini"
+    assert manager.last_request.plot_model == "openai/gpt-4.1-mini"
+    assert manager.last_request.lightrag_model_name == "openai/gpt-4.1-mini"
+
+
+def test_get_runtime_config_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/config")
+
+    assert response.status_code == 200
+    assert response.json()["style_model"] == "deepseek/deepseek-chat"
+    assert "openai/gpt-4.1-mini" in response.json()["model_options"]
 
 
 def test_list_benchmarks_endpoint() -> None:

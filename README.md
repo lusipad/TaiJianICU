@@ -21,6 +21,7 @@
 - 基准：内置“系统 vs 单模型 baseline vs 真实后续”对照实验
 - Web：上传 `.txt`、提交任务、轮询进度、查看摘要/产物路径/历史任务
 - Web：侧边栏可直接查看 Benchmark Lab 对照报告、胜负结论、分项摘要和落盘路径
+- Web：新建任务时可直接配置 `style/plot/draft/quality/LightRAG` 模型路由，支持“下拉候选 + 自定义输入”
 - CLI：`taijian run` / `taijian benchmark` / `taijian web` / `taijian inspect` / `taijian intervene`
 - 会话：保存阶段 1 快照、每章骨架、草稿、输出正文、伏笔状态
 
@@ -58,9 +59,12 @@ DEEPSEEK_API_KEY=...
 ```env
 TAIJIAN_WEB_USERNAME=admin
 TAIJIAN_WEB_PASSWORD=change_me
+TAIJIAN_WEB_MODEL_OPTIONS=deepseek/deepseek-chat,deepseek/deepseek-reasoner,openai/gpt-4.1-mini
 ```
 
 设置后，除 `/health` 和 `/ready` 外，其余页面和 API 都会启用 HTTP Basic Auth。
+
+`TAIJIAN_WEB_MODEL_OPTIONS` 用来给 Web 表单提供候选模型列表；用户仍然可以直接输入任意 LiteLLM 支持的模型名覆盖默认路由。
 
 如需调整 DeepSeek 调用容错，可额外配置：
 
@@ -137,6 +141,8 @@ taijian benchmark --dataset custom --source-url https://example.com/novel.txt --
 ```powershell
 taijian web
 ```
+
+Web 表单里的模型配置会按“单次运行”生效，不会改写服务器全局默认值。
 
 默认地址：
 

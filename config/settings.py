@@ -74,6 +74,7 @@ class AppSettings(BaseSettings):
     web_port: int = 8000
     web_username: str = Field(default="admin", alias="TAIJIAN_WEB_USERNAME")
     web_password: str | None = Field(default=None, alias="TAIJIAN_WEB_PASSWORD")
+    web_model_options: str = Field(default="", alias="TAIJIAN_WEB_MODEL_OPTIONS")
     web_allowed_origins: str = (
         "http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:3000,"
         "http://localhost:3000,http://127.0.0.1:5173,http://localhost:5173"
@@ -123,6 +124,10 @@ def get_settings() -> AppSettings:
     settings.web_host = os.getenv("TAIJIAN_WEB_HOST", settings.web_host)
     settings.web_port = int(os.getenv("TAIJIAN_WEB_PORT", str(settings.web_port)))
     settings.web_username = os.getenv("TAIJIAN_WEB_USERNAME", settings.web_username)
+    settings.web_model_options = os.getenv(
+        "TAIJIAN_WEB_MODEL_OPTIONS",
+        settings.web_model_options,
+    )
     settings.web_allowed_origins = os.getenv(
         "TAIJIAN_WEB_ALLOWED_ORIGINS",
         settings.web_allowed_origins,

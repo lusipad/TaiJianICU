@@ -22,6 +22,11 @@ class WebRunRequest(BaseModel):
     new_faction_budget: int | None = Field(default=None, ge=0, le=5)
     skeleton_candidates: int | None = Field(default=None, ge=1, le=5)
     draft_candidates: int | None = Field(default=None, ge=1, le=5)
+    style_model: str | None = None
+    plot_model: str | None = None
+    draft_model: str | None = None
+    quality_model: str | None = None
+    lightrag_model_name: str | None = None
     use_existing_index: bool = False
     overwrite: bool = False
 
@@ -125,6 +130,15 @@ class ApiErrorResponse(BaseModel):
     title: str
     status: int
     detail: str
+
+
+class WebRuntimeConfig(BaseModel):
+    style_model: str
+    plot_model: str
+    draft_model: str
+    quality_model: str
+    lightrag_model_name: str
+    model_options: list[str] = Field(default_factory=list)
 
 
 class WebBenchmarkSummary(BaseModel):

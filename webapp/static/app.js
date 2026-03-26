@@ -3,6 +3,7 @@ const state = {
   activeBenchmarkKey: null,
   pollTimer: null,
   benchmarkCache: [],
+  runtimeConfig: null,
   runCache: [],
 };
 
@@ -31,6 +32,7 @@ const elements = {
   metricChapters: document.getElementById("metric-chapters"),
   metricQuality: document.getElementById("metric-quality"),
   metricConsistency: document.getElementById("metric-consistency"),
+  modelSummary: document.getElementById("model-summary"),
   styleSummary: document.getElementById("style-summary"),
   storySummary: document.getElementById("story-summary"),
   worldSummary: document.getElementById("world-summary"),
@@ -50,6 +52,12 @@ const elements = {
   outputPath: document.getElementById("output-path"),
   outputPreview: document.getElementById("output-preview"),
   runLogs: document.getElementById("run-logs"),
+  styleModelInput: document.getElementById("style-model-input"),
+  plotModelInput: document.getElementById("plot-model-input"),
+  draftModelInput: document.getElementById("draft-model-input"),
+  qualityModelInput: document.getElementById("quality-model-input"),
+  lightragModelInput: document.getElementById("lightrag-model-input"),
+  modelOptions: document.getElementById("model-options"),
 };
 
 function escapeHtml(value) {
@@ -188,6 +196,38 @@ function formatConsistencySummary(report) {
   const lines = [`通过：${report.passed ? "是" : "否"}`];
   if (report.issues?.length) lines.push(`问题：\n- ${report.issues.join("\n- ")}`);
   return lines.join("\n");
+}
+
+function formatModelSummary(request) {
+  if (!request) return "-";
+  const config = state.runtimeConfig || {};
+  const lines = [
+    `Style：${request.style_model || config.style_model || "-"}`,
+    `Plot：${request.plot_model || config.plot_model || "-"}`,
+    `Draft：${request.draft_model || config.draft_model || "-"}`,
+    `Quality：${request.quality_model || config.quality_model || "-"}`,
+    `LightRAG：${request.lightrag_model_name || config.lightrag_model_name || "-"}`,
+  ];
+  return lines.join("\n");
+}
+
+function applyRuntimeConfig(config) {
+  state.runtimeConfig = config;
+  const fields = [
+    [elements.styleModelInput, config.style_model],
+    [elements.plotModelInput, config.plot_model],
+    [elements.draftModelInput, config.draft_model],
+    [elements.qualityModelInput, config.quality_model],
+    [elements.lightragModelInput, config.lightrag_model_name],
+  ];
+  for (const [element, value] of fields) {
+    if (!element) continue;
+    element.value = value || "";
+    element.placeholder = value || "";
+  }
+  elements.modelOptions.innerHTML = (config.model_options || [])
+    .map((item) => `<option value="${escapeHtml(item)}"></option>`)
+    .join("");
 }
 
 function renderRunList(runs) {
@@ -449,6 +489,7 @@ function renderRun(run) {
   elements.metricConsistency.textContent =
     run.metrics?.consistency_passed == null ? "-" : run.metrics.consistency_passed ? "通过" : "未过";
 
+  elements.modelSummary.textContent = formatModelSummary(run.request);
   elements.styleSummary.textContent = formatStyleSummary(run.style_profile);
   elements.storySummary.textContent = formatStorySummary(run.story_state);
   elements.worldSummary.textContent = formatWorldSummary(run.world_model);
@@ -510,6 +551,11 @@ async function refreshBenchmarks() {
   const current =
     items.find((item) => item.dataset_name === datasetName && item.case_name === caseName) || fallback;
   await loadBenchmark(current.dataset_name, current.case_name, { rerenderList: false });
+}
+
+async function loadRuntimeConfig() {
+  const config = await fetchJson("/api/config");
+  applyRuntimeConfig(config);
 }
 
 async function loadBenchmark(datasetName, caseName, { rerenderList = true } = {}) {
@@ -598,6 +644,7 @@ elements.form.addEventListener("submit", async (event) => {
 
 window.addEventListener("load", async () => {
   try {
+    await loadRuntimeConfig();
     await refreshRuns({ autoSelect: true });
     await refreshBenchmarks();
   } catch (error) {

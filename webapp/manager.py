@@ -32,6 +32,7 @@ from webapp.models import (
     WebRunProgress,
     WebRunRequest,
     WebRunSummary,
+    WebRuntimeConfig,
 )
 
 
@@ -161,6 +162,46 @@ class WebRunManager:
             total_cost_usd=report.total_usage.total_cost_usd,
             total_tokens=report.total_usage.total_tokens,
         )
+
+    def get_runtime_config(self) -> WebRuntimeConfig:
+        options = list(
+            dict.fromkeys(
+                [
+                    self.settings.models.style_model,
+                    self.settings.models.plot_model,
+                    self.settings.models.draft_model,
+                    self.settings.models.quality_model,
+                    self.settings.models.lightrag_model_name,
+                    *[
+                        item.strip()
+                        for item in getattr(self.settings, "web_model_options", "").split(",")
+                        if item.strip()
+                    ],
+                ]
+            )
+        )
+        return WebRuntimeConfig(
+            style_model=self.settings.models.style_model,
+            plot_model=self.settings.models.plot_model,
+            draft_model=self.settings.models.draft_model,
+            quality_model=self.settings.models.quality_model,
+            lightrag_model_name=self.settings.models.lightrag_model_name,
+            model_options=options,
+        )
+
+    def _settings_for_request(self, request: WebRunRequest) -> AppSettings:
+        run_settings = self.settings.model_copy(deep=True)
+        model_updates = {
+            "style_model": request.style_model,
+            "plot_model": request.plot_model,
+            "draft_model": request.draft_model,
+            "quality_model": request.quality_model,
+            "lightrag_model_name": request.lightrag_model_name,
+        }
+        for field_name, field_value in model_updates.items():
+            if field_value and field_value.strip():
+                setattr(run_settings.models, field_name, field_value.strip())
+        return run_settings
 
     def start_run(
         self,
@@ -427,7 +468,7 @@ class WebRunManager:
 
     def _run_pipeline(self, *, run_id: str) -> None:
         current = self.get_run(run_id)
-        orchestrator = TaiJianOrchestrator(self.settings)
+        orchestrator = TaiJianOrchestrator(self._settings_for_request(current.request))
 
         async def runner() -> PipelineRunResult:
             return await orchestrator.run(

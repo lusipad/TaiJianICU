@@ -255,3 +255,26 @@ def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:
     assert detail.system_strengths == ["剧情推进稳"]
     assert detail.baseline_weaknesses == ["偏离原著"]
     assert detail.pairwise_reasoning == ["更稳", "更像原著"]
+
+
+def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    settings.web_model_options = "deepseek/deepseek-chat,openai/gpt-4.1-mini"
+    manager = WebRunManager(settings)
+
+    request = WebRunRequest(
+        style_model="openai/gpt-4.1-mini",
+        plot_model="openai/gpt-4.1-mini",
+        draft_model="deepseek/deepseek-chat",
+        quality_model="deepseek/deepseek-chat",
+        lightrag_model_name="openai/gpt-4.1-mini",
+    )
+
+    runtime = manager.get_runtime_config()
+    run_settings = manager._settings_for_request(request)
+
+    assert "openai/gpt-4.1-mini" in runtime.model_options
+    assert run_settings.models.style_model == "openai/gpt-4.1-mini"
+    assert run_settings.models.plot_model == "openai/gpt-4.1-mini"
+    assert run_settings.models.lightrag_model_name == "openai/gpt-4.1-mini"
+    assert settings.models.style_model == "deepseek/deepseek-chat"
