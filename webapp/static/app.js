@@ -1,3 +1,50 @@
+// ── Onboarding Modal ──
+function initOnboarding() {
+  const modal = document.getElementById("onboarding-modal");
+  if (!modal) return;
+  if (localStorage.getItem("tkOnboardingDone")) return;
+
+  const steps = modal.querySelectorAll(".onboarding-step");
+  const nextBtn = document.getElementById("onboarding-next");
+  const skipBtn = document.getElementById("onboarding-skip");
+  const noShowCheck = document.getElementById("onboarding-no-show");
+  let currentStep = 0;
+
+  function showStep(index) {
+    steps.forEach((step, i) => {
+      step.classList.toggle("hidden", i !== index);
+    });
+    nextBtn.textContent = index < steps.length - 1 ? "下一步" : "开始使用";
+  }
+
+  function closeModal() {
+    if (noShowCheck.checked) {
+      localStorage.setItem("tkOnboardingDone", "1");
+    }
+    modal.classList.add("hidden");
+  }
+
+  nextBtn.addEventListener("click", () => {
+    if (currentStep < steps.length - 1) {
+      currentStep++;
+      showStep(currentStep);
+    } else {
+      closeModal();
+    }
+  });
+
+  skipBtn.addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  showStep(0);
+  setTimeout(() => modal.classList.remove("hidden"), 500);
+}
+
+document.addEventListener("DOMContentLoaded", initOnboarding);
+
 const state = {
   activeRunId: null,
   activeBenchmarkKey: null,
