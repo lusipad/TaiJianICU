@@ -4,6 +4,7 @@ import asyncio
 import json
 import re
 import threading
+from concurrent.futures import Future as ConcurrentFuture
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -44,7 +45,11 @@ class WebRunManager:
     def __init__(self, settings: AppSettings):
         self.settings = settings
         self._lock = threading.Lock()
+        self._runtime_lock = threading.Lock()
         self._runs: dict[str, WebRunDetail] = {}
+        self._async_loop: asyncio.AbstractEventLoop | None = None
+        self._async_thread: threading.Thread | None = None
+        self._async_futures: dict[str, ConcurrentFuture[None]] = {}
         self._load_existing_runs()
 
     def _run_file(self, run_id: str) -> Path:
@@ -67,6 +72,51 @@ class WebRunManager:
 
     def _persist(self, run: WebRunDetail) -> None:
         self._run_file(run.id).write_text(run.model_dump_json(indent=2), encoding="utf-8")
+
+    def _ensure_async_runtime(self) -> asyncio.AbstractEventLoop:
+        with self._runtime_lock:
+            if self._async_loop is not None and self._async_loop.is_running():
+                return self._async_loop
+
+            loop = asyncio.new_event_loop()
+            ready = threading.Event()
+
+            def _runner() -> None:
+                asyncio.set_event_loop(loop)
+                ready.set()
+                loop.run_forever()
+
+            thread = threading.Thread(target=_runner, name="web-run-loop", daemon=True)
+            thread.start()
+            if not ready.wait(timeout=5):
+                raise RuntimeError("Web 异步运行时启动超时。")
+
+            self._async_loop = loop
+            self._async_thread = thread
+            return loop
+
+    def _schedule_run(self, run_id: str) -> None:
+        loop = self._ensure_async_runtime()
+        future = asyncio.run_coroutine_threadsafe(self._run_pipeline_async(run_id), loop)
+        with self._runtime_lock:
+            self._async_futures[run_id] = future
+
+        def _cleanup(completed: ConcurrentFuture[None]) -> None:
+            with self._runtime_lock:
+                self._async_futures.pop(run_id, None)
+            try:
+                completed.result()
+            except Exception as exc:
+                current = self._runs.get(run_id)
+                if current and current.status in {"queued", "running"}:
+                    self._update_run(
+                        run_id,
+                        status="failed",
+                        error_message=str(exc),
+                        progress=current.progress.model_copy(update={"message": "运行失败"}),
+                    )
+
+        future.add_done_callback(_cleanup)
 
     def _slugify_session(self, value: str) -> str:
         cleaned = _SESSION_SAFE.sub("-", value.strip()).strip("-").lower()
@@ -280,12 +330,15 @@ class WebRunManager:
             self._runs[run_id] = run
             self._persist(run)
 
-        thread = threading.Thread(
-            target=self._run_pipeline,
-            kwargs={"run_id": run_id},
-            daemon=True,
-        )
-        thread.start()
+        try:
+            self._schedule_run(run_id)
+        except Exception as exc:
+            self._update_run(
+                run_id,
+                status="failed",
+                error_message=f"任务调度失败：{exc}",
+                progress=run.progress.model_copy(update={"message": "运行失败"}),
+            )
         return WebRunSummary.model_validate(run.model_dump(mode="json"))
 
     def _update_run(self, run_id: str, **changes) -> None:
@@ -517,12 +570,13 @@ class WebRunManager:
             chapter_summaries=chapter_summaries,
         )
 
-    def _run_pipeline(self, *, run_id: str) -> None:
+    async def _run_pipeline_async(self, run_id: str) -> None:
         current = self.get_run(run_id)
         orchestrator = TaiJianOrchestrator(self._settings_for_request(current.request))
 
-        async def runner() -> PipelineRunResult:
-            return await orchestrator.run(
+        try:
+            self._append_log(run_id, "任务开始执行")
+            result: PipelineRunResult = await orchestrator.run(
                 input_path=Path(current.input_path or ""),
                 chapters=current.request.chapters,
                 session_name=current.session_name,
@@ -538,10 +592,6 @@ class WebRunManager:
                 start_chapter=current.request.start_chapter,
                 progress_callback=lambda message: self._append_log(run_id, message),
             )
-
-        try:
-            self._append_log(run_id, "任务开始执行")
-            result = asyncio.run(runner())
             self._populate_outputs(run_id, result)
         except Exception as exc:
             self._update_run(

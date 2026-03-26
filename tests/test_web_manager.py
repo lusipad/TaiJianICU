@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -291,3 +293,46 @@ def test_web_run_manager_lists_examples(tmp_path: Path) -> None:
 
     assert examples[0].id == "sample_novel"
     assert examples[0].input_filename == "sample_novel.txt"
+
+
+def test_web_run_manager_reuses_background_event_loop(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    input_path = settings.web_uploads_dir / "demo.txt"
+    input_path.write_text("第一章 测试", encoding="utf-8")
+
+    loop_ids: list[int] = []
+    finished = threading.Event()
+
+    async def fake_run_pipeline(self: WebRunManager, run_id: str) -> None:
+        loop_ids.append(id(asyncio.get_running_loop()))
+        current = self.get_run(run_id)
+        self._update_run(
+            run_id,
+            status="completed",
+            progress=current.progress.model_copy(
+                update={
+                    "completed_steps": current.progress.total_steps,
+                    "message": "运行完成",
+                }
+            ),
+        )
+        if len(loop_ids) == 2:
+            finished.set()
+
+    manager._run_pipeline_async = fake_run_pipeline.__get__(manager, WebRunManager)
+
+    manager.start_run(
+        input_path=input_path,
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+    )
+    manager.start_run(
+        input_path=input_path,
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+    )
+
+    assert finished.wait(timeout=2)
+    assert len(loop_ids) == 2
+    assert len(set(loop_ids)) == 1
