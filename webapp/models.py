@@ -141,6 +141,14 @@ class WebRuntimeConfig(BaseModel):
     model_options: list[str] = Field(default_factory=list)
 
 
+class WebExampleSummary(BaseModel):
+    id: str
+    title: str
+    description: str
+    input_filename: str
+    recommended_goal_hint: str | None = None
+
+
 class WebBenchmarkSummary(BaseModel):
     dataset_name: str
     case_name: str

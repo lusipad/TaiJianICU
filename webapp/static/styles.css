@@ -646,6 +646,54 @@ h2 {
   padding: 22px;
 }
 
+.quickstart-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 26px;
+  border: 1px solid rgba(154, 74, 37, 0.18);
+  background:
+    linear-gradient(135deg, rgba(152, 65, 31, 0.08), rgba(255, 255, 255, 0.28)),
+    rgba(255, 249, 242, 0.78);
+}
+
+.quickstart-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.quickstart-copy h3 {
+  margin: 0;
+  font-size: 1.18rem;
+  letter-spacing: -0.03em;
+}
+
+.quickstart-copy p {
+  margin: 0;
+}
+
+.quickstart-steps,
+.empty-state-steps {
+  display: grid;
+  gap: 8px;
+}
+
+.quickstart-steps span,
+.empty-state-steps span {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.44);
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.quickstart-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .form-panel,
 .recent-panel {
   position: sticky;
@@ -856,6 +904,14 @@ h2 {
   gap: 14px;
 }
 
+.form-inline-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .form-panel .form-section-head {
   flex-direction: column;
   align-items: flex-start;
@@ -1000,6 +1056,18 @@ button {
   cursor: pointer;
 }
 
+.utility-button {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.utility-button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
 button:hover {
   transform: translateY(-1px);
   box-shadow: 0 20px 34px rgba(111, 42, 18, 0.26);
@@ -1030,6 +1098,17 @@ button:active {
 .empty-state {
   padding: 24px;
   line-height: 1.75;
+}
+
+.empty-state-title {
+  margin: 0 0 4px;
+  font-size: 1.16rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.empty-state-actions {
+  margin-top: 14px;
 }
 
 .status-banner {
@@ -1381,6 +1460,7 @@ pre {
   .workspace-tabs,
   .inspector-tabs,
   .action-row,
+  .form-inline-actions,
   .form-section-head,
   .progress-meta,
   .card-headline {

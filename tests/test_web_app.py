@@ -7,7 +7,14 @@ from fastapi.testclient import TestClient
 
 from config.settings import AppSettings
 from webapp.app import create_app
-from webapp.models import WebBenchmarkDetail, WebRunDetail, WebRunProgress, WebRunRequest, WebRunSummary
+from webapp.models import (
+    WebBenchmarkDetail,
+    WebExampleSummary,
+    WebRunDetail,
+    WebRunProgress,
+    WebRunRequest,
+    WebRunSummary,
+)
 
 
 class FakeRunManager:
@@ -61,6 +68,17 @@ class FakeRunManager:
             }
         ]
 
+    def list_examples(self):
+        return [
+            WebExampleSummary(
+                id="sample_novel",
+                title="原创悬疑样例",
+                description="仓库内原创短篇样例，适合第一次试跑，避免版权风险。",
+                input_filename="sample_novel.txt",
+                recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
+            )
+        ]
+
     def get_benchmark(self, dataset_name: str, case_name: str):
         assert dataset_name == "demo"
         assert case_name == "1_to_2"
@@ -99,6 +117,12 @@ class FakeRunManager:
         return Path("demo.txt"), "demo"
 
     def start_run(self, *, input_path: Path, input_filename: str, request: WebRunRequest):
+        self.start_calls += 1
+        self.last_request = request
+        return WebRunSummary.model_validate(self.detail.model_dump(mode="json"))
+
+    def start_example_run(self, *, example_id: str, request: WebRunRequest):
+        assert example_id == "sample_novel"
         self.start_calls += 1
         self.last_request = request
         return WebRunSummary.model_validate(self.detail.model_dump(mode="json"))
@@ -220,6 +244,36 @@ def test_get_runtime_config_endpoint() -> None:
     assert response.status_code == 200
     assert response.json()["style_model"] == "deepseek/deepseek-chat"
     assert "openai/gpt-4.1-mini" in response.json()["model_options"]
+
+
+def test_list_examples_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/examples")
+
+    assert response.status_code == 200
+    assert response.json()[0]["id"] == "sample_novel"
+
+
+def test_create_example_run_endpoint() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/examples/sample_novel/runs",
+        data={
+            "chapters": "1",
+            "start_chapter": "1",
+            "draft_model": "deepseek/deepseek-chat",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id"] == "run-1"
+    assert manager.start_calls == 1
+    assert manager.last_request.draft_model == "deepseek/deepseek-chat"
 
 
 def test_list_benchmarks_endpoint() -> None:

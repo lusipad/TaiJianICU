@@ -23,6 +23,7 @@ from core.models.world_model import WorldModel
 from orchestrator import PipelineRunResult, TaiJianOrchestrator
 from webapp.errors import ApiError
 from webapp.models import (
+    WebExampleSummary,
     WebBenchmarkDetail,
     WebBenchmarkSummary,
     WebChapterSummary,
@@ -188,6 +189,56 @@ class WebRunManager:
             lightrag_model_name=self.settings.models.lightrag_model_name,
             model_options=options,
         )
+
+    def list_examples(self) -> list[WebExampleSummary]:
+        items: list[WebExampleSummary] = []
+        sample_path = self.settings.input_dir / "sample_novel.txt"
+        if sample_path.exists():
+            items.append(
+                WebExampleSummary(
+                    id="sample_novel",
+                    title="原创悬疑样例",
+                    description="仓库内原创短篇样例，适合第一次试跑，避免版权风险。",
+                    input_filename=sample_path.name,
+                    recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
+                )
+            )
+        return items
+
+    def start_example_run(
+        self,
+        *,
+        example_id: str,
+        request: WebRunRequest,
+    ) -> WebRunSummary:
+        example_map = {
+            "sample_novel": self.settings.input_dir / "sample_novel.txt",
+        }
+        source_path = example_map.get(example_id)
+        if source_path is None or not source_path.exists():
+            raise ApiError("找不到对应的示例样本。", 404, "Not Found")
+
+        saved_path, suggested_name = self.save_uploaded_text(
+            source_path.name,
+            source_path.read_bytes(),
+        )
+        request_payload = request.model_copy(
+            update={
+                "session_name": request.session_name or f"{suggested_name}-demo",
+                "goal_hint": request.goal_hint or self._example_goal_hint(example_id),
+            }
+        )
+        return self.start_run(
+            input_path=saved_path,
+            input_filename=source_path.name,
+            request=request_payload,
+        )
+
+    @staticmethod
+    def _example_goal_hint(example_id: str) -> str | None:
+        if example_id == "sample_novel":
+            return "先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。"
+        return None
 
     def _settings_for_request(self, request: WebRunRequest) -> AppSettings:
         run_settings = self.settings.model_copy(deep=True)

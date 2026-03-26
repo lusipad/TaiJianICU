@@ -3,6 +3,7 @@ const state = {
   activeBenchmarkKey: null,
   activeWorkspaceTab: "overview",
   activeSidebarTab: "runs",
+  exampleCache: [],
   pollTimer: null,
   benchmarkCache: [],
   runtimeConfig: null,
@@ -15,6 +16,11 @@ const elements = {
   formStatus: document.getElementById("form-status"),
   fileInput: document.getElementById("file-input"),
   selectedFileName: document.getElementById("selected-file-name"),
+  tryExampleButton: document.getElementById("try-example-button"),
+  emptyExampleButton: document.getElementById("empty-example-button"),
+  exampleDescription: document.getElementById("example-description"),
+  resetModelsButton: document.getElementById("reset-models-button"),
+  runtimeModelHint: document.getElementById("runtime-model-hint"),
   runList: document.getElementById("run-list"),
   benchmarkList: document.getElementById("benchmark-list"),
   benchmarkSummary: document.getElementById("benchmark-summary"),
@@ -234,6 +240,92 @@ function applyRuntimeConfig(config) {
   elements.modelOptions.innerHTML = (config.model_options || [])
     .map((item) => `<option value="${escapeHtml(item)}"></option>`)
     .join("");
+  if (elements.runtimeModelHint) {
+    elements.runtimeModelHint.textContent = `默认：规划 ${config.plot_model} / 正文 ${config.draft_model} / 质检 ${config.quality_model}`;
+  }
+}
+
+function resetModelInputs() {
+  if (!state.runtimeConfig) return;
+  applyRuntimeConfig(state.runtimeConfig);
+}
+
+function collectRunFormData() {
+  const formData = new FormData(elements.form);
+  for (const key of [
+    "new_character_budget",
+    "new_location_budget",
+    "new_faction_budget",
+    "skeleton_candidates",
+    "draft_candidates",
+  ]) {
+    if (!String(formData.get(key) || "").trim()) {
+      formData.delete(key);
+    }
+  }
+  return formData;
+}
+
+function setActionBusy(isBusy) {
+  elements.submitButton.disabled = isBusy;
+  if (elements.tryExampleButton) elements.tryExampleButton.disabled = isBusy;
+  if (elements.emptyExampleButton) elements.emptyExampleButton.disabled = isBusy;
+}
+
+function renderExamples(items) {
+  state.exampleCache = items || [];
+  const example = state.exampleCache[0];
+  if (!elements.exampleDescription) return;
+  if (!example) {
+    elements.exampleDescription.textContent = "当前没有可用示例。";
+    if (elements.tryExampleButton) elements.tryExampleButton.disabled = true;
+    if (elements.emptyExampleButton) elements.emptyExampleButton.disabled = true;
+    return;
+  }
+  if (elements.tryExampleButton) {
+    elements.tryExampleButton.textContent = `一键试跑：${example.title}`;
+  }
+  if (elements.emptyExampleButton) {
+    elements.emptyExampleButton.textContent = `直接试跑：${example.title}`;
+  }
+  elements.exampleDescription.textContent = `${example.title} · ${example.description}`;
+}
+
+async function loadExamples() {
+  try {
+    const items = await fetchJson("/api/examples");
+    renderExamples(items);
+  } catch (error) {
+    renderExamples([]);
+    if (elements.exampleDescription) {
+      elements.exampleDescription.textContent = `示例加载失败：${error.message}`;
+    }
+  }
+}
+
+async function startExampleRun() {
+  const example = state.exampleCache[0];
+  if (!example) {
+    setFormStatus("当前没有可用示例。", "tone-error");
+    return;
+  }
+  const formData = collectRunFormData();
+  formData.delete("file");
+  setActionBusy(true);
+  setFormStatus(`正在创建示例任务：${example.title}...`);
+  try {
+    const payload = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}/runs`, {
+      method: "POST",
+      body: formData,
+    });
+    setFormStatus("示例任务已创建，开始轮询。");
+    await refreshRuns();
+    await loadRun(payload.id);
+  } catch (error) {
+    setFormStatus(`示例任务创建失败：${error.message}`, "tone-error");
+  } finally {
+    setActionBusy(false);
+  }
 }
 
 function setWorkspaceTab(tabName) {
@@ -638,19 +730,8 @@ elements.fileInput.addEventListener("change", () => {
 
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const formData = new FormData(elements.form);
-  for (const key of [
-    "new_character_budget",
-    "new_location_budget",
-    "new_faction_budget",
-    "skeleton_candidates",
-    "draft_candidates",
-  ]) {
-    if (!String(formData.get(key) || "").trim()) {
-      formData.delete(key);
-    }
-  }
-  elements.submitButton.disabled = true;
+  const formData = collectRunFormData();
+  setActionBusy(true);
   setFormStatus("正在创建任务...");
 
   try {
@@ -664,7 +745,7 @@ elements.form.addEventListener("submit", async (event) => {
   } catch (error) {
     setFormStatus(`提交失败：${error.message}`, "tone-error");
   } finally {
-    elements.submitButton.disabled = false;
+    setActionBusy(false);
   }
 });
 
@@ -676,9 +757,19 @@ window.addEventListener("load", async () => {
     for (const tab of elements.sidebarTabs) {
       tab.addEventListener("click", () => setSidebarTab(tab.dataset.sidebarTarget));
     }
+    if (elements.tryExampleButton) {
+      elements.tryExampleButton.addEventListener("click", startExampleRun);
+    }
+    if (elements.emptyExampleButton) {
+      elements.emptyExampleButton.addEventListener("click", startExampleRun);
+    }
+    if (elements.resetModelsButton) {
+      elements.resetModelsButton.addEventListener("click", resetModelInputs);
+    }
     setWorkspaceTab(state.activeWorkspaceTab);
     setSidebarTab(state.activeSidebarTab);
     await loadRuntimeConfig();
+    await loadExamples();
     await refreshRuns({ autoSelect: true });
     await refreshBenchmarks();
   } catch (error) {

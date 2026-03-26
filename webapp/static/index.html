@@ -30,6 +30,23 @@
           </div>
 
           <form id="run-form" class="run-form">
+            <section class="quickstart-card">
+              <div class="quickstart-copy">
+                <p class="section-kicker">Quick Start</p>
+                <h3>第一次用，先别研究全部参数</h3>
+                <p class="hint">先试跑原创样例，确认效果和工作流，再回头上传你自己的原著文本。</p>
+              </div>
+              <div class="quickstart-steps">
+                <span>1. 一键试跑</span>
+                <span>2. 看总览和规划</span>
+                <span>3. 再改模型或目标</span>
+              </div>
+              <div class="quickstart-actions">
+                <button id="try-example-button" type="button">一键试跑原创样例</button>
+                <p id="example-description" class="hint">正在加载示例信息...</p>
+              </div>
+            </section>
+
             <details class="form-section form-section-primary" open>
               <summary class="form-section-summary">
                 <div class="form-section-head">
@@ -127,6 +144,10 @@
                 </div>
               </summary>
               <div class="form-section-body">
+                <div class="form-inline-actions">
+                  <button id="reset-models-button" class="utility-button" type="button">恢复部署默认模型</button>
+                  <span id="runtime-model-hint" class="field-note">当前使用部署默认模型。</span>
+                </div>
                 <div class="field-grid model-grid">
                   <label class="field">
                     <span>风格分析模型</span>
@@ -204,7 +225,16 @@
           </div>
 
           <div id="empty-state" class="empty-state">
-            <p>还没有选中任务。提交一个文本文件，或从右侧最近任务中打开已有结果。</p>
+            <p class="empty-state-title">还没有选中任务</p>
+            <p>你可以直接试跑原创样例，也可以上传自己的 `.txt` 文本开始。</p>
+            <div class="empty-state-steps">
+              <span>先点左侧“一键试跑原创样例”</span>
+              <span>或上传文本后点“开始分析并续写”</span>
+              <span>运行后从“总览 / 规划 / 诊断”切换查看</span>
+            </div>
+            <div class="empty-state-actions">
+              <button id="empty-example-button" type="button">直接试跑样例</button>
+            </div>
           </div>
 
           <div id="run-view" class="run-view hidden">

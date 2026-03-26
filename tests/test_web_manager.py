@@ -278,3 +278,16 @@ def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path
     assert run_settings.models.plot_model == "openai/gpt-4.1-mini"
     assert run_settings.models.lightrag_model_name == "openai/gpt-4.1-mini"
     assert settings.models.style_model == "deepseek/deepseek-chat"
+
+
+def test_web_run_manager_lists_examples(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    sample_path = settings.input_dir / "sample_novel.txt"
+    sample_path.parent.mkdir(parents=True, exist_ok=True)
+    sample_path.write_text("第一章 雨夜追魂", encoding="utf-8")
+    manager = WebRunManager(settings)
+
+    examples = manager.list_examples()
+
+    assert examples[0].id == "sample_novel"
+    assert examples[0].input_filename == "sample_novel.txt"

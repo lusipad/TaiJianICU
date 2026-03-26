@@ -13,6 +13,7 @@ from config.settings import AppSettings, get_settings
 from webapp.errors import ApiError, register_error_handlers
 from webapp.manager import WebRunManager
 from webapp.models import (
+    WebExampleSummary,
     WebBenchmarkDetail,
     WebBenchmarkSummary,
     WebRuntimeConfig,
@@ -109,6 +110,10 @@ def create_app(
     async def get_runtime_config() -> WebRuntimeConfig:
         return app.state.run_manager.get_runtime_config()
 
+    @app.get("/api/examples", response_model=list[WebExampleSummary])
+    async def list_examples() -> list[WebExampleSummary]:
+        return app.state.run_manager.list_examples()
+
     @app.post("/api/runs", response_model=WebRunSummary, status_code=201)
     async def create_run(
         file: UploadFile = File(...),
@@ -163,6 +168,48 @@ def create_app(
             input_filename=file.filename,
             request=request,
         )
+
+    @app.post("/api/examples/{example_id}/runs", response_model=WebRunSummary, status_code=201)
+    async def create_example_run(
+        example_id: str,
+        chapters: int = Form(1),
+        start_chapter: int = Form(1),
+        goal_hint: str = Form(""),
+        session_name: str = Form(""),
+        planning_mode: str = Form("balanced"),
+        new_character_budget: int | None = Form(None),
+        new_location_budget: int | None = Form(None),
+        new_faction_budget: int | None = Form(None),
+        skeleton_candidates: int | None = Form(None),
+        draft_candidates: int | None = Form(None),
+        style_model: str = Form(""),
+        plot_model: str = Form(""),
+        draft_model: str = Form(""),
+        quality_model: str = Form(""),
+        lightrag_model_name: str = Form(""),
+        use_existing_index: bool = Form(False),
+        overwrite: bool = Form(False),
+    ) -> WebRunSummary:
+        request = WebRunRequest(
+            session_name=session_name.strip() or None,
+            chapters=chapters,
+            start_chapter=start_chapter,
+            goal_hint=goal_hint.strip() or None,
+            planning_mode=planning_mode,
+            new_character_budget=new_character_budget,
+            new_location_budget=new_location_budget,
+            new_faction_budget=new_faction_budget,
+            skeleton_candidates=skeleton_candidates,
+            draft_candidates=draft_candidates,
+            style_model=style_model.strip() or None,
+            plot_model=plot_model.strip() or None,
+            draft_model=draft_model.strip() or None,
+            quality_model=quality_model.strip() or None,
+            lightrag_model_name=lightrag_model_name.strip() or None,
+            use_existing_index=use_existing_index,
+            overwrite=overwrite,
+        )
+        return app.state.run_manager.start_example_run(example_id=example_id, request=request)
 
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
