@@ -1,0 +1,147 @@
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 8, 13, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.onboarding-panel {
+  width: 100%;
+  max-width: 540px;
+  border-radius: 28px;
+  border: 1px solid var(--border-medium);
+  background: linear-gradient(180deg, rgba(200, 149, 108, 0.08), transparent 18%), var(--bg-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.onboarding-step {
+  padding: 28px 28px 0;
+}
+
+.onboarding-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 20px;
+}
+
+.onboarding-icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  margin-bottom: 20px;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.onboarding-step-num {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.onboarding-title {
+  font-size: clamp(26px, 4vw, 30px);
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+
+.onboarding-body {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.85;
+}
+
+.onboarding-note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.onboarding-footer,
+.onboarding-skip-check,
+.onboarding-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboarding-footer {
+  justify-content: space-between;
+  padding: 20px 28px 24px;
+  margin-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.onboarding-skip-check {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.onboarding-skip-check input {
+  accent-color: var(--accent);
+}
+
+@media (max-width: 640px) {
+  .studio-topbar {
+    height: auto;
+    min-height: 68px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .studio-topbar-actions,
+  .action-row,
+  .form-inline-actions,
+  .progress-meta,
+  .progress-note,
+  .onboarding-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .studio-shell {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .workspace-tabs,
+  .inspector-tabs {
+    width: 100%;
+  }
+
+  .workspace-tab,
+  .inspector-tab {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  .stats-grid,
+  .result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-panel {
+    max-width: none;
+  }
+}
