@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TaiJianKiller</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="landing-body">
+    <div class="landing-shell">
+      <section class="landing-hero">
+        <div class="landing-hero-copy">
+          <p class="landing-brand">TaiJianKiller</p>
+          <h1>把原著片段、模型路由、对照评测放进同一个续写工作流。</h1>
+          <p class="landing-summary">
+            从原创样例体验输入到续写的完整落差，再进入工作台选择模型、提交文本、查看 benchmark
+            结论和落盘产物。
+          </p>
+          <div class="landing-actions">
+            <a class="landing-button landing-button-primary" href="/studio">进入工作台</a>
+            <a class="landing-button landing-button-secondary" href="#showcase">先看示例</a>
+          </div>
+        </div>
+
+        <div class="landing-hero-rail">
+          <div class="hero-rail-block">
+            <p class="label">Input</p>
+            <strong>原创样例直看效果</strong>
+            <span>开箱即用看原文片段、章节骨架、续写结果，不先填表。</span>
+          </div>
+          <div class="hero-rail-block">
+            <p class="label">Routing</p>
+            <strong>模型配置可切换</strong>
+            <span>风格、规划、正文、质检、LightRAG 路由都能按次覆盖。</span>
+          </div>
+          <div class="hero-rail-block">
+            <p class="label">Benchmark</p>
+            <strong>对照结论直接可看</strong>
+            <span>外部 benchmark 只展示评测摘要、胜负和分数，不直接铺原文。</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="showcase" class="landing-section">
+        <div class="landing-section-head">
+          <p class="section-kicker">Showcase</p>
+          <h2>开箱即用示例</h2>
+          <p>示例内容来自仓库内原创样例 `sample_novel.txt` 与本地 smoke 运行结果。</p>
+        </div>
+
+        <div class="showcase-grid">
+          <article class="showcase-card">
+            <div class="showcase-head">
+              <p class="label">Example A</p>
+              <strong>义庄悬疑开场</strong>
+            </div>
+            <div class="showcase-columns">
+              <div>
+                <p class="showcase-label">原文片段</p>
+                <pre>
+第一章 雨夜追魂
+
+青石城的夜雨落得很细，像是谁在高天之上缓慢磨刀。沈照拎着一盏旧灯，独自站在城南义庄门口。
+
+三日前，沈家老宅被人翻过。箱笼未少，银票未动，偏偏祖父留下的那半块黑玉不见了。</pre
+                >
+              </div>
+              <div>
+                <p class="showcase-label">系统续写</p>
+                <pre>
+子时，南渡口。
+
+雨丝细密，落在废弃码头的青石板上，溅起一层薄雾。沈照站在三号仓栈前，手里攥着那枚冰凉的铜扣。
+
+脚步声从阴影里传来。不是一个人。至少五个，散开成半圆，堵住了退路。</pre
+                >
+              </div>
+            </div>
+          </article>
+
+          <article class="showcase-card">
+            <div class="showcase-head">
+              <p class="label">Example B</p>
+              <strong>骨架到正文的落差</strong>
+            </div>
+            <div class="showcase-columns">
+              <div>
+                <p class="showcase-label">章节骨架</p>
+                <pre>
+1. 南渡口夜会，确认对方并非真正黑旗营旧部
+2. 顾行舟暗处观察，发现城守司埋伏
+3. 混战中铜扣被夺，沈照扯下独眼标记布条
+4. 救出苏晚，确认“主人要完整黑玉”
+5. 撤退后发现城守司也在暗中盯局</pre
+                >
+              </div>
+              <div>
+                <p class="showcase-label">正文质感</p>
+                <pre>
+顾行舟伏在水塔顶层，单筒镜抵在眼前。雨点打在生锈铁皮上，噼啪作响。
+
+他先看见了紫色火光，又看见仓库周围伏着的另一拨人影。不是绑匪的人，动作更稳，衣角下隐约露出制式皮甲。
+
+城守司。</pre
+                >
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="landing-section benchmark-section">
+        <div class="landing-section-head">
+          <p class="section-kicker">Benchmark</p>
+          <h2>现成对照结果</h2>
+          <p>这里直接读取仓库现有 benchmark 报告，只展示评测摘要、分数和胜负。</p>
+        </div>
+
+        <div id="landing-benchmark-list" class="landing-benchmark-list">
+          <p class="hint">正在加载 benchmark 摘要...</p>
+        </div>
+      </section>
+
+      <section class="landing-section cta-section">
+        <div class="cta-panel">
+          <div>
+            <p class="section-kicker">Studio</p>
+            <h2>想自己配模型、上传文本、跑一轮对比</h2>
+            <p>直接进入工作台。默认值由部署配置提供，界面可以按次覆盖模型路由。</p>
+          </div>
+          <a class="landing-button landing-button-primary" href="/studio">打开 Studio</a>
+        </div>
+      </section>
+    </div>
+
+    <script src="/static/landing.js" defer></script>
+  </body>
+  </html>

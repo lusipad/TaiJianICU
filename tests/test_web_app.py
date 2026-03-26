@@ -112,8 +112,12 @@ def test_web_health_and_index() -> None:
     assert client.get("/ready").json() == {"status": "ok"}
     response = client.get("/")
     assert response.status_code == 200
-    assert "TaiJianKiller Studio" in response.text
-    assert "世界模型" in response.text
+    assert "TaiJianKiller" in response.text
+    assert "开箱即用示例" in response.text
+    studio = client.get("/studio")
+    assert studio.status_code == 200
+    assert "TaiJianKiller Studio" in studio.text
+    assert "世界模型" in studio.text
     favicon = client.get("/static/favicon.svg")
     assert favicon.status_code == 200
     assert "image/svg+xml" in favicon.headers["content-type"]
@@ -131,7 +135,11 @@ def test_web_requires_basic_auth_when_password_configured() -> None:
 
     authed_response = client.get("/", auth=("admin", "secret123"))
     assert authed_response.status_code == 200
-    assert "TaiJianKiller Studio" in authed_response.text
+    assert "开箱即用示例" in authed_response.text
+
+    studio_response = client.get("/studio", auth=("admin", "secret123"))
+    assert studio_response.status_code == 200
+    assert "TaiJianKiller Studio" in studio_response.text
 
 
 def test_api_requires_basic_auth_when_password_configured() -> None:

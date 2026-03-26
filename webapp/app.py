@@ -166,6 +166,10 @@ def create_app(
 
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
+        return FileResponse(static_dir / "landing.html")
+
+    @app.get("/studio", include_in_schema=False)
+    async def studio() -> FileResponse:
         return FileResponse(static_dir / "index.html")
 
     app.mount("/static", StaticFiles(directory=static_dir), name="static")

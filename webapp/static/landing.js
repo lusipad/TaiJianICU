@@ -1,0 +1,73 @@
+const benchmarkContainer = document.getElementById("landing-benchmark-list");
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatCurrency(value) {
+  return `$${Number(value || 0).toFixed(6)}`;
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.detail || `请求失败：${response.status}`);
+  }
+  return payload;
+}
+
+async function renderBenchmarks() {
+  try {
+    const items = await fetchJson("/api/benchmarks");
+    if (!items.length) {
+      benchmarkContainer.innerHTML = '<p class="hint">当前没有 benchmark 报告。</p>';
+      return;
+    }
+
+    const details = await Promise.all(
+      items.slice(0, 2).map((item) =>
+        fetchJson(`/api/benchmarks/${encodeURIComponent(item.dataset_name)}/${encodeURIComponent(item.case_name)}`)
+      )
+    );
+
+    benchmarkContainer.innerHTML = details
+      .map(
+        (detail) => `
+          <article class="landing-benchmark-card">
+            <div class="showcase-head">
+              <p class="label">${escapeHtml(detail.dataset_name)}</p>
+              <strong>${escapeHtml(detail.case_name)}</strong>
+            </div>
+            <div class="benchmark-meta-row">
+              <span>Winner ${escapeHtml(detail.winner)}</span>
+              <span>Confidence ${escapeHtml(Number(detail.confidence).toFixed(2))}</span>
+              <span>Cost ${escapeHtml(formatCurrency(detail.total_cost_usd))}</span>
+            </div>
+            <div class="benchmark-score-strip">
+              <div>
+                <span class="showcase-label">System</span>
+                <strong>${escapeHtml(Number(detail.system_score).toFixed(2))}</strong>
+              </div>
+              <div>
+                <span class="showcase-label">Baseline</span>
+                <strong>${escapeHtml(Number(detail.baseline_score).toFixed(2))}</strong>
+              </div>
+            </div>
+            <p class="benchmark-summary">${escapeHtml(detail.system_summary || "-")}</p>
+            <p class="benchmark-footnote">仅展示评测摘要，不直接展示外部作品正文。</p>
+          </article>
+        `
+      )
+      .join("");
+  } catch (error) {
+    benchmarkContainer.innerHTML = `<p class="hint tone-error">加载失败：${escapeHtml(error.message)}</p>`;
+  }
+}
+
+window.addEventListener("load", renderBenchmarks);
