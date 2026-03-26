@@ -14,6 +14,19 @@ function formatCurrency(value) {
   return `$${Number(value || 0).toFixed(6)}`;
 }
 
+function formatBenchmarkWinner(value) {
+  switch (value) {
+    case "system":
+      return "系统版胜出";
+    case "baseline":
+      return "基线版胜出";
+    case "tie":
+      return "平局";
+    default:
+      return value || "-";
+  }
+}
+
 async function fetchJson(url) {
   const response = await fetch(url);
   const payload = await response.json().catch(() => ({}));
@@ -27,7 +40,7 @@ async function renderBenchmarks() {
   try {
     const items = await fetchJson("/api/benchmarks");
     if (!items.length) {
-      benchmarkContainer.innerHTML = '<p class="hint">当前没有 benchmark 报告。</p>';
+      benchmarkContainer.innerHTML = '<p class="hint">当前还没有对照评测报告。</p>';
       return;
     }
 
@@ -46,17 +59,17 @@ async function renderBenchmarks() {
               <strong>${escapeHtml(detail.case_name)}</strong>
             </div>
             <div class="benchmark-meta-row">
-              <span>Winner ${escapeHtml(detail.winner)}</span>
-              <span>Confidence ${escapeHtml(Number(detail.confidence).toFixed(2))}</span>
-              <span>Cost ${escapeHtml(formatCurrency(detail.total_cost_usd))}</span>
+              <span>结果 ${escapeHtml(formatBenchmarkWinner(detail.winner))}</span>
+              <span>置信度 ${escapeHtml(Number(detail.confidence).toFixed(2))}</span>
+              <span>成本 ${escapeHtml(formatCurrency(detail.total_cost_usd))}</span>
             </div>
             <div class="benchmark-score-strip">
               <div>
-                <span class="showcase-label">System</span>
+                <span class="showcase-label">系统版</span>
                 <strong>${escapeHtml(Number(detail.system_score).toFixed(2))}</strong>
               </div>
               <div>
-                <span class="showcase-label">Baseline</span>
+                <span class="showcase-label">基线版</span>
                 <strong>${escapeHtml(Number(detail.baseline_score).toFixed(2))}</strong>
               </div>
             </div>

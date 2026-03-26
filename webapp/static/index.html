@@ -62,19 +62,19 @@
         <div class="studio-topbar-copy">
           <p class="studio-brand">TaiJianKiller Studio</p>
           <h1>续写工作台</h1>
-          <p>上传文本、选择模型、查看规划与正文，把工作面板做得更像 IDE，而不是一页堆满卡片。</p>
+          <p>上传文本、查看规划和正文，再根据质量对比决定要不要继续续写。</p>
         </div>
         <div class="studio-topbar-actions">
-          <a class="studio-link" href="/">返回 Landing</a>
-          <span class="studio-chip">DeepSeek First</span>
-          <span class="studio-chip">Model Routing</span>
+          <a class="studio-link" href="/">返回首页</a>
+          <span class="studio-chip">默认 DeepSeek</span>
+          <span class="studio-chip">模型路由</span>
         </div>
       </header>
 
       <main class="studio-layout">
         <aside class="panel form-panel">
           <div class="panel-head">
-            <p class="section-kicker">New Run</p>
+            <p class="section-kicker">新建任务</p>
             <h2>提交原著文本</h2>
           </div>
 
@@ -101,7 +101,7 @@
               <div class="form-section-summary">
                 <div class="form-section-head">
                   <div>
-                    <p class="section-kicker">Input</p>
+                    <p class="section-kicker">输入内容</p>
                     <h3>文本与章节</h3>
                   </div>
                   <span class="field-note">上传原著文件，设置续写章节数，就可以开始了。</span>
@@ -257,19 +257,28 @@
         <section class="panel status-panel">
           <div class="workspace-head">
             <div>
-              <p class="section-kicker">Runboard</p>
+              <p class="section-kicker">运行面板</p>
               <h2>当前任务</h2>
             </div>
             <p class="workspace-head-note">这里优先显示当前运行的正文、进度和关键状态，次级信息分区收纳。</p>
           </div>
 
           <div id="empty-state" class="empty-state">
+            <div class="empty-state-flow" aria-hidden="true">
+              <span class="empty-state-flow-step">上传 .txt</span>
+              <span class="empty-state-flow-arrow">→</span>
+              <span class="empty-state-flow-step">AI 读原著</span>
+              <span class="empty-state-flow-arrow">→</span>
+              <span class="empty-state-flow-step">生成续写</span>
+              <span class="empty-state-flow-arrow">→</span>
+              <span class="empty-state-flow-step">质量对比</span>
+            </div>
             <p class="empty-state-title">还没有选中任务</p>
-            <p>你可以直接试跑原创样例，也可以上传自己的 `.txt` 文本开始。</p>
+            <p>先点左侧「快速开始」一键试跑，或上传自己的 .txt 文件开始续写。</p>
             <div class="empty-state-steps">
-              <span>先点左侧“一键试跑原创样例”</span>
-              <span>或上传文本后点“开始分析并续写”</span>
-              <span>运行后从“总览 / 规划 / 诊断”切换查看</span>
+              <span>先点左侧「一键试跑原创样例」</span>
+              <span>或上传文本后点「开始分析并续写」</span>
+              <span>运行后从「总览 / 规划 / 诊断」切换查看</span>
             </div>
             <div class="empty-state-actions">
               <button id="empty-example-button" type="button">直接试跑样例</button>
@@ -320,7 +329,7 @@
                   <strong id="metric-calls">0</strong>
                 </article>
                 <article class="stat-card">
-                  <p class="label">总 Tokens</p>
+                  <p class="label">总 Token 数</p>
                   <strong id="metric-tokens">0</strong>
                 </article>
                 <article class="stat-card">
@@ -332,11 +341,11 @@
                   <strong id="metric-chapters">0 / 0</strong>
                 </article>
                 <article class="stat-card">
-                  <p class="label">最新质检</p>
+                  <p class="label">续写质量（满分 10）</p>
                   <strong id="metric-quality">-</strong>
                 </article>
                 <article class="stat-card">
-                  <p class="label">一致性</p>
+                  <p class="label">人物一致性（满分 10）</p>
                   <strong id="metric-consistency">-</strong>
                 </article>
               </div>
@@ -345,7 +354,7 @@
             <section class="workspace-block" data-tab-panel="overview">
               <div class="workspace-block-head">
                 <div>
-                  <p class="section-kicker">Core Context</p>
+                  <p class="section-kicker">核心上下文</p>
                   <h3>风格、故事与当前目标</h3>
                 </div>
               </div>
@@ -353,7 +362,7 @@
               <section class="workspace-block workspace-block-feature workspace-block-nested">
                 <div class="workspace-block-head">
                   <div>
-                    <p class="section-kicker">Primary Output</p>
+                    <p class="section-kicker">续写正文</p>
                     <h3>正文预览</h3>
                   </div>
                   <span id="output-path" class="workspace-path">-</span>
@@ -391,51 +400,51 @@
             <section class="workspace-block" data-tab-panel="planning">
               <div class="workspace-block-head">
                 <div>
-                  <p class="section-kicker">Planning Layer</p>
+                  <p class="section-kicker">规划层</p>
                   <h3>规划与参考</h3>
                 </div>
               </div>
 
               <div class="result-grid">
                 <article class="result-card">
-                  <p class="label">世界模型</p>
+                  <p class="label">世界设定</p>
                   <pre id="world-summary">-</pre>
                 </article>
                 <article class="result-card">
-                  <p class="label">Arc 规划</p>
+                  <p class="label">故事走向规划</p>
                   <div id="arc-list" class="chapter-list"></div>
                 </article>
               </div>
 
               <div class="result-grid">
                 <article class="result-card">
-                  <p class="label">参考层</p>
+                  <p class="label">参考资料</p>
                   <div id="reference-list" class="thread-list"></div>
                 </article>
                 <article class="result-card">
-                  <p class="label">Lorebook 命中池</p>
+                  <p class="label">世界设定参考</p>
                   <pre id="lorebook-summary">-</pre>
                 </article>
               </div>
 
               <div class="result-grid">
                 <article class="result-card">
-                  <p class="label">最新章节 Brief</p>
+                  <p class="label">最新章节目标</p>
                   <pre id="brief-summary">-</pre>
                 </article>
                 <article class="result-card">
-                  <p class="label">章节评估</p>
+                  <p class="label">章节评测</p>
                   <pre id="evaluation-summary">-</pre>
                 </article>
               </div>
 
               <div class="result-grid">
                 <article class="result-card">
-                  <p class="label">骨架候选</p>
+                  <p class="label">提纲草稿</p>
                   <div id="skeleton-candidate-list" class="path-list"></div>
                 </article>
                 <article class="result-card">
-                  <p class="label">正文候选</p>
+                  <p class="label">续写候选</p>
                   <div id="draft-candidate-list" class="path-list"></div>
                 </article>
               </div>
@@ -444,7 +453,7 @@
             <section class="workspace-block" data-tab-panel="diagnostics">
               <div class="workspace-block-head">
                 <div>
-                  <p class="section-kicker">Diagnostics</p>
+                  <p class="section-kicker">质量诊断</p>
                   <h3>质检、日志与结果明细</h3>
                 </div>
               </div>
@@ -481,7 +490,7 @@
 
         <aside class="panel recent-panel">
           <div class="panel-head">
-            <p class="section-kicker">Inspector</p>
+            <p class="section-kicker">任务侧栏</p>
             <h2>侧边栏</h2>
           </div>
           <nav class="inspector-tabs" aria-label="侧边栏分区">
@@ -491,7 +500,7 @@
 
           <section data-sidebar-panel="runs">
             <div class="panel-head panel-head-compact">
-              <p class="section-kicker">History</p>
+              <p class="section-kicker">历史记录</p>
               <h2>最近任务</h2>
             </div>
             <div id="run-list" class="run-list">
@@ -501,14 +510,14 @@
 
           <section data-sidebar-panel="benchmarks" class="hidden">
             <div class="panel-head panel-head-compact">
-              <p class="section-kicker">Benchmark Lab</p>
+              <p class="section-kicker">对比评测</p>
               <h2>对照报告</h2>
             </div>
             <div id="benchmark-list" class="run-list">
-              <p class="hint">正在加载 benchmark...</p>
+              <p class="hint">正在加载对照评测...</p>
             </div>
             <article class="result-card benchmark-card">
-              <p class="label">Benchmark 详情</p>
+              <p class="label">对比详情</p>
               <pre id="benchmark-summary">-</pre>
             </article>
           </section>

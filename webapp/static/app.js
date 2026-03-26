@@ -136,13 +136,41 @@ function formatCurrency(value) {
   return `$${Number(value || 0).toFixed(6)}`;
 }
 
+function formatRunStatus(value) {
+  switch (value) {
+    case "queued":
+      return "排队中";
+    case "running":
+      return "运行中";
+    case "completed":
+      return "已完成";
+    case "failed":
+      return "失败";
+    default:
+      return value || "-";
+  }
+}
+
+function formatBenchmarkWinner(value) {
+  switch (value) {
+    case "system":
+      return "系统版胜出";
+    case "baseline":
+      return "基线版胜出";
+    case "tie":
+      return "平局";
+    default:
+      return value || "-";
+  }
+}
+
 function formatDuration(seconds) {
   if (seconds == null || Number.isNaN(Number(seconds))) return "-";
   const totalSeconds = Math.max(0, Math.round(Number(seconds)));
   const minutes = Math.floor(totalSeconds / 60);
   const remain = totalSeconds % 60;
-  if (!minutes) return `${remain}s`;
-  return `${minutes}m ${remain}s`;
+  if (!minutes) return `${remain} 秒`;
+  return `${minutes} 分 ${remain} 秒`;
 }
 
 function formatScore(value, verdict) {
@@ -229,15 +257,15 @@ function formatEvaluationSummary(evaluation) {
   const score = evaluation.score || {};
   const lines = [
     `摘要：${evaluation.summary || "-"}`,
-    `Continuity：${Number(score.continuity_score || 0).toFixed(2)}`,
-    `Character：${Number(score.character_score || 0).toFixed(2)}`,
-    `World：${Number(score.world_consistency_score || 0).toFixed(2)}`,
-    `Novelty：${Number(score.novelty_score || 0).toFixed(2)}`,
-    `Arc Progress：${Number(score.arc_progress_score || 0).toFixed(2)}`,
+    `连贯性：${Number(score.continuity_score || 0).toFixed(2)}`,
+    `人物一致性：${Number(score.character_score || 0).toFixed(2)}`,
+    `世界一致性：${Number(score.world_consistency_score || 0).toFixed(2)}`,
+    `新意：${Number(score.novelty_score || 0).toFixed(2)}`,
+    `情节推进：${Number(score.arc_progress_score || 0).toFixed(2)}`,
     `需重试：${evaluation.should_retry ? "是" : "否"}`,
   ];
   if (evaluation.flags?.length) {
-    lines.push(`Flags：\n- ${evaluation.flags.map((item) => `${item.code} ${item.message}`).join("\n- ")}`);
+    lines.push(`风险标记：\n- ${evaluation.flags.map((item) => `${item.code} ${item.message}`).join("\n- ")}`);
   }
   return lines.join("\n");
 }
@@ -261,11 +289,11 @@ function formatModelSummary(request) {
   if (!request) return "-";
   const config = state.runtimeConfig || {};
   const lines = [
-    `Style：${request.style_model || config.style_model || "-"}`,
-    `Plot：${request.plot_model || config.plot_model || "-"}`,
-    `Draft：${request.draft_model || config.draft_model || "-"}`,
-    `Quality：${request.quality_model || config.quality_model || "-"}`,
-    `LightRAG：${request.lightrag_model_name || config.lightrag_model_name || "-"}`,
+    `风格分析模型：${request.style_model || config.style_model || "-"}`,
+    `情节规划模型：${request.plot_model || config.plot_model || "-"}`,
+    `正文生成模型：${request.draft_model || config.draft_model || "-"}`,
+    `质检评估模型：${request.quality_model || config.quality_model || "-"}`,
+    `原著索引模型：${request.lightrag_model_name || config.lightrag_model_name || "-"}`,
   ];
   return lines.join("\n");
 }
@@ -407,7 +435,7 @@ function renderRunList(runs) {
       const activeClass = run.id === state.activeRunId ? " active" : "";
       return `
         <article class="run-item${activeClass}" data-run-id="${escapeHtml(run.id)}">
-          <span class="label">${escapeHtml(run.status)}</span>
+          <span class="label">${escapeHtml(formatRunStatus(run.status))}</span>
           <strong>${escapeHtml(run.session_name)}</strong>
           <p>${escapeHtml(run.input_filename)}</p>
           <p>${escapeHtml(run.progress?.message || "等待开始")}</p>
@@ -424,7 +452,7 @@ function renderRunList(runs) {
 function renderBenchmarkList(items) {
   state.benchmarkCache = items || [];
   if (!items?.length) {
-    elements.benchmarkList.innerHTML = '<p class="hint">暂无 benchmark 报告。</p>';
+    elements.benchmarkList.innerHTML = '<p class="hint">暂无对照评测报告。</p>';
     elements.benchmarkSummary.textContent = "-";
     state.activeBenchmarkKey = null;
     return;
@@ -437,10 +465,10 @@ function renderBenchmarkList(items) {
           data-dataset="${escapeHtml(item.dataset_name)}"
           data-case="${escapeHtml(item.case_name)}"
         >
-          <span class="label">${escapeHtml(item.winner)}</span>
+          <span class="label">${escapeHtml(formatBenchmarkWinner(item.winner))}</span>
           <strong>${escapeHtml(item.dataset_name)} / ${escapeHtml(item.case_name)}</strong>
-          <p>prefix ${escapeHtml(item.prefix_chapter_count)} -> target ${escapeHtml(item.target_chapter_number)}</p>
-          <p>confidence ${escapeHtml(Number(item.confidence).toFixed(2))}</p>
+          <p>前文 ${escapeHtml(item.prefix_chapter_count)} 章 → 目标第 ${escapeHtml(item.target_chapter_number)} 章</p>
+          <p>置信度 ${escapeHtml(Number(item.confidence).toFixed(2))}</p>
         </article>
       `
     )
@@ -453,27 +481,27 @@ function renderBenchmarkList(items) {
 function renderBenchmarkDetail(detail) {
   elements.benchmarkSummary.textContent = [
     `数据集：${detail.dataset_name}`,
-    `Case：${detail.case_name}`,
-    `Winner：${detail.winner}`,
-    `Confidence：${Number(detail.confidence).toFixed(2)}`,
-    `System Score：${Number(detail.system_score).toFixed(2)}`,
-    `Baseline Score：${Number(detail.baseline_score).toFixed(2)}`,
-    `System Summary：${detail.system_summary || "-"}`,
-    `Baseline Summary：${detail.baseline_summary || "-"}`,
-    `System Strengths：${detail.system_strengths?.length ? detail.system_strengths.join("；") : "-"}`,
-    `Baseline Strengths：${detail.baseline_strengths?.length ? detail.baseline_strengths.join("；") : "-"}`,
-    `System Weaknesses：${detail.system_weaknesses?.length ? detail.system_weaknesses.join("；") : "-"}`,
-    `Baseline Weaknesses：${detail.baseline_weaknesses?.length ? detail.baseline_weaknesses.join("；") : "-"}`,
-    `System Elapsed：${formatDuration(detail.system_elapsed_seconds)}`,
-    `Baseline Elapsed：${formatDuration(detail.baseline_elapsed_seconds)}`,
-    `Total Cost：${formatCurrency(detail.total_cost_usd)}`,
-    `Total Tokens：${formatNumber(detail.total_tokens)}`,
-    `System Output：${detail.system_output_path}`,
-    `Baseline Output：${detail.baseline_output_path}`,
-    `Reference：${detail.reference_path}`,
-    `Report JSON：${detail.report_json_path}`,
-    `Report Markdown：${detail.report_markdown_path}`,
-    `Reasoning：`,
+    `案例：${detail.case_name}`,
+    `结果：${formatBenchmarkWinner(detail.winner)}`,
+    `置信度：${Number(detail.confidence).toFixed(2)}`,
+    `系统版分数：${Number(detail.system_score).toFixed(2)}`,
+    `基线版分数：${Number(detail.baseline_score).toFixed(2)}`,
+    `系统版摘要：${detail.system_summary || "-"}`,
+    `基线版摘要：${detail.baseline_summary || "-"}`,
+    `系统版优点：${detail.system_strengths?.length ? detail.system_strengths.join("；") : "-"}`,
+    `基线版优点：${detail.baseline_strengths?.length ? detail.baseline_strengths.join("；") : "-"}`,
+    `系统版不足：${detail.system_weaknesses?.length ? detail.system_weaknesses.join("；") : "-"}`,
+    `基线版不足：${detail.baseline_weaknesses?.length ? detail.baseline_weaknesses.join("；") : "-"}`,
+    `系统版耗时：${formatDuration(detail.system_elapsed_seconds)}`,
+    `基线版耗时：${formatDuration(detail.baseline_elapsed_seconds)}`,
+    `总成本：${formatCurrency(detail.total_cost_usd)}`,
+    `总 Token 数：${formatNumber(detail.total_tokens)}`,
+    `系统版输出：${detail.system_output_path}`,
+    `基线版输出：${detail.baseline_output_path}`,
+    `参考正文：${detail.reference_path}`,
+    `JSON 报告：${detail.report_json_path}`,
+    `Markdown 报告：${detail.report_markdown_path}`,
+    `评审理由：`,
     ...(detail.pairwise_reasoning?.length ? detail.pairwise_reasoning : ["-"]),
   ].join("\n");
 }
@@ -495,17 +523,17 @@ function renderLogs(lines) {
 function renderArtifacts(paths) {
   elements.artifactList.innerHTML = "";
   const mapping = [
-    ["run_manifest.json", paths?.manifest],
-    ["stage1_snapshot.json", paths?.stage1_snapshot],
-    ["world_model.json", paths?.world_model],
-    ["lorebook.json", paths?.lorebook],
-    ["selected_references.json", paths?.selected_references],
-    ["latest skeleton", paths?.latest_skeleton],
-    ["latest chapter brief", paths?.latest_chapter_brief],
-    ["latest chapter evaluation", paths?.latest_chapter_evaluation],
-    ["latest draft", paths?.latest_draft],
-    ["latest output", paths?.latest_output],
-    ["story_graph.mmd", paths?.story_graph],
+    ["运行清单", paths?.manifest],
+    ["第一阶段快照", paths?.stage1_snapshot],
+    ["世界模型", paths?.world_model],
+    ["世界设定参考", paths?.lorebook],
+    ["已选参考片段", paths?.selected_references],
+    ["最新提纲草稿", paths?.latest_skeleton],
+    ["最新章节目标", paths?.latest_chapter_brief],
+    ["最新章节评测", paths?.latest_chapter_evaluation],
+    ["最新续写候选", paths?.latest_draft],
+    ["最新输出正文", paths?.latest_output],
+    ["故事图谱", paths?.story_graph],
   ].filter((item) => item[1]);
 
   if (!mapping.length) {
@@ -535,7 +563,7 @@ function renderCandidatePaths(element, paths, emptyLabel) {
     .map(
       (value, index) => `
         <div class="path-line">
-          <strong>Candidate ${index + 1}</strong>
+          <strong>候选 ${index + 1}</strong>
           <code>${escapeHtml(value)}</code>
         </div>
       `
@@ -565,7 +593,7 @@ function renderReferences(references) {
 function renderArcList(arcs) {
   elements.arcList.innerHTML = "";
   if (!arcs?.length) {
-    elements.arcList.innerHTML = '<div class="chapter-item"><strong>当前没有 arc 规划</strong></div>';
+    elements.arcList.innerHTML = '<div class="chapter-item"><strong>当前没有故事走向规划</strong></div>';
     return;
   }
   elements.arcList.innerHTML = arcs
@@ -615,7 +643,7 @@ function renderChapterList(chapters) {
     .map(
       (chapter) => `
         <div class="chapter-item">
-          <strong>第 ${escapeHtml(chapter.chapter_number)} 章 · ${escapeHtml(chapter.status)}</strong>
+          <strong>第 ${escapeHtml(chapter.chapter_number)} 章 · ${escapeHtml(formatRunStatus(chapter.status))}</strong>
           <div class="chapter-meta">
             <span>耗时 ${escapeHtml(formatDuration(chapter.elapsed_seconds))}</span>
             <span>质检 ${escapeHtml(formatScore(chapter.quality_score, chapter.quality_verdict))}</span>
@@ -634,7 +662,7 @@ function renderRun(run) {
 
   elements.runId.textContent = run.id;
   elements.runSession.textContent = run.session_name;
-  elements.runStatus.textContent = run.status;
+  elements.runStatus.textContent = formatRunStatus(run.status);
   elements.runStatus.className = `status-${run.status}`;
 
   const percent = Number(run.progress?.percent || 0);
@@ -671,8 +699,8 @@ function renderRun(run) {
   elements.outputPreview.textContent = run.latest_output_preview || "-";
 
   renderArtifacts(run.artifact_paths);
-  renderCandidatePaths(elements.skeletonCandidateList, run.latest_skeleton_candidate_paths, "暂无骨架候选");
-  renderCandidatePaths(elements.draftCandidateList, run.latest_draft_candidate_paths, "暂无正文候选");
+  renderCandidatePaths(elements.skeletonCandidateList, run.latest_skeleton_candidate_paths, "暂无提纲草稿");
+  renderCandidatePaths(elements.draftCandidateList, run.latest_draft_candidate_paths, "暂无续写候选");
   renderReferences(run.selected_references);
   renderArcList(run.arc_outlines);
   renderThreads(run.unresolved_threads);

@@ -1743,6 +1743,30 @@ pre {
   padding: 0 20px;
 }
 
+/* ── Empty State Flow ── */
+.empty-state-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.empty-state-flow-step {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.empty-state-flow-arrow {
+  color: var(--muted);
+  font-size: 1rem;
+}
+
 /* ── How It Works Section ── */
 .howto-strip {
   display: grid;
