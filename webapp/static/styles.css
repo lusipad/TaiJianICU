@@ -73,7 +73,7 @@ a {
 .landing-shell {
   max-width: 1560px;
   margin: 0 auto;
-  padding: 28px 20px 48px;
+  padding: 28px 20px 72px;
 }
 
 .landing-topbar {
@@ -261,7 +261,7 @@ a {
 .hero-visual-frame img {
   display: block;
   width: 100%;
-  aspect-ratio: 1.34 / 1;
+  aspect-ratio: 1.2 / 1;
   object-fit: cover;
   object-position: top center;
 }
@@ -307,8 +307,8 @@ a {
   gap: 8px;
   padding: 22px;
   border-radius: 28px;
-  border: 1px solid rgba(22, 18, 15, 0.08);
-  background: rgba(249, 242, 234, 0.72);
+  border: 1px solid rgba(22, 18, 15, 0.14);
+  background: rgba(249, 242, 234, 0.82);
   box-shadow: var(--shadow-md);
 }
 
@@ -318,17 +318,17 @@ a {
 }
 
 .landing-section {
-  margin-top: 28px;
+  margin-top: 48px;
 }
 
 .landing-product {
-  margin-top: 28px;
+  margin-top: 48px;
 }
 
 .landing-section-head {
   display: grid;
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .landing-section-head h2 {
