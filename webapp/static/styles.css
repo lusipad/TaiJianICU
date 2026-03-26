@@ -1562,6 +1562,125 @@ pre {
   }
 }
 
+/* ── Onboarding Modal ── */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(22, 18, 15, 0.48);
+  backdrop-filter: blur(6px);
+  padding: 20px;
+}
+
+.onboarding-panel {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 36px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.3), transparent 34%),
+    rgba(251, 247, 240, 0.96);
+  backdrop-filter: blur(24px);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.onboarding-step {
+  padding: 28px 28px 0;
+}
+
+.onboarding-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1.6 / 1;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+
+.onboarding-icon-wrap {
+  width: 88px;
+  height: 88px;
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.onboarding-step-num {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.onboarding-title {
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 3vw, 1.8rem);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+
+.onboarding-body {
+  margin: 0 0 8px;
+  line-height: 1.75;
+  color: var(--ink);
+}
+
+.onboarding-note {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.onboarding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 28px 24px;
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+  background: rgba(255,255,255,0.2);
+}
+
+.onboarding-skip-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.onboarding-nav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.onboarding-nav .utility-button {
+  min-height: 40px;
+  padding: 0 16px;
+}
+
+.onboarding-nav button:last-child {
+  min-height: 40px;
+  padding: 0 20px;
+}
+
 /* ── How It Works Section ── */
 .howto-strip {
   display: grid;

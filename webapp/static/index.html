@@ -8,6 +8,55 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body class="studio-body">
+    <!-- Onboarding Modal -->
+    <div id="onboarding-modal" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+      <div class="onboarding-panel">
+        <div class="onboarding-steps">
+
+          <div class="onboarding-step" data-step="1">
+            <img src="/static/studio-overview.png" alt="TaiJianKiller Studio 界面" class="onboarding-img" />
+            <p class="onboarding-step-num">1 / 3</p>
+            <h2 id="onboarding-title" class="onboarding-title">这是什么？</h2>
+            <p class="onboarding-body">TaiJianKiller 是一个 AI 续写工具。上传你的小说原著，它会先读懂风格和故事，再生成续写章节，还会给你一份质量对比报告。</p>
+          </div>
+
+          <div class="onboarding-step hidden" data-step="2">
+            <div class="onboarding-icon-wrap">
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <rect x="12" y="8" width="40" height="48" rx="6" fill="rgba(152,65,31,0.1)" stroke="rgba(152,65,31,0.35)" stroke-width="2"/>
+                <path d="M22 26h20M22 34h14" stroke="rgba(152,65,31,0.5)" stroke-width="2" stroke-linecap="round"/>
+                <path d="M36 8v10h10" fill="none" stroke="rgba(152,65,31,0.35)" stroke-width="2" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <p class="onboarding-step-num">2 / 3</p>
+            <h2 class="onboarding-title">你需要准备什么？</h2>
+            <p class="onboarding-body">一个 <strong>.txt 格式的小说文本文件</strong>就够了。支持 UTF-8、GBK、GB18030 编码，上传后自动处理。其他所有配置都有默认值，不需要手动填写。</p>
+            <p class="onboarding-note">没有自己的文本？可以先用内置原创样例试跑，体验完整流程。</p>
+          </div>
+
+          <div class="onboarding-step hidden" data-step="3">
+            <img src="/static/studio-overview.png" alt="点击一键试跑按钮示意" class="onboarding-img" />
+            <p class="onboarding-step-num">3 / 3</p>
+            <h2 class="onboarding-title">怎么开始？</h2>
+            <p class="onboarding-body">点击左侧表单顶部的<strong>「快速开始 · 一键试跑原创样例」</strong>按钮，即可体验完整续写流程，不需要上传任何文件。</p>
+            <p class="onboarding-note">也可以直接上传你自己的 .txt 文件，然后点「开始分析并续写」。</p>
+          </div>
+
+        </div>
+
+        <div class="onboarding-footer">
+          <label class="onboarding-skip-check">
+            <input type="checkbox" id="onboarding-no-show" />
+            <span>不再显示</span>
+          </label>
+          <div class="onboarding-nav">
+            <button type="button" id="onboarding-skip" class="utility-button">跳过</button>
+            <button type="button" id="onboarding-next">下一步</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="studio-shell">
       <header class="studio-topbar">
         <div class="studio-topbar-copy">
