@@ -26,6 +26,14 @@
   --font-display: "Noto Serif SC", "Songti SC", serif;
   --font-body: "DM Sans", "Microsoft YaHei UI", sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", monospace;
+  --text-2xs: 11px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --title-sm: 24px;
 }
 
 * {
@@ -34,6 +42,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 html,
@@ -47,6 +56,7 @@ body {
   background: var(--bg-deep);
   color: var(--text-primary);
   font-family: var(--font-body);
+  font-size: var(--text-md);
   line-height: 1.6;
   overflow-x: hidden;
 }
@@ -79,7 +89,7 @@ button {
   padding: 12px 20px;
   background: linear-gradient(135deg, var(--accent), #9e6c4d);
   color: #fff;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 12px 28px rgba(200, 149, 108, 0.18);
@@ -130,7 +140,7 @@ button:disabled {
 .form-subgroup-label,
 .showcase-label {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -152,7 +162,7 @@ pre {
   word-break: break-word;
   line-height: 1.8;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-secondary);
 }
 
