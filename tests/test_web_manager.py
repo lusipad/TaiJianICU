@@ -15,7 +15,7 @@ from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
 from core.models.world_model import WorldModel
 from webapp.manager import WebRunManager
-from webapp.models import WebRunDetail, WebRunProgress, WebRunRequest
+from webapp.models import WebRunDetail, WebRunProgress, WebRunRequest, WebRuntimeApiOverride
 
 
 def build_settings(tmp_path: Path) -> AppSettings:
@@ -273,13 +273,23 @@ def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path
     )
 
     runtime = manager.get_runtime_config()
-    run_settings = manager._settings_for_request(request)
+    run_settings = manager._settings_for_request(
+        request,
+        WebRuntimeApiOverride(
+            api_base_url="https://openrouter.ai/api/v1",
+            api_key="sk-demo",
+        ),
+    )
 
     assert "openai/gpt-4.1-mini" in runtime.model_options
+    assert runtime.api_base_url == "https://api.deepseek.com"
     assert run_settings.models.style_model == "openai/gpt-4.1-mini"
     assert run_settings.models.plot_model == "openai/gpt-4.1-mini"
     assert run_settings.models.lightrag_model_name == "openai/gpt-4.1-mini"
+    assert run_settings.runtime_api_base_url == "https://openrouter.ai/api/v1"
+    assert run_settings.runtime_api_key == "sk-demo"
     assert settings.models.style_model == "deepseek/deepseek-chat"
+    assert settings.runtime_api_key is None
 
 
 def test_web_run_manager_lists_examples(tmp_path: Path) -> None:
@@ -304,8 +314,13 @@ def test_web_run_manager_reuses_background_event_loop(tmp_path: Path) -> None:
     loop_ids: list[int] = []
     finished = threading.Event()
 
-    async def fake_run_pipeline(self: WebRunManager, run_id: str) -> None:
+    async def fake_run_pipeline(
+        self: WebRunManager,
+        run_id: str,
+        run_settings: AppSettings | None = None,
+    ) -> None:
         loop_ids.append(id(asyncio.get_running_loop()))
+        assert run_settings is not None
         current = self.get_run(run_id)
         self._update_run(
             run_id,
@@ -336,3 +351,34 @@ def test_web_run_manager_reuses_background_event_loop(tmp_path: Path) -> None:
     assert finished.wait(timeout=2)
     assert len(loop_ids) == 2
     assert len(set(loop_ids)) == 1
+
+
+def test_web_run_manager_does_not_persist_runtime_api_override(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    input_path = settings.web_uploads_dir / "demo.txt"
+    input_path.write_text("第一章 测试", encoding="utf-8")
+
+    captured: dict[str, AppSettings] = {}
+
+    def fake_schedule(run_id: str, run_settings: AppSettings | None = None) -> None:
+        captured["run_id"] = run_id
+        captured["settings"] = run_settings
+
+    manager._schedule_run = fake_schedule  # type: ignore[method-assign]
+
+    summary = manager.start_run(
+        input_path=input_path,
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        runtime_api_override=WebRuntimeApiOverride(
+            api_base_url="https://openrouter.ai/api/v1",
+            api_key="sk-demo",
+        ),
+    )
+
+    persisted = (settings.web_runs_dir / f"{summary.id}.json").read_text(encoding="utf-8")
+
+    assert "sk-demo" not in persisted
+    assert "openrouter.ai" not in persisted
+    assert captured["settings"].runtime_api_key == "sk-demo"

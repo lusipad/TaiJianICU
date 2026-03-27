@@ -10,6 +10,7 @@ from webapp.app import create_app
 from webapp.models import (
     WebBenchmarkDetail,
     WebExampleSummary,
+    WebRuntimeApiOverride,
     WebRunDetail,
     WebRunProgress,
     WebRunRequest,
@@ -36,6 +37,7 @@ class FakeRunManager:
         )
         self.start_calls = 0
         self.last_request = None
+        self.last_runtime_api_override = None
 
     def list_runs(self):
         return [WebRunSummary.model_validate(self.detail.model_dump(mode="json"))]
@@ -47,6 +49,7 @@ class FakeRunManager:
             "draft_model": "deepseek/deepseek-chat",
             "quality_model": "deepseek/deepseek-chat",
             "lightrag_model_name": "deepseek-chat",
+            "api_base_url": "https://api.deepseek.com",
             "model_options": [
                 "deepseek/deepseek-chat",
                 "deepseek/deepseek-reasoner",
@@ -116,15 +119,30 @@ class FakeRunManager:
     def save_uploaded_text(self, filename: str, content: bytes):
         return Path("demo.txt"), "demo"
 
-    def start_run(self, *, input_path: Path, input_filename: str, request: WebRunRequest):
+    def start_run(
+        self,
+        *,
+        input_path: Path,
+        input_filename: str,
+        request: WebRunRequest,
+        runtime_api_override: WebRuntimeApiOverride | None = None,
+    ):
         self.start_calls += 1
         self.last_request = request
+        self.last_runtime_api_override = runtime_api_override
         return WebRunSummary.model_validate(self.detail.model_dump(mode="json"))
 
-    def start_example_run(self, *, example_id: str, request: WebRunRequest):
+    def start_example_run(
+        self,
+        *,
+        example_id: str,
+        request: WebRunRequest,
+        runtime_api_override: WebRuntimeApiOverride | None = None,
+    ):
         assert example_id == "sample_novel"
         self.start_calls += 1
         self.last_request = request
+        self.last_runtime_api_override = runtime_api_override
         return WebRunSummary.model_validate(self.detail.model_dump(mode="json"))
 
 
@@ -216,6 +234,8 @@ def test_create_run_accepts_txt_upload() -> None:
             "draft_model": "deepseek/deepseek-chat",
             "quality_model": "deepseek/deepseek-chat",
             "lightrag_model_name": "openai/gpt-4.1-mini",
+            "api_base_url": "https://openrouter.ai/api/v1",
+            "api_key": "sk-demo",
         },
     )
 
@@ -233,6 +253,10 @@ def test_create_run_accepts_txt_upload() -> None:
     assert manager.last_request.style_model == "openai/gpt-4.1-mini"
     assert manager.last_request.plot_model == "openai/gpt-4.1-mini"
     assert manager.last_request.lightrag_model_name == "openai/gpt-4.1-mini"
+    assert manager.last_runtime_api_override == WebRuntimeApiOverride(
+        api_base_url="https://openrouter.ai/api/v1",
+        api_key="sk-demo",
+    )
 
 
 def test_get_runtime_config_endpoint() -> None:
@@ -243,6 +267,7 @@ def test_get_runtime_config_endpoint() -> None:
 
     assert response.status_code == 200
     assert response.json()["style_model"] == "deepseek/deepseek-chat"
+    assert response.json()["api_base_url"] == "https://api.deepseek.com"
     assert "openai/gpt-4.1-mini" in response.json()["model_options"]
 
 
@@ -267,6 +292,8 @@ def test_create_example_run_endpoint() -> None:
             "chapters": "1",
             "start_chapter": "1",
             "draft_model": "deepseek/deepseek-chat",
+            "api_base_url": "https://openrouter.ai/api/v1",
+            "api_key": "sk-demo",
         },
     )
 
@@ -274,6 +301,28 @@ def test_create_example_run_endpoint() -> None:
     assert response.json()["id"] == "run-1"
     assert manager.start_calls == 1
     assert manager.last_request.draft_model == "deepseek/deepseek-chat"
+    assert manager.last_runtime_api_override == WebRuntimeApiOverride(
+        api_base_url="https://openrouter.ai/api/v1",
+        api_key="sk-demo",
+    )
+
+
+def test_create_run_rejects_invalid_api_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/runs",
+        files={"file": ("demo.txt", "第一章 测试".encode("utf-8"), "text/plain")},
+        data={
+            "chapters": "1",
+            "start_chapter": "1",
+            "api_base_url": "not-a-url",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "endpoint" in response.json()["detail"]
 
 
 def test_list_benchmarks_endpoint() -> None:

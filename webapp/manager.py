@@ -29,6 +29,7 @@ from webapp.models import (
     WebBenchmarkSummary,
     WebChapterSummary,
     WebRunArtifactPaths,
+    WebRuntimeApiOverride,
     WebRunDetail,
     WebRunMetrics,
     WebRunProgress,
@@ -95,9 +96,9 @@ class WebRunManager:
             self._async_thread = thread
             return loop
 
-    def _schedule_run(self, run_id: str) -> None:
+    def _schedule_run(self, run_id: str, run_settings: AppSettings | None = None) -> None:
         loop = self._ensure_async_runtime()
-        future = asyncio.run_coroutine_threadsafe(self._run_pipeline_async(run_id), loop)
+        future = asyncio.run_coroutine_threadsafe(self._run_pipeline_async(run_id, run_settings), loop)
         with self._runtime_lock:
             self._async_futures[run_id] = future
 
@@ -237,6 +238,7 @@ class WebRunManager:
             draft_model=self.settings.models.draft_model,
             quality_model=self.settings.models.quality_model,
             lightrag_model_name=self.settings.models.lightrag_model_name,
+            api_base_url=self.settings.models.deepseek_base_url or None,
             model_options=options,
         )
 
@@ -260,6 +262,7 @@ class WebRunManager:
         *,
         example_id: str,
         request: WebRunRequest,
+        runtime_api_override: WebRuntimeApiOverride | None = None,
     ) -> WebRunSummary:
         example_map = {
             "sample_novel": self.settings.input_dir / "sample_novel.txt",
@@ -282,6 +285,7 @@ class WebRunManager:
             input_path=saved_path,
             input_filename=source_path.name,
             request=request_payload,
+            runtime_api_override=runtime_api_override,
         )
 
     @staticmethod
@@ -290,7 +294,11 @@ class WebRunManager:
             return "先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。"
         return None
 
-    def _settings_for_request(self, request: WebRunRequest) -> AppSettings:
+    def _settings_for_request(
+        self,
+        request: WebRunRequest,
+        runtime_api_override: WebRuntimeApiOverride | None = None,
+    ) -> AppSettings:
         run_settings = self.settings.model_copy(deep=True)
         model_updates = {
             "style_model": request.style_model,
@@ -302,6 +310,11 @@ class WebRunManager:
         for field_name, field_value in model_updates.items():
             if field_value and field_value.strip():
                 setattr(run_settings.models, field_name, field_value.strip())
+        if runtime_api_override is not None:
+            if runtime_api_override.api_base_url and runtime_api_override.api_base_url.strip():
+                run_settings.runtime_api_base_url = runtime_api_override.api_base_url.strip()
+            if runtime_api_override.api_key and runtime_api_override.api_key.strip():
+                run_settings.runtime_api_key = runtime_api_override.api_key.strip()
         return run_settings
 
     def start_run(
@@ -310,6 +323,7 @@ class WebRunManager:
         input_path: Path,
         input_filename: str,
         request: WebRunRequest,
+        runtime_api_override: WebRuntimeApiOverride | None = None,
     ) -> WebRunSummary:
         run_id = uuid4().hex
         created_at = datetime.now(timezone.utc)
@@ -330,8 +344,9 @@ class WebRunManager:
             self._runs[run_id] = run
             self._persist(run)
 
+        run_settings = self._settings_for_request(request, runtime_api_override)
         try:
-            self._schedule_run(run_id)
+            self._schedule_run(run_id, run_settings)
         except Exception as exc:
             self._update_run(
                 run_id,
@@ -570,9 +585,13 @@ class WebRunManager:
             chapter_summaries=chapter_summaries,
         )
 
-    async def _run_pipeline_async(self, run_id: str) -> None:
+    async def _run_pipeline_async(
+        self,
+        run_id: str,
+        run_settings: AppSettings | None = None,
+    ) -> None:
         current = self.get_run(run_id)
-        orchestrator = TaiJianOrchestrator(self._settings_for_request(current.request))
+        orchestrator = TaiJianOrchestrator(run_settings or self._settings_for_request(current.request))
 
         try:
             self._append_log(run_id, "任务开始执行")

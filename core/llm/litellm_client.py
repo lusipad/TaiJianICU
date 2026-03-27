@@ -79,13 +79,31 @@ class LiteLLMService:
         self._structured_client = instructor.from_litellm(acompletion)
         self._records: list[LLMCallRecord] = []
 
-    def _provider_kwargs(self, model: str) -> dict[str, Any]:
+    def _default_provider_kwargs(self, model: str) -> dict[str, Any]:
         if model.startswith("deepseek/") and self.settings.deepseek_api_key:
             return {
                 "api_key": self.settings.deepseek_api_key,
                 "base_url": self.settings.models.deepseek_base_url,
             }
+        if model.startswith("openai/") and self.settings.openai_api_key:
+            return {
+                "api_key": self.settings.openai_api_key,
+            }
         return {}
+
+    def _provider_kwargs(self, model: str) -> dict[str, Any]:
+        default_kwargs = self._default_provider_kwargs(model)
+        runtime_base_url = (self.settings.runtime_api_base_url or "").strip()
+        runtime_api_key = (self.settings.runtime_api_key or "").strip()
+        if not runtime_base_url and not runtime_api_key:
+            return default_kwargs
+
+        runtime_kwargs = dict(default_kwargs)
+        if runtime_api_key:
+            runtime_kwargs["api_key"] = runtime_api_key
+        if runtime_base_url:
+            runtime_kwargs["base_url"] = runtime_base_url
+        return runtime_kwargs
 
     def _request_kwargs(self, model: str) -> dict[str, Any]:
         return {

@@ -16,6 +16,7 @@ from webapp.models import (
     WebExampleSummary,
     WebBenchmarkDetail,
     WebBenchmarkSummary,
+    WebRuntimeApiOverride,
     WebRuntimeConfig,
     WebRunDetail,
     WebRunRequest,
@@ -52,6 +53,23 @@ def _is_authorized(request: Request, settings: AppSettings) -> bool:
     return secrets.compare_digest(username, settings.web_username) and secrets.compare_digest(
         password,
         settings.web_password,
+    )
+
+
+def _build_runtime_api_override(
+    *,
+    api_base_url: str,
+    api_key: str,
+) -> WebRuntimeApiOverride | None:
+    normalized_base_url = api_base_url.strip()
+    normalized_api_key = api_key.strip()
+    if normalized_base_url and not normalized_base_url.startswith(("http://", "https://")):
+        raise ApiError("API endpoint 必须以 http:// 或 https:// 开头。", 422, "Invalid Input")
+    if not normalized_base_url and not normalized_api_key:
+        return None
+    return WebRuntimeApiOverride(
+        api_base_url=normalized_base_url or None,
+        api_key=normalized_api_key or None,
     )
 
 
@@ -132,6 +150,8 @@ def create_app(
         draft_model: str = Form(""),
         quality_model: str = Form(""),
         lightrag_model_name: str = Form(""),
+        api_base_url: str = Form(""),
+        api_key: str = Form(""),
         use_existing_index: bool = Form(False),
         overwrite: bool = Form(False),
     ) -> WebRunSummary:
@@ -144,6 +164,10 @@ def create_app(
             raise ApiError("上传文件为空。", 422, "Invalid Input")
 
         input_path, suggested_name = app.state.run_manager.save_uploaded_text(file.filename, content)
+        runtime_api_override = _build_runtime_api_override(
+            api_base_url=api_base_url,
+            api_key=api_key,
+        )
         request = WebRunRequest(
             session_name=session_name.strip() or None,
             chapters=chapters,
@@ -167,6 +191,7 @@ def create_app(
             input_path=input_path,
             input_filename=file.filename,
             request=request,
+            runtime_api_override=runtime_api_override,
         )
 
     @app.post("/api/examples/{example_id}/runs", response_model=WebRunSummary, status_code=201)
@@ -187,9 +212,15 @@ def create_app(
         draft_model: str = Form(""),
         quality_model: str = Form(""),
         lightrag_model_name: str = Form(""),
+        api_base_url: str = Form(""),
+        api_key: str = Form(""),
         use_existing_index: bool = Form(False),
         overwrite: bool = Form(False),
     ) -> WebRunSummary:
+        runtime_api_override = _build_runtime_api_override(
+            api_base_url=api_base_url,
+            api_key=api_key,
+        )
         request = WebRunRequest(
             session_name=session_name.strip() or None,
             chapters=chapters,
@@ -209,7 +240,11 @@ def create_app(
             use_existing_index=use_existing_index,
             overwrite=overwrite,
         )
-        return app.state.run_manager.start_example_run(example_id=example_id, request=request)
+        return app.state.run_manager.start_example_run(
+            example_id=example_id,
+            request=request,
+            runtime_api_override=runtime_api_override,
+        )
 
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:

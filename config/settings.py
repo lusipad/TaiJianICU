@@ -58,6 +58,8 @@ class AppSettings(BaseSettings):
 
     deepseek_api_key: str | None = Field(default=None, alias="DEEPSEEK_API_KEY")
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
+    runtime_api_base_url: str | None = None
+    runtime_api_key: str | None = None
 
     work_dir: Path = ROOT_DIR / "data"
     input_dir: Path = ROOT_DIR / "data" / "input"

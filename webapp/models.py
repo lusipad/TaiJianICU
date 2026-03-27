@@ -31,6 +31,11 @@ class WebRunRequest(BaseModel):
     overwrite: bool = False
 
 
+class WebRuntimeApiOverride(BaseModel):
+    api_base_url: str | None = None
+    api_key: str | None = None
+
+
 class WebRunProgress(BaseModel):
     total_steps: int = 0
     completed_steps: int = 0
@@ -138,6 +143,7 @@ class WebRuntimeConfig(BaseModel):
     draft_model: str
     quality_model: str
     lightrag_model_name: str
+    api_base_url: str | None = None
     model_options: list[str] = Field(default_factory=list)
 
 

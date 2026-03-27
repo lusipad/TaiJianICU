@@ -233,6 +233,41 @@
                 <datalist id="model-options"></datalist>
 
                 <div class="form-subgroup">
+                  <p class="form-subgroup-label">API 覆盖</p>
+                  <div class="form-inline-actions">
+                    <button id="clear-api-config-button" class="utility-button" type="button">清空当前 API 覆盖</button>
+                    <span id="runtime-api-hint" class="field-note">
+                      留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。
+                    </span>
+                  </div>
+                  <div class="field-grid model-grid">
+                    <label class="field">
+                      <span>API Endpoint</span>
+                      <input
+                        id="api-base-url-input"
+                        name="api_base_url"
+                        type="url"
+                        inputmode="url"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="留空则使用部署默认 endpoint"
+                      />
+                    </label>
+                    <label class="field">
+                      <span>API Key</span>
+                      <input
+                        id="api-key-input"
+                        name="api_key"
+                        type="password"
+                        autocomplete="off"
+                        spellcheck="false"
+                        placeholder="留空则使用部署默认 Key"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-subgroup">
                   <p class="form-subgroup-label">目标与执行</p>
                   <label class="field">
                     <span>章节目标提示</span>

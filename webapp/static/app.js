@@ -67,7 +67,9 @@ const elements = {
   emptyExampleButton: document.getElementById("empty-example-button"),
   exampleDescription: document.getElementById("example-description"),
   resetModelsButton: document.getElementById("reset-models-button"),
+  clearApiConfigButton: document.getElementById("clear-api-config-button"),
   runtimeModelHint: document.getElementById("runtime-model-hint"),
+  runtimeApiHint: document.getElementById("runtime-api-hint"),
   runList: document.getElementById("run-list"),
   benchmarkList: document.getElementById("benchmark-list"),
   benchmarkSummary: document.getElementById("benchmark-summary"),
@@ -112,6 +114,8 @@ const elements = {
   draftModelInput: document.getElementById("draft-model-input"),
   qualityModelInput: document.getElementById("quality-model-input"),
   lightragModelInput: document.getElementById("lightrag-model-input"),
+  apiBaseUrlInput: document.getElementById("api-base-url-input"),
+  apiKeyInput: document.getElementById("api-key-input"),
   modelOptions: document.getElementById("model-options"),
   workspaceTabs: Array.from(document.querySelectorAll(".workspace-tab")),
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
@@ -318,11 +322,24 @@ function applyRuntimeConfig(config) {
   if (elements.runtimeModelHint) {
     elements.runtimeModelHint.textContent = `默认：规划 ${config.plot_model} / 正文 ${config.draft_model} / 质检 ${config.quality_model}`;
   }
+  if (elements.apiBaseUrlInput) {
+    elements.apiBaseUrlInput.placeholder = config.api_base_url || "留空则使用部署默认 endpoint";
+  }
+  if (elements.runtimeApiHint) {
+    elements.runtimeApiHint.textContent = config.api_base_url
+      ? `默认 endpoint：${config.api_base_url}。留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。`
+      : "留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。";
+  }
 }
 
 function resetModelInputs() {
   if (!state.runtimeConfig) return;
   applyRuntimeConfig(state.runtimeConfig);
+}
+
+function clearApiConfigInputs() {
+  if (elements.apiBaseUrlInput) elements.apiBaseUrlInput.value = "";
+  if (elements.apiKeyInput) elements.apiKeyInput.value = "";
 }
 
 function collectRunFormData() {
@@ -334,6 +351,11 @@ function collectRunFormData() {
     "skeleton_candidates",
     "draft_candidates",
   ]) {
+    if (!String(formData.get(key) || "").trim()) {
+      formData.delete(key);
+    }
+  }
+  for (const key of ["api_base_url", "api_key", "session_name", "goal_hint"]) {
     if (!String(formData.get(key) || "").trim()) {
       formData.delete(key);
     }
@@ -844,9 +866,13 @@ window.addEventListener("load", async () => {
     if (elements.resetModelsButton) {
       elements.resetModelsButton.addEventListener("click", resetModelInputs);
     }
+    if (elements.clearApiConfigButton) {
+      elements.clearApiConfigButton.addEventListener("click", clearApiConfigInputs);
+    }
     setWorkspaceTab(state.activeWorkspaceTab);
     setSidebarTab(state.activeSidebarTab);
     await loadRuntimeConfig();
+    clearApiConfigInputs();
     await loadExamples();
     await refreshRuns({ autoSelect: true });
     await refreshBenchmarks();
