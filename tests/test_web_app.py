@@ -10,6 +10,7 @@ from webapp.app import create_app
 from webapp.models import (
     WebBenchmarkDetail,
     WebExampleSummary,
+    WebPublicShowcase,
     WebRuntimeApiOverride,
     WebRunDetail,
     WebRunProgress,
@@ -81,6 +82,22 @@ class FakeRunManager:
                 recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
             )
         ]
+
+    def get_public_showcase(self):
+        return WebPublicShowcase(
+            title="原创悬疑样例 · 公开可展示",
+            source_label="sample_novel · 原著断点",
+            source_excerpt="原著末尾片段",
+            output_label="sample_novel-demo · AI 续写片段",
+            output_excerpt="AI 续写片段",
+            chapter_goal="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
+            evaluation_summary="推进稳定。",
+            continuity_score=0.9,
+            character_score=0.84,
+            world_consistency_score=0.9,
+            novelty_score=0.95,
+            arc_progress_score=0.95,
+        )
 
     def get_benchmark(self, dataset_name: str, case_name: str):
         assert dataset_name == "demo"
@@ -279,6 +296,17 @@ def test_list_examples_endpoint() -> None:
 
     assert response.status_code == 200
     assert response.json()[0]["id"] == "sample_novel"
+
+
+def test_get_public_showcase_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/showcase")
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "原创悬疑样例 · 公开可展示"
+    assert response.json()["source_label"] == "sample_novel · 原著断点"
 
 
 def test_create_example_run_endpoint() -> None:

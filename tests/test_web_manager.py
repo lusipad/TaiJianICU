@@ -10,7 +10,7 @@ from core.benchmarking.runner import BenchmarkReport, CandidateReport, Candidate
 from core.llm.litellm_client import LLMUsageSummary
 from core.models.arc_outline import ArcOutline
 from core.models.chapter_brief import ChapterBrief
-from core.models.evaluation import ChapterEvaluation
+from core.models.evaluation import ChapterEvaluation, EvaluationScore
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
 from core.models.world_model import WorldModel
@@ -303,6 +303,54 @@ def test_web_run_manager_lists_examples(tmp_path: Path) -> None:
 
     assert examples[0].id == "sample_novel"
     assert examples[0].input_filename == "sample_novel.txt"
+
+
+def test_web_run_manager_builds_public_showcase_from_original_sample(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+
+    sample_path = settings.input_dir / "sample_novel.txt"
+    sample_path.parent.mkdir(parents=True, exist_ok=True)
+    sample_path.write_text(
+        "第一章 雨夜追魂\n\n沈照站在义庄门口。\n\n门外雷声炸响。\n\n铺门已经被人一脚踹开。",
+        encoding="utf-8",
+    )
+    output_dir = settings.output_dir / "sample_novel-demo"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "chapter_1.md").write_text(
+        "## 第一章\n\n雨停了。\n\n沈照反手闩上门。\n\n他们终于在旧货栈碰头。",
+        encoding="utf-8",
+    )
+    session_dir = settings.sessions_dir / "sample_novel-demo"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    (session_dir / "chapter_1_evaluation.json").write_text(
+        ChapterEvaluation(
+            chapter_number=1,
+            score=EvaluationScore(
+                continuity_score=0.9,
+                character_score=0.84,
+                world_consistency_score=0.9,
+                novelty_score=0.95,
+                arc_progress_score=0.95,
+            ),
+            summary="推进稳定。",
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    (session_dir / "chapter_1_brief.json").write_text(
+        ChapterBrief(chapter_number=1, chapter_goal="先推进冲突").model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    showcase = manager.get_public_showcase()
+
+    assert showcase is not None
+    assert showcase.title == "原创悬疑样例 · 公开可展示"
+    assert "原著断点" in showcase.source_label
+    assert "AI 续写片段" in showcase.output_label
+    assert showcase.chapter_goal == "先推进冲突"
+    assert showcase.evaluation_summary == "推进稳定。"
+    assert showcase.continuity_score == 0.9
 
 
 def test_web_run_manager_reuses_background_event_loop(tmp_path: Path) -> None:

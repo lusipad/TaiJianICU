@@ -16,6 +16,7 @@ from webapp.models import (
     WebExampleSummary,
     WebBenchmarkDetail,
     WebBenchmarkSummary,
+    WebPublicShowcase,
     WebRuntimeApiOverride,
     WebRuntimeConfig,
     WebRunDetail,
@@ -131,6 +132,10 @@ def create_app(
     @app.get("/api/examples", response_model=list[WebExampleSummary])
     async def list_examples() -> list[WebExampleSummary]:
         return app.state.run_manager.list_examples()
+
+    @app.get("/api/showcase", response_model=WebPublicShowcase | None)
+    async def get_public_showcase() -> WebPublicShowcase | None:
+        return app.state.run_manager.get_public_showcase()
 
     @app.post("/api/runs", response_model=WebRunSummary, status_code=201)
     async def create_run(

@@ -11,21 +11,9 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
-function formatCurrency(value) {
-  return `$${Number(value || 0).toFixed(6)}`;
-}
-
-function formatBenchmarkWinner(value) {
-  switch (value) {
-    case "system":
-      return "系统版胜出";
-    case "baseline":
-      return "基线版胜出";
-    case "tie":
-      return "平局";
-    default:
-      return value || "-";
-  }
+function formatScore(value) {
+  if (value == null || Number.isNaN(Number(value))) return "-";
+  return Number(value).toFixed(2);
 }
 
 async function fetchJson(url) {
@@ -40,58 +28,44 @@ async function fetchJson(url) {
 async function renderBenchmarks() {
   if (!benchmarkContainer) return;
   try {
-    const items = await fetchJson("/api/benchmarks");
-    if (!items.length) {
-      benchmarkContainer.innerHTML = '<p class="hint">当前还没有对照评测报告。</p>';
+    const showcase = await fetchJson("/api/showcase");
+    if (!showcase) {
+      benchmarkContainer.innerHTML = '<p class="hint">当前公开样例还没生成，请先去 Studio 试跑内置原创样例。</p>';
       return;
     }
 
-    const details = await Promise.all(
-      items.slice(0, 2).map((item) =>
-        fetchJson(`/api/benchmarks/${encodeURIComponent(item.dataset_name)}/${encodeURIComponent(item.case_name)}`)
-      )
-    );
-
-    const lead = details[0];
-
     benchmarkContainer.innerHTML = `
-      <section class="bench-shell">
-        <div class="bench-table">
-          <div class="bench-row bench-row-head">
-            <span>案例</span>
-            <span>系统版</span>
-            <span>基线</span>
-            <span>结论</span>
+      <section class="bench-shell proof-shell">
+        <div class="proof-main">
+          <div class="proof-grid">
+            <article class="proof-card">
+              <p class="section-kicker">原著断点</p>
+              <strong>${escapeHtml(showcase.source_label)}</strong>
+              <pre class="showcase-prose">${escapeHtml(showcase.source_excerpt || "-")}</pre>
+            </article>
+            <article class="proof-card proof-card-accent">
+              <p class="section-kicker">AI 续写</p>
+              <strong>${escapeHtml(showcase.output_label)}</strong>
+              <pre class="showcase-prose showcase-prose-ai">${escapeHtml(showcase.output_excerpt || "-")}</pre>
+            </article>
           </div>
-          ${details
-            .map(
-              (detail) => `
-                <div class="bench-row">
-                  <div class="bench-row-label">
-                    <strong>${escapeHtml(detail.case_name)}</strong>
-                    <span>${escapeHtml(detail.system_summary || "-")}</span>
-                  </div>
-                  <div class="bench-row-score winner">${escapeHtml(Number(detail.system_score).toFixed(2))}</div>
-                  <div class="bench-row-score">${escapeHtml(Number(detail.baseline_score).toFixed(2))}</div>
-                  <div class="bench-row-verdict">
-                    <strong>${escapeHtml(formatBenchmarkWinner(detail.winner))}</strong>
-                    <span>置信度 ${escapeHtml(Number(detail.confidence).toFixed(2))}</span>
-                  </div>
-                </div>
-              `
-            )
-            .join("")}
         </div>
-        <aside class="bench-summary-card">
-          <p class="section-kicker">动态摘要</p>
-          <strong>${escapeHtml(lead.dataset_name)} / ${escapeHtml(lead.case_name)}</strong>
-          <p>${escapeHtml(lead.system_summary || "-")}</p>
-          <div class="bench-summary-metrics">
-            <span>系统版 ${escapeHtml(Number(lead.system_score).toFixed(2))}</span>
-            <span>基线 ${escapeHtml(Number(lead.baseline_score).toFixed(2))}</span>
-            <span>成本 ${escapeHtml(formatCurrency(lead.total_cost_usd))}</span>
+        <aside class="bench-summary-card proof-summary-card">
+          <p class="section-kicker">质检结论</p>
+          <strong>${escapeHtml(showcase.title)}</strong>
+          <p>${escapeHtml(showcase.evaluation_summary || "当前没有可展示的质检摘要。")}</p>
+          <div class="bench-summary-metrics proof-summary-metrics">
+            <span>连贯 ${escapeHtml(formatScore(showcase.continuity_score))}</span>
+            <span>人物 ${escapeHtml(formatScore(showcase.character_score))}</span>
+            <span>世界 ${escapeHtml(formatScore(showcase.world_consistency_score))}</span>
+            <span>新意 ${escapeHtml(formatScore(showcase.novelty_score))}</span>
+            <span>推进 ${escapeHtml(formatScore(showcase.arc_progress_score))}</span>
           </div>
-          <p class="bench-footnote">仅展示摘要与分数，不直接展示外部作品正文。</p>
+          <div class="proof-note">
+            <p class="showcase-label">章节目标</p>
+            <p>${escapeHtml(showcase.chapter_goal || "-")}</p>
+          </div>
+          <p class="bench-footnote">全部内容来自仓库内原创样例，可直接公开展示；既给你看文字，也给你看分数。</p>
         </aside>
       </section>
     `;

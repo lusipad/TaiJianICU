@@ -459,6 +459,46 @@
   overflow: hidden;
 }
 
+.proof-shell {
+  align-items: stretch;
+}
+
+.proof-main {
+  padding: 28px;
+  background: var(--bg-card);
+}
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.proof-card {
+  display: grid;
+  gap: 12px;
+  padding: 22px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.proof-card strong,
+.proof-summary-card strong {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+}
+
+.proof-card-accent {
+  border-color: rgba(200, 149, 108, 0.18);
+  background: linear-gradient(180deg, rgba(200, 149, 108, 0.06), transparent 24%), rgba(255, 255, 255, 0.02);
+}
+
+.proof-card .showcase-prose {
+  min-height: 220px;
+  margin-top: 4px;
+}
+
 .bench-table {
   display: grid;
 }
@@ -519,16 +559,35 @@
   background: linear-gradient(180deg, rgba(200, 149, 108, 0.08), transparent 24%), var(--bg-card);
 }
 
+.proof-summary-card {
+  align-content: start;
+}
+
 .bench-summary-card p,
 .bench-summary-card span {
   margin: 0;
   color: var(--text-secondary);
 }
 
+.proof-note {
+  display: grid;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.proof-note p {
+  margin: 0;
+}
+
 .bench-summary-metrics {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.proof-summary-metrics span {
+  font-family: var(--font-mono);
 }
 
 .bench-summary-metrics span {
@@ -617,6 +676,10 @@
   .studio-preview-grid,
   .steps-grid,
   .bench-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .proof-grid {
     grid-template-columns: 1fr;
   }
 

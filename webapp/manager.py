@@ -28,6 +28,7 @@ from webapp.models import (
     WebBenchmarkDetail,
     WebBenchmarkSummary,
     WebChapterSummary,
+    WebPublicShowcase,
     WebRunArtifactPaths,
     WebRuntimeApiOverride,
     WebRunDetail,
@@ -256,6 +257,61 @@ class WebRunManager:
                 )
             )
         return items
+
+    @staticmethod
+    def _excerpt_text(
+        text: str,
+        *,
+        take: str = "head",
+        max_blocks: int = 4,
+        max_chars: int = 680,
+    ) -> str:
+        normalized = re.sub(r"(?m)^#{1,6}\s*", "", text)
+        normalized = re.sub(r"(?m)^\s*---\s*$", "", normalized)
+        blocks = [
+            re.sub(r"\s+", " ", block).strip()
+            for block in re.split(r"\n\s*\n", normalized)
+            if block.strip()
+        ]
+        if not blocks:
+            return "-"
+        selected = blocks[:max_blocks] if take == "head" else blocks[-max_blocks:]
+        excerpt = "\n\n".join(selected)
+        if len(excerpt) <= max_chars:
+            return excerpt
+        trimmed = excerpt[: max_chars - 1].rstrip()
+        if " " in trimmed:
+            trimmed = trimmed.rsplit(" ", 1)[0]
+        return f"{trimmed}…"
+
+    def get_public_showcase(self) -> WebPublicShowcase | None:
+        sample_path = self.settings.input_dir / "sample_novel.txt"
+        output_path = self.settings.output_dir / "sample_novel-demo" / "chapter_1.md"
+        evaluation_path = self.settings.sessions_dir / "sample_novel-demo" / "chapter_1_evaluation.json"
+        brief_path = self.settings.sessions_dir / "sample_novel-demo" / "chapter_1_brief.json"
+        if not sample_path.exists() or not output_path.exists():
+            return None
+
+        source_text = sample_path.read_text(encoding="utf-8")
+        output_text = output_path.read_text(encoding="utf-8")
+        evaluation = self._load_json_model(evaluation_path, ChapterEvaluation)
+        brief = self._load_json_model(brief_path, ChapterBrief)
+        score = evaluation.score if evaluation else None
+
+        return WebPublicShowcase(
+            title="原创悬疑样例 · 公开可展示",
+            source_label=f"{sample_path.stem} · 原著断点",
+            source_excerpt=self._excerpt_text(source_text, take="tail", max_blocks=4, max_chars=620),
+            output_label="sample_novel-demo · AI 续写片段",
+            output_excerpt=self._excerpt_text(output_text, take="head", max_blocks=6, max_chars=920),
+            chapter_goal=brief.chapter_goal if brief else None,
+            evaluation_summary=evaluation.summary if evaluation else None,
+            continuity_score=score.continuity_score if score else None,
+            character_score=score.character_score if score else None,
+            world_consistency_score=score.world_consistency_score if score else None,
+            novelty_score=score.novelty_score if score else None,
+            arc_progress_score=score.arc_progress_score if score else None,
+        )
 
     def start_example_run(
         self,

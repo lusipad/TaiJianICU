@@ -155,6 +155,21 @@ class WebExampleSummary(BaseModel):
     recommended_goal_hint: str | None = None
 
 
+class WebPublicShowcase(BaseModel):
+    title: str
+    source_label: str
+    source_excerpt: str
+    output_label: str
+    output_excerpt: str
+    chapter_goal: str | None = None
+    evaluation_summary: str | None = None
+    continuity_score: float | None = None
+    character_score: float | None = None
+    world_consistency_score: float | None = None
+    novelty_score: float | None = None
+    arc_progress_score: float | None = None
+
+
 class WebBenchmarkSummary(BaseModel):
     dataset_name: str
     case_name: str
