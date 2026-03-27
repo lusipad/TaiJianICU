@@ -663,6 +663,8 @@ function renderRun(run) {
   elements.runId.textContent = run.id;
   elements.runSession.textContent = run.session_name;
   elements.runStatus.textContent = formatRunStatus(run.status);
+  elements.runId.title = run.id;
+  elements.runSession.title = run.session_name;
   elements.runStatus.className = `status-${run.status}`;
 
   const percent = Number(run.progress?.percent || 0);
@@ -696,6 +698,7 @@ function renderRun(run) {
     run.artifact_paths?.latest_output ||
     (Array.isArray(run.output_paths) && run.output_paths.length ? run.output_paths[run.output_paths.length - 1] : "-");
   elements.outputPath.textContent = latestOutputPath;
+  elements.outputPath.title = latestOutputPath;
   elements.outputPreview.textContent = run.latest_output_preview || "-";
 
   renderArtifacts(run.artifact_paths);
