@@ -22,8 +22,10 @@ from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
 from core.models.world_model import WorldModel
 from orchestrator import PipelineRunResult, TaiJianOrchestrator
+from webapp.builtin_examples import BUILT_IN_EXAMPLES, BuiltInExample
 from webapp.errors import ApiError
 from webapp.models import (
+    WebExampleDetail,
     WebExampleSummary,
     WebBenchmarkDetail,
     WebBenchmarkSummary,
@@ -243,20 +245,63 @@ class WebRunManager:
             model_options=options,
         )
 
+    @staticmethod
+    def _get_builtin_example(example_id: str) -> BuiltInExample:
+        example = BUILT_IN_EXAMPLES.get(example_id)
+        if example is None:
+            raise ApiError("找不到对应的示例样本。", 404, "Not Found")
+        return example
+
+    def _example_trial_limit_note(self) -> str | None:
+        limit = max(0, self.settings.web_example_runs_per_ip)
+        if limit <= 0:
+            return None
+        window_seconds = max(1, self.settings.web_example_window_seconds)
+        if window_seconds % 3600 == 0:
+            window_label = f"{window_seconds // 3600} 小时"
+        elif window_seconds % 60 == 0:
+            window_label = f"{window_seconds // 60} 分钟"
+        else:
+            window_label = f"{window_seconds} 秒"
+        return (
+            f"使用部署默认 Key 的一键试跑默认按单 IP 限流：{window_label} 内最多 {limit} 次。"
+            "如果你填写了自己的 endpoint / Key，则不受这个试用额度限制。"
+        )
+
+    def _example_text(self, example_id: str) -> str:
+        example = self._get_builtin_example(example_id)
+        source_path = self.settings.input_dir / example.input_filename
+        if source_path.exists():
+            return source_path.read_text(encoding="utf-8")
+        return example.text_content
+
+    def _build_example_summary(self, example: BuiltInExample) -> WebExampleSummary:
+        return WebExampleSummary(
+            id=example.id,
+            title=example.title,
+            description=example.description,
+            input_filename=example.input_filename,
+            recommended_goal_hint=example.recommended_goal_hint,
+            source_excerpt=self._excerpt_text(
+                self._example_text(example.id),
+                take="head",
+                max_blocks=3,
+                max_chars=220,
+            ),
+            usage_hint=example.usage_hint,
+            trial_limit_note=self._example_trial_limit_note(),
+        )
+
     def list_examples(self) -> list[WebExampleSummary]:
-        items: list[WebExampleSummary] = []
-        sample_path = self.settings.input_dir / "sample_novel.txt"
-        if sample_path.exists():
-            items.append(
-                WebExampleSummary(
-                    id="sample_novel",
-                    title="原创悬疑样例",
-                    description="仓库内原创短篇样例，适合第一次试跑，避免版权风险。",
-                    input_filename=sample_path.name,
-                    recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
-                )
-            )
-        return items
+        return [self._build_example_summary(example) for example in BUILT_IN_EXAMPLES.values()]
+
+    def get_example(self, example_id: str) -> WebExampleDetail:
+        example = self._get_builtin_example(example_id)
+        summary = self._build_example_summary(example)
+        return WebExampleDetail(
+            **summary.model_dump(),
+            text_content=self._example_text(example_id),
+        )
 
     @staticmethod
     def _excerpt_text(
@@ -285,27 +330,33 @@ class WebRunManager:
         return f"{trimmed}…"
 
     def get_public_showcase(self) -> WebPublicShowcase | None:
-        sample_path = self.settings.input_dir / "sample_novel.txt"
+        example = self._get_builtin_example("sample_novel")
+        sample_path = self.settings.input_dir / example.input_filename
         output_path = self.settings.output_dir / "sample_novel-demo" / "chapter_1.md"
         evaluation_path = self.settings.sessions_dir / "sample_novel-demo" / "chapter_1_evaluation.json"
         brief_path = self.settings.sessions_dir / "sample_novel-demo" / "chapter_1_brief.json"
-        if not sample_path.exists() or not output_path.exists():
+        showcase = example.showcase
+        if showcase is None:
             return None
 
-        source_text = sample_path.read_text(encoding="utf-8")
-        output_text = output_path.read_text(encoding="utf-8")
+        source_text = self._example_text(example.id)
+        if output_path.exists():
+            output_text = output_path.read_text(encoding="utf-8")
+        else:
+            output_text = showcase.output_excerpt
         evaluation = self._load_json_model(evaluation_path, ChapterEvaluation)
         brief = self._load_json_model(brief_path, ChapterBrief)
-        score = evaluation.score if evaluation else None
+        score = evaluation.score if evaluation else showcase.scores
+        source_stem = sample_path.stem if sample_path.exists() else Path(example.input_filename).stem
 
         return WebPublicShowcase(
-            title="原创悬疑样例 · 公开可展示",
-            source_label=f"{sample_path.stem} · 原著断点",
+            title=showcase.title,
+            source_label=f"{source_stem} · 原著断点",
             source_excerpt=self._excerpt_text(source_text, take="tail", max_blocks=4, max_chars=620),
-            output_label="sample_novel-demo · AI 续写片段",
+            output_label=showcase.output_label,
             output_excerpt=self._excerpt_text(output_text, take="head", max_blocks=6, max_chars=920),
-            chapter_goal=brief.chapter_goal if brief else None,
-            evaluation_summary=evaluation.summary if evaluation else None,
+            chapter_goal=brief.chapter_goal if brief else showcase.chapter_goal,
+            evaluation_summary=evaluation.summary if evaluation else showcase.evaluation_summary,
             continuity_score=score.continuity_score if score else None,
             character_score=score.character_score if score else None,
             world_consistency_score=score.world_consistency_score if score else None,
@@ -320,16 +371,11 @@ class WebRunManager:
         request: WebRunRequest,
         runtime_api_override: WebRuntimeApiOverride | None = None,
     ) -> WebRunSummary:
-        example_map = {
-            "sample_novel": self.settings.input_dir / "sample_novel.txt",
-        }
-        source_path = example_map.get(example_id)
-        if source_path is None or not source_path.exists():
-            raise ApiError("找不到对应的示例样本。", 404, "Not Found")
+        example = self._get_builtin_example(example_id)
 
         saved_path, suggested_name = self.save_uploaded_text(
-            source_path.name,
-            source_path.read_bytes(),
+            example.input_filename,
+            self._example_text(example_id).encode("utf-8"),
         )
         request_payload = request.model_copy(
             update={
@@ -339,7 +385,7 @@ class WebRunManager:
         )
         return self.start_run(
             input_path=saved_path,
-            input_filename=source_path.name,
+            input_filename=example.input_filename,
             request=request_payload,
             runtime_api_override=runtime_api_override,
         )

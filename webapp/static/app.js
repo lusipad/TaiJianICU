@@ -64,7 +64,9 @@ const elements = {
   fileInput: document.getElementById("file-input"),
   selectedFileName: document.getElementById("selected-file-name"),
   tryExampleButton: document.getElementById("try-example-button"),
+  loadExampleButton: document.getElementById("load-example-button"),
   emptyExampleButton: document.getElementById("empty-example-button"),
+  emptyFillExampleButton: document.getElementById("empty-fill-example-button"),
   exampleDescription: document.getElementById("example-description"),
   resetModelsButton: document.getElementById("reset-models-button"),
   clearApiConfigButton: document.getElementById("clear-api-config-button"),
@@ -116,6 +118,7 @@ const elements = {
   lightragModelInput: document.getElementById("lightrag-model-input"),
   apiBaseUrlInput: document.getElementById("api-base-url-input"),
   apiKeyInput: document.getElementById("api-key-input"),
+  goalHintInput: document.querySelector('textarea[name="goal_hint"]'),
   modelOptions: document.getElementById("model-options"),
   workspaceTabs: Array.from(document.querySelectorAll(".workspace-tab")),
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
@@ -366,7 +369,9 @@ function collectRunFormData() {
 function setActionBusy(isBusy) {
   elements.submitButton.disabled = isBusy;
   if (elements.tryExampleButton) elements.tryExampleButton.disabled = isBusy;
+  if (elements.loadExampleButton) elements.loadExampleButton.disabled = isBusy;
   if (elements.emptyExampleButton) elements.emptyExampleButton.disabled = isBusy;
+  if (elements.emptyFillExampleButton) elements.emptyFillExampleButton.disabled = isBusy;
 }
 
 function renderExamples(items) {
@@ -374,18 +379,32 @@ function renderExamples(items) {
   const example = state.exampleCache[0];
   if (!elements.exampleDescription) return;
   if (!example) {
-    elements.exampleDescription.textContent = "当前没有可用示例。";
+    elements.exampleDescription.textContent = "当前没有可用示例。请先上传自己的 .txt，或检查服务端内置样例是否启用。";
     if (elements.tryExampleButton) elements.tryExampleButton.disabled = true;
+    if (elements.loadExampleButton) elements.loadExampleButton.disabled = true;
     if (elements.emptyExampleButton) elements.emptyExampleButton.disabled = true;
+    if (elements.emptyFillExampleButton) elements.emptyFillExampleButton.disabled = true;
     return;
   }
   if (elements.tryExampleButton) {
     elements.tryExampleButton.textContent = `一键试跑：${example.title}`;
   }
+  if (elements.loadExampleButton) {
+    elements.loadExampleButton.textContent = `填入：${example.title}`;
+  }
   if (elements.emptyExampleButton) {
     elements.emptyExampleButton.textContent = `直接试跑：${example.title}`;
   }
-  elements.exampleDescription.textContent = `${example.title} · ${example.description}`;
+  if (elements.emptyFillExampleButton) {
+    elements.emptyFillExampleButton.textContent = `填入：${example.title}`;
+  }
+  elements.exampleDescription.textContent = [
+    `${example.title} · ${example.description}`,
+    example.usage_hint,
+    example.trial_limit_note,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 async function loadExamples() {
@@ -420,6 +439,37 @@ async function startExampleRun() {
     await loadRun(payload.id);
   } catch (error) {
     setFormStatus(`示例任务创建失败：${error.message}`, "tone-error");
+  } finally {
+    setActionBusy(false);
+  }
+}
+
+async function loadExampleIntoForm() {
+  const example = state.exampleCache[0];
+  if (!example) {
+    setFormStatus("当前没有可用示例。", "tone-error");
+    return;
+  }
+  setActionBusy(true);
+  setFormStatus(`正在载入样例文本：${example.title}...`);
+  try {
+    const detail = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}`);
+    if (typeof DataTransfer === "undefined") {
+      throw new Error("当前浏览器不支持自动填入文件，请直接使用一键试跑。");
+    }
+    const file = new File([detail.text_content || ""], detail.input_filename || `${detail.id}.txt`, {
+      type: "text/plain;charset=utf-8",
+    });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    elements.fileInput.files = transfer.files;
+    elements.selectedFileName.textContent = file.name;
+    if (elements.goalHintInput && !String(elements.goalHintInput.value || "").trim() && detail.recommended_goal_hint) {
+      elements.goalHintInput.value = detail.recommended_goal_hint;
+    }
+    setFormStatus("样例文本已填入上传区。你可以直接开始续写，或先改 endpoint / Key 再运行。");
+  } catch (error) {
+    setFormStatus(`载入样例失败：${error.message}`, "tone-error");
   } finally {
     setActionBusy(false);
   }
@@ -860,8 +910,14 @@ window.addEventListener("load", async () => {
     if (elements.tryExampleButton) {
       elements.tryExampleButton.addEventListener("click", startExampleRun);
     }
+    if (elements.loadExampleButton) {
+      elements.loadExampleButton.addEventListener("click", loadExampleIntoForm);
+    }
     if (elements.emptyExampleButton) {
       elements.emptyExampleButton.addEventListener("click", startExampleRun);
+    }
+    if (elements.emptyFillExampleButton) {
+      elements.emptyFillExampleButton.addEventListener("click", loadExampleIntoForm);
     }
     if (elements.resetModelsButton) {
       elements.resetModelsButton.addEventListener("click", resetModelInputs);

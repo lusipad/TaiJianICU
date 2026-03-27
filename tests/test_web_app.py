@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from config.settings import AppSettings
 from webapp.app import create_app
 from webapp.models import (
+    WebExampleDetail,
     WebBenchmarkDetail,
     WebExampleSummary,
     WebPublicShowcase,
@@ -77,11 +78,28 @@ class FakeRunManager:
             WebExampleSummary(
                 id="sample_novel",
                 title="原创悬疑样例",
-                description="仓库内原创短篇样例，适合第一次试跑，避免版权风险。",
+                description="仓库内原创短篇样例，首次打开就能试跑，不依赖你先上传文件。",
                 input_filename="sample_novel.txt",
                 recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
+                source_excerpt="第一章 雨夜追魂",
+                usage_hint="可以直接一键试跑，也可以先把样例文本填入上传区。",
+                trial_limit_note="公开站默认按单 IP 限流。",
             )
         ]
+
+    def get_example(self, example_id: str):
+        assert example_id == "sample_novel"
+        return WebExampleDetail(
+            id="sample_novel",
+            title="原创悬疑样例",
+            description="仓库内原创短篇样例，首次打开就能试跑，不依赖你先上传文件。",
+            input_filename="sample_novel.txt",
+            recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
+            source_excerpt="第一章 雨夜追魂",
+            usage_hint="可以直接一键试跑，也可以先把样例文本填入上传区。",
+            trial_limit_note="公开站默认按单 IP 限流。",
+            text_content="第一章 雨夜追魂\n\n沈照站在义庄门口。",
+        )
 
     def get_public_showcase(self):
         return WebPublicShowcase(
@@ -309,6 +327,17 @@ def test_get_public_showcase_endpoint() -> None:
     assert response.json()["source_label"] == "sample_novel · 原著断点"
 
 
+def test_get_example_detail_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/examples/sample_novel")
+
+    assert response.status_code == 200
+    assert response.json()["input_filename"] == "sample_novel.txt"
+    assert "沈照" in response.json()["text_content"]
+
+
 def test_create_example_run_endpoint() -> None:
     manager = FakeRunManager()
     app = create_app(settings=AppSettings(), run_manager=manager)
@@ -333,6 +362,45 @@ def test_create_example_run_endpoint() -> None:
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",
     )
+
+
+def test_create_example_run_rate_limited_by_ip() -> None:
+    manager = FakeRunManager()
+    settings = AppSettings(
+        TAIJIAN_WEB_EXAMPLE_RUNS_PER_IP=1,
+        TAIJIAN_WEB_EXAMPLE_WINDOW_SECONDS=3600,
+    )
+    app = create_app(settings=settings, run_manager=manager)
+    client = TestClient(app)
+
+    first = client.post("/api/examples/sample_novel/runs", data={"chapters": "1", "start_chapter": "1"})
+    second = client.post("/api/examples/sample_novel/runs", data={"chapters": "1", "start_chapter": "1"})
+
+    assert first.status_code == 201
+    assert second.status_code == 429
+    assert "endpoint / Key" in second.json()["detail"]
+
+
+def test_create_example_run_with_custom_key_bypasses_trial_rate_limit() -> None:
+    manager = FakeRunManager()
+    settings = AppSettings(
+        TAIJIAN_WEB_EXAMPLE_RUNS_PER_IP=1,
+        TAIJIAN_WEB_EXAMPLE_WINDOW_SECONDS=3600,
+    )
+    app = create_app(settings=settings, run_manager=manager)
+    client = TestClient(app)
+
+    first = client.post(
+        "/api/examples/sample_novel/runs",
+        data={"chapters": "1", "start_chapter": "1", "api_key": "sk-user"},
+    )
+    second = client.post(
+        "/api/examples/sample_novel/runs",
+        data={"chapters": "1", "start_chapter": "1", "api_key": "sk-user"},
+    )
+
+    assert first.status_code == 201
+    assert second.status_code == 201
 
 
 def test_create_run_rejects_invalid_api_endpoint() -> None:

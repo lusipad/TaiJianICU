@@ -153,6 +153,13 @@ class WebExampleSummary(BaseModel):
     description: str
     input_filename: str
     recommended_goal_hint: str | None = None
+    source_excerpt: str | None = None
+    usage_hint: str | None = None
+    trial_limit_note: str | None = None
+
+
+class WebExampleDetail(WebExampleSummary):
+    text_content: str
 
 
 class WebPublicShowcase(BaseModel):

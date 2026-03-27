@@ -294,15 +294,36 @@ def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path
 
 def test_web_run_manager_lists_examples(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
-    sample_path = settings.input_dir / "sample_novel.txt"
-    sample_path.parent.mkdir(parents=True, exist_ok=True)
-    sample_path.write_text("第一章 雨夜追魂", encoding="utf-8")
     manager = WebRunManager(settings)
 
     examples = manager.list_examples()
 
     assert examples[0].id == "sample_novel"
     assert examples[0].input_filename == "sample_novel.txt"
+    assert "首次打开就能试跑" in examples[0].description
+    assert examples[0].source_excerpt is not None
+
+
+def test_web_run_manager_gets_builtin_example_detail(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+
+    example = manager.get_example("sample_novel")
+
+    assert example.id == "sample_novel"
+    assert "沈照" in example.text_content
+    assert example.trial_limit_note is not None
+
+
+def test_web_run_manager_builds_public_showcase_from_builtin_fallback(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+
+    showcase = manager.get_public_showcase()
+
+    assert showcase is not None
+    assert showcase.title == "原创悬疑样例 · 公开可展示"
+    assert "AI 续写片段" in showcase.output_label
 
 
 def test_web_run_manager_builds_public_showcase_from_original_sample(tmp_path: Path) -> None:
@@ -351,6 +372,28 @@ def test_web_run_manager_builds_public_showcase_from_original_sample(tmp_path: P
     assert showcase.chapter_goal == "先推进冲突"
     assert showcase.evaluation_summary == "推进稳定。"
     assert showcase.continuity_score == 0.9
+
+
+def test_web_run_manager_starts_builtin_example_without_disk_sample(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    captured: dict[str, object] = {}
+
+    def fake_schedule(run_id: str, run_settings: AppSettings | None = None) -> None:
+        captured["run_id"] = run_id
+        captured["run_settings"] = run_settings
+
+    manager._schedule_run = fake_schedule  # type: ignore[method-assign]
+
+    summary = manager.start_example_run(
+        example_id="sample_novel",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+    )
+
+    assert summary.input_filename == "sample_novel.txt"
+    uploaded_files = list(settings.web_uploads_dir.glob("sample_novel-*.txt"))
+    assert len(uploaded_files) == 1
+    assert "沈照" in uploaded_files[0].read_text(encoding="utf-8")
 
 
 def test_web_run_manager_reuses_background_event_loop(tmp_path: Path) -> None:

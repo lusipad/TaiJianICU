@@ -77,6 +77,8 @@ class AppSettings(BaseSettings):
     web_username: str = Field(default="admin", alias="TAIJIAN_WEB_USERNAME")
     web_password: str | None = Field(default=None, alias="TAIJIAN_WEB_PASSWORD")
     web_model_options: str = Field(default="", alias="TAIJIAN_WEB_MODEL_OPTIONS")
+    web_example_runs_per_ip: int = Field(default=3, alias="TAIJIAN_WEB_EXAMPLE_RUNS_PER_IP")
+    web_example_window_seconds: int = Field(default=3600, alias="TAIJIAN_WEB_EXAMPLE_WINDOW_SECONDS")
     web_allowed_origins: str = (
         "http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:3000,"
         "http://localhost:3000,http://127.0.0.1:5173,http://localhost:5173"

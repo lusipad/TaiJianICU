@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import base64
 import secrets
+import threading
+import time
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
@@ -13,6 +15,7 @@ from config.settings import AppSettings, get_settings
 from webapp.errors import ApiError, register_error_handlers
 from webapp.manager import WebRunManager
 from webapp.models import (
+    WebExampleDetail,
     WebExampleSummary,
     WebBenchmarkDetail,
     WebBenchmarkSummary,
@@ -25,6 +28,53 @@ from webapp.models import (
 )
 
 _AUTH_EXEMPT_PATHS = frozenset({"/health", "/ready"})
+
+
+def _format_window_label(window_seconds: int) -> str:
+    if window_seconds % 3600 == 0:
+        return f"{window_seconds // 3600} 小时"
+    if window_seconds % 60 == 0:
+        return f"{window_seconds // 60} 分钟"
+    return f"{window_seconds} 秒"
+
+
+def _client_identifier(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+class _ExampleRunRateLimiter:
+    def __init__(self, limit: int, window_seconds: int):
+        self.limit = max(0, int(limit))
+        self.window_seconds = max(1, int(window_seconds))
+        self._lock = threading.Lock()
+        self._events: dict[str, list[float]] = {}
+
+    def consume(self, client_id: str) -> None:
+        if self.limit <= 0:
+            return
+        now = time.time()
+        cutoff = now - self.window_seconds
+        with self._lock:
+            events = [stamp for stamp in self._events.get(client_id, []) if stamp > cutoff]
+            if len(events) >= self.limit:
+                raise ApiError(
+                    (
+                        f"内置样例试跑次数已用完，请 {_format_window_label(self.window_seconds)} 后再试；"
+                        "或者先把样例文本填入上传区，再使用你自己的 endpoint / Key 运行。"
+                    ),
+                    429,
+                    "Too Many Requests",
+                )
+            events.append(now)
+            self._events[client_id] = events
 
 
 def _unauthorized_response() -> JSONResponse:
@@ -85,6 +135,10 @@ def create_app(
     app = FastAPI(title="TaiJianKiller Web", version="0.1.0")
     app.state.settings = app_settings
     app.state.run_manager = manager
+    app.state.example_rate_limiter = _ExampleRunRateLimiter(
+        app_settings.web_example_runs_per_ip,
+        app_settings.web_example_window_seconds,
+    )
 
     app.add_middleware(
         CORSMiddleware,
@@ -132,6 +186,10 @@ def create_app(
     @app.get("/api/examples", response_model=list[WebExampleSummary])
     async def list_examples() -> list[WebExampleSummary]:
         return app.state.run_manager.list_examples()
+
+    @app.get("/api/examples/{example_id}", response_model=WebExampleDetail)
+    async def get_example(example_id: str) -> WebExampleDetail:
+        return app.state.run_manager.get_example(example_id)
 
     @app.get("/api/showcase", response_model=WebPublicShowcase | None)
     async def get_public_showcase() -> WebPublicShowcase | None:
@@ -201,6 +259,7 @@ def create_app(
 
     @app.post("/api/examples/{example_id}/runs", response_model=WebRunSummary, status_code=201)
     async def create_example_run(
+        http_request: Request,
         example_id: str,
         chapters: int = Form(1),
         start_chapter: int = Form(1),
@@ -226,7 +285,7 @@ def create_app(
             api_base_url=api_base_url,
             api_key=api_key,
         )
-        request = WebRunRequest(
+        run_request = WebRunRequest(
             session_name=session_name.strip() or None,
             chapters=chapters,
             start_chapter=start_chapter,
@@ -245,9 +304,12 @@ def create_app(
             use_existing_index=use_existing_index,
             overwrite=overwrite,
         )
+        uses_server_budget = runtime_api_override is None or not runtime_api_override.api_key
+        if uses_server_budget:
+            app.state.example_rate_limiter.consume(_client_identifier(http_request))
         return app.state.run_manager.start_example_run(
             example_id=example_id,
-            request=request,
+            request=run_request,
             runtime_api_override=runtime_api_override,
         )
 
