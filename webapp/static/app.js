@@ -53,6 +53,7 @@ const state = {
   activeWorkspaceTab: "overview",
   activeSidebarTab: "runs",
   exampleCache: [],
+  exampleDetailCache: {},
   pollTimer: null,
   benchmarkCache: [],
   runtimeConfig: null,
@@ -484,6 +485,34 @@ async function loadExamples() {
   }
 }
 
+function findExampleByInputFilename(inputFilename) {
+  return state.exampleCache.find((item) => item.input_filename === inputFilename) || null;
+}
+
+async function ensureExampleDetailLoaded(exampleId) {
+  const existing = state.exampleDetailCache[exampleId];
+  if (existing?.status === "loaded") {
+    return existing.payload;
+  }
+  if (existing?.status === "loading") {
+    return null;
+  }
+  state.exampleDetailCache[exampleId] = { status: "loading" };
+  try {
+    const payload = await fetchJson(`/api/examples/${encodeURIComponent(exampleId)}`);
+    const normalized = {
+      input_filename: payload.input_filename,
+      text_content: payload.text_content || "",
+      character_count: String(payload.text_content || "").length,
+    };
+    state.exampleDetailCache[exampleId] = { status: "loaded", payload: normalized };
+    return normalized;
+  } catch (error) {
+    state.exampleDetailCache[exampleId] = { status: "error", error: error.message };
+    return null;
+  }
+}
+
 async function previewExampleRun() {
   const example = state.exampleCache[0];
   if (!example) {
@@ -842,6 +871,10 @@ async function ensureSourceTextLoaded(runId) {
   if (existing?.status === "loading" || existing?.status === "loaded") {
     return;
   }
+  const run =
+    (state.activeRunId === runId && state.activeRunDetail) ||
+    state.runCache.find((item) => item.id === runId) ||
+    null;
   state.sourceTextCache[runId] = { status: "loading" };
   if (state.activeRunId === runId) {
     renderSourcePanel(state.activeRunDetail);
@@ -850,7 +883,21 @@ async function ensureSourceTextLoaded(runId) {
     const payload = await fetchJson(`/api/runs/${encodeURIComponent(runId)}/source-text`);
     state.sourceTextCache[runId] = { status: "loaded", payload };
   } catch (error) {
-    state.sourceTextCache[runId] = { status: "error", error: error.message };
+    const fallbackExample = run ? findExampleByInputFilename(run.input_filename) : null;
+    if (fallbackExample) {
+      const fallbackPayload = await ensureExampleDetailLoaded(fallbackExample.id);
+      if (fallbackPayload) {
+        state.sourceTextCache[runId] = { status: "loaded", payload: fallbackPayload };
+      } else {
+        state.sourceTextCache[runId] = { status: "error", error: "内置样例原始正文加载失败。" };
+      }
+    } else {
+      const normalizedError =
+        error.message === "Not Found"
+          ? "当前服务还没有原始正文接口，重启 Web 服务后再试。"
+          : error.message;
+      state.sourceTextCache[runId] = { status: "error", error: normalizedError };
+    }
   }
   if (state.activeRunId === runId) {
     renderSourcePanel(state.activeRunDetail);
