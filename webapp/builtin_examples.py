@@ -31,6 +31,7 @@ class BuiltInExample:
     recommended_goal_hint: str
     usage_hint: str
     text_content: str
+    preview_session_name: str | None = None
     showcase: BuiltInShowcase | None = None
 
 
@@ -168,8 +169,9 @@ BUILT_IN_EXAMPLES: dict[str, BuiltInExample] = {
         description="仓库内原创短篇样例，首次打开就能试跑，不依赖你先上传文件。",
         input_filename="sample_novel.txt",
         recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
-        usage_hint="可以直接一键试跑，也可以先把样例文本填入上传区，再改 endpoint / Key 后自行运行。",
+        usage_hint="可以先快速试看预计算结果；如果要测试当前 endpoint / Key 和模型配置，再按当前配置重跑。",
         text_content=_SAMPLE_NOVEL_TEXT,
+        preview_session_name="sample_novel-demo",
         showcase=BuiltInShowcase(
             title="原创悬疑样例 · 公开可展示",
             output_label="sample_novel-demo · AI 续写片段",
@@ -186,4 +188,3 @@ BUILT_IN_EXAMPLES: dict[str, BuiltInExample] = {
         ),
     )
 }
-

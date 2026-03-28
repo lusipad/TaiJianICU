@@ -447,16 +447,16 @@ function renderExamples(items) {
     return;
   }
   if (elements.tryExampleButton) {
-    elements.tryExampleButton.textContent = `一键试跑：${example.title}`;
+    elements.tryExampleButton.textContent = `快速试看：${example.title}`;
   }
   if (elements.loadExampleButton) {
-    elements.loadExampleButton.textContent = `填入：${example.title}`;
+    elements.loadExampleButton.textContent = `按当前配置重跑：${example.title}`;
   }
   if (elements.emptyExampleButton) {
-    elements.emptyExampleButton.textContent = `直接试跑：${example.title}`;
+    elements.emptyExampleButton.textContent = `快速试看：${example.title}`;
   }
   if (elements.emptyFillExampleButton) {
-    elements.emptyFillExampleButton.textContent = `填入：${example.title}`;
+    elements.emptyFillExampleButton.textContent = `按当前配置重跑：${example.title}`;
   }
   elements.exampleDescription.textContent = [
     `${example.title} · ${example.description}`,
@@ -479,6 +479,28 @@ async function loadExamples() {
   }
 }
 
+async function previewExampleRun() {
+  const example = state.exampleCache[0];
+  if (!example) {
+    setFormStatus("当前没有可用示例。", "tone-error");
+    return;
+  }
+  setActionBusy(true);
+  setFormStatus(`正在加载预计算样例：${example.title}...`);
+  try {
+    const payload = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}/preview-run`, {
+      method: "POST",
+    });
+    setFormStatus("已加载预计算样例结果。当前展示不消耗你的 endpoint / Key。");
+    await refreshRuns();
+    await loadRun(payload.id);
+  } catch (error) {
+    setFormStatus(`样例加载失败：${error.message}`, "tone-error");
+  } finally {
+    setActionBusy(false);
+  }
+}
+
 async function startExampleRun() {
   const example = state.exampleCache[0];
   if (!example) {
@@ -488,48 +510,17 @@ async function startExampleRun() {
   const formData = collectRunFormData();
   formData.delete("file");
   setActionBusy(true);
-  setFormStatus(`正在创建示例任务：${example.title}...`);
+  setFormStatus(`正在按当前配置重跑样例：${example.title}...`);
   try {
     const payload = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}/runs`, {
       method: "POST",
       body: formData,
     });
-    setFormStatus("示例任务已创建，开始轮询。");
+    setFormStatus("样例任务已创建，开始轮询。");
     await refreshRuns();
     await loadRun(payload.id);
   } catch (error) {
-    setFormStatus(`示例任务创建失败：${error.message}`, "tone-error");
-  } finally {
-    setActionBusy(false);
-  }
-}
-
-async function loadExampleIntoForm() {
-  const example = state.exampleCache[0];
-  if (!example) {
-    setFormStatus("当前没有可用示例。", "tone-error");
-    return;
-  }
-  setActionBusy(true);
-  setFormStatus(`正在载入样例文本：${example.title}...`);
-  try {
-    const detail = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}`);
-    if (typeof DataTransfer === "undefined") {
-      throw new Error("当前浏览器不支持自动填入文件，请直接使用一键试跑。");
-    }
-    const file = new File([detail.text_content || ""], detail.input_filename || `${detail.id}.txt`, {
-      type: "text/plain;charset=utf-8",
-    });
-    const transfer = new DataTransfer();
-    transfer.items.add(file);
-    elements.fileInput.files = transfer.files;
-    elements.selectedFileName.textContent = file.name;
-    if (elements.goalHintInput && !String(elements.goalHintInput.value || "").trim() && detail.recommended_goal_hint) {
-      elements.goalHintInput.value = detail.recommended_goal_hint;
-    }
-    setFormStatus("样例文本已填入上传区。你可以直接开始续写，或先改 endpoint / Key 再运行。");
-  } catch (error) {
-    setFormStatus(`载入样例失败：${error.message}`, "tone-error");
+    setFormStatus(`样例重跑失败：${error.message}`, "tone-error");
   } finally {
     setActionBusy(false);
   }
@@ -970,16 +961,16 @@ window.addEventListener("load", async () => {
       tab.addEventListener("click", () => setSidebarTab(tab.dataset.sidebarTarget));
     }
     if (elements.tryExampleButton) {
-      elements.tryExampleButton.addEventListener("click", startExampleRun);
+      elements.tryExampleButton.addEventListener("click", previewExampleRun);
     }
     if (elements.loadExampleButton) {
-      elements.loadExampleButton.addEventListener("click", loadExampleIntoForm);
+      elements.loadExampleButton.addEventListener("click", startExampleRun);
     }
     if (elements.emptyExampleButton) {
-      elements.emptyExampleButton.addEventListener("click", startExampleRun);
+      elements.emptyExampleButton.addEventListener("click", previewExampleRun);
     }
     if (elements.emptyFillExampleButton) {
-      elements.emptyFillExampleButton.addEventListener("click", loadExampleIntoForm);
+      elements.emptyFillExampleButton.addEventListener("click", startExampleRun);
     }
     if (elements.resetModelsButton) {
       elements.resetModelsButton.addEventListener("click", resetModelInputs);

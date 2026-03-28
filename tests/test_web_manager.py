@@ -13,7 +13,11 @@ from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation, EvaluationScore
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
+from core.models.story_state import StoryWorldState
+from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
+from orchestrator import ChapterRunResult, PipelineRunResult
+from pipeline.stage1_extraction.novel_indexer import IndexingResult
 from webapp.manager import WebRunManager
 from webapp.models import WebRunDetail, WebRunProgress, WebRunRequest, WebRuntimeApiOverride
 
@@ -432,9 +436,103 @@ def test_web_run_manager_starts_builtin_example_without_disk_sample(tmp_path: Pa
     )
 
     assert summary.input_filename == "sample_novel.txt"
+    assert summary.session_name.startswith("sample_novel-")
+    assert summary.session_name != "sample_novel-demo"
     uploaded_files = list(settings.web_uploads_dir.glob("sample_novel-*.txt"))
     assert len(uploaded_files) == 1
     assert "沈照" in uploaded_files[0].read_text(encoding="utf-8")
+
+
+def test_web_run_manager_loads_precomputed_example_preview_run(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+
+    input_path = settings.input_dir / "sample_novel.txt"
+    input_path.parent.mkdir(parents=True, exist_ok=True)
+    input_path.write_text(
+        "第一章 雨夜追魂\n\n沈照站在义庄门口。\n\n门外雷声炸响。\n\n铺门已经被人一脚踹开。",
+        encoding="utf-8",
+    )
+    session_dir = settings.sessions_dir / "sample_novel-demo"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = settings.output_dir / "sample_novel-demo"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_path = session_dir / "stage1_snapshot.json"
+    snapshot_path.write_text(
+        ExtractionSnapshot(
+            style_profile=StyleProfile(summary="冷峻悬疑"),
+            story_state=StoryWorldState(summary="旧案被重新翻起"),
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    output_path = output_dir / "chapter_1.md"
+    output_path.write_text(
+        "## 第一章\n\n雨停了。\n\n沈照反手闩上门。\n\n他们终于在旧货栈碰头。",
+        encoding="utf-8",
+    )
+    (session_dir / "chapter_1_brief.json").write_text(
+        ChapterBrief(chapter_number=1, chapter_goal="先推进冲突").model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    (session_dir / "chapter_1_evaluation.json").write_text(
+        ChapterEvaluation(chapter_number=1, summary="推进稳定。").model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    manifest = PipelineRunResult(
+        session_name="sample_novel-demo",
+        input_path=str(input_path),
+        stage1_snapshot_path=str(snapshot_path),
+        index_result=IndexingResult(
+            source_path=str(input_path),
+            chunk_count=4,
+            character_count=len(input_path.read_text(encoding="utf-8")),
+        ),
+        chapters=[
+            ChapterRunResult(
+                chapter_number=1,
+                skeleton_path=str(session_dir / "chapter_1_skeleton.json"),
+                draft_path=str(session_dir / "chapter_1_draft.md"),
+                output_path=str(output_path),
+                chapter_goal="先推进冲突",
+            )
+        ],
+    )
+    (session_dir / "run_manifest.json").write_text(
+        manifest.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    summary = manager.load_example_preview_run(example_id="sample_novel")
+    detail = manager.get_run(summary.id)
+
+    assert summary.id == "example-preview-sample_novel"
+    assert detail.status == "completed"
+    assert detail.session_name == "sample_novel-demo"
+    assert detail.request.use_existing_index is True
+    assert detail.progress.message == "已加载预计算样例结果"
+    assert detail.latest_source_preview_label == "原文断点"
+    assert "铺门已经被人一脚踹开" in (detail.latest_source_preview or "")
+    assert "雨停了" in (detail.latest_output_preview or "")
+    assert detail.latest_chapter_brief["chapter_goal"] == "先推进冲突"
+
+
+def test_web_run_manager_preserves_explicit_example_session_name(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    captured: dict[str, object] = {}
+
+    def fake_schedule(run_id: str, run_settings: AppSettings | None = None) -> None:
+        captured["run_id"] = run_id
+        captured["run_settings"] = run_settings
+
+    manager._schedule_run = fake_schedule  # type: ignore[method-assign]
+
+    summary = manager.start_example_run(
+        example_id="sample_novel",
+        request=WebRunRequest(session_name="manual-preview-check", chapters=1, start_chapter=1),
+    )
+
+    assert summary.session_name == "manual-preview-check"
 
 
 def test_web_run_manager_uses_previous_output_as_source_preview_for_later_chapter(tmp_path: Path) -> None:

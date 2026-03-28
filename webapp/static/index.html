@@ -39,15 +39,15 @@
             <p class="onboarding-body">
               一个 <strong>.txt 格式的小说文本</strong>就够了。支持 UTF-8、GBK、GB18030，上传后自动处理。其他参数都有默认值。
             </p>
-            <p class="onboarding-note">没有自己的文本，也可以先直接试跑内置原创样例。</p>
+            <p class="onboarding-note">没有自己的文本，也可以先快速试看内置原创样例。</p>
           </div>
 
           <div class="onboarding-step hidden" data-step="3">
-            <img src="/static/studio-overview.png" alt="一键试跑样例按钮所在区域示意" class="onboarding-img" />
+            <img src="/static/studio-overview.png" alt="快速试看样例按钮所在区域示意" class="onboarding-img" />
             <p class="onboarding-step-num">3 / 3</p>
             <h2 class="onboarding-title">怎么开始？</h2>
             <p class="onboarding-body">
-              点左侧的 <strong>「一键试跑原创样例」</strong>，就能立即体验完整流程。也可以上传自己的 .txt，然后直接开始分析并续写。
+              先点左侧的 <strong>「快速试看原创样例」</strong>，秒开固定结果；如果要验证当前 endpoint / Key 和模型配置，再点「按当前配置重跑」。
             </p>
             <p class="onboarding-note">右侧切换「总览 / 规划 / 诊断」查看不同层级的结果。</p>
           </div>
@@ -91,20 +91,20 @@
             <section class="quickstart-card">
               <div class="quickstart-copy">
                 <p class="section-kicker">快速开始</p>
-                <h2>第一次用？先一键试跑，看看效果</h2>
-                <p class="hint">用内置原创样例体验完整流程，确认效果后再上传自己的原著文本。</p>
+                <h2>第一次用？先快速试看，再决定要不要真跑</h2>
+                <p class="hint">固定样例默认秒开预计算结果；只有你要验证当前 endpoint / Key 和模型配置时，才重新执行。</p>
               </div>
 
               <div class="quickstart-steps">
-                <span>1. 点击下方按钮，一键试跑内置原创样例</span>
-                <span>2. 右侧切换「总览 / 规划 / 诊断」查看不同结果层</span>
+                <span>1. 先点下方「快速试看」直接看样例结果，不消耗当前 endpoint / Key</span>
+                <span>2. 如果要验证当前配置，再点「按当前配置重跑」</span>
                 <span>3. 满意后再上传自己的 .txt 做正式续写</span>
               </div>
 
               <div class="quickstart-actions">
                 <div class="dual-action-row">
-                  <button id="try-example-button" type="button">一键试跑原创样例</button>
-                  <button id="load-example-button" class="utility-button" type="button">先填入样例文本</button>
+                  <button id="try-example-button" type="button">快速试看原创样例</button>
+                  <button id="load-example-button" class="utility-button" type="button">按当前配置重跑</button>
                 </div>
                 <p id="example-description" class="hint">正在加载示例信息...</p>
               </div>
@@ -359,16 +359,16 @@
           <div id="empty-state" class="empty-state">
             <div class="empty-state-icon" aria-hidden="true">✍</div>
             <p class="empty-state-title">还没有选中任务</p>
-            <p>先点左侧「一键试跑原创样例」，或者上传自己的 .txt 文件开始续写。</p>
+            <p>先点左侧「快速试看原创样例」，或者上传自己的 .txt 文件开始续写。</p>
             <div class="empty-state-steps">
-              <span>先点左侧「一键试跑原创样例」</span>
-              <span>或上传文本后点「开始分析并续写」</span>
+              <span>先点左侧「快速试看原创样例」秒看固定结果</span>
+              <span>要验证当前配置时，再点「按当前配置重跑」</span>
               <span>运行后从「总览 / 规划 / 诊断」切换查看</span>
             </div>
             <div class="empty-state-actions">
               <div class="dual-action-row">
-                <button id="empty-example-button" type="button">直接试跑样例</button>
-                <button id="empty-fill-example-button" class="utility-button" type="button">先填入样例文本</button>
+                <button id="empty-example-button" type="button">快速试看样例</button>
+                <button id="empty-fill-example-button" class="utility-button" type="button">按当前配置重跑</button>
               </div>
             </div>
           </div>

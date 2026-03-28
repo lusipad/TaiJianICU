@@ -195,6 +195,10 @@ def create_app(
     async def get_public_showcase() -> WebPublicShowcase | None:
         return app.state.run_manager.get_public_showcase()
 
+    @app.post("/api/examples/{example_id}/preview-run", response_model=WebRunSummary, status_code=201)
+    async def create_example_preview_run(example_id: str) -> WebRunSummary:
+        return app.state.run_manager.load_example_preview_run(example_id=example_id)
+
     @app.post("/api/runs", response_model=WebRunSummary, status_code=201)
     async def create_run(
         file: UploadFile = File(...),

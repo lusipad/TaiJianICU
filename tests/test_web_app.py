@@ -40,6 +40,7 @@ class FakeRunManager:
             latest_output_preview="示例正文",
         )
         self.start_calls = 0
+        self.preview_calls = 0
         self.last_request = None
         self.last_runtime_api_override = None
 
@@ -84,8 +85,8 @@ class FakeRunManager:
                 input_filename="sample_novel.txt",
                 recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
                 source_excerpt="第一章 雨夜追魂",
-                usage_hint="可以直接一键试跑，也可以先把样例文本填入上传区。",
-                trial_limit_note="公开站默认按单 IP 限流。",
+                usage_hint="可以先快速试看预计算结果；如果要测试当前 endpoint / Key 和模型配置，再按当前配置重跑。",
+                trial_limit_note="快速试看不消耗额度；按当前配置重跑在使用部署默认 Key 时按单 IP 限流。",
             )
         ]
 
@@ -98,10 +99,23 @@ class FakeRunManager:
             input_filename="sample_novel.txt",
             recommended_goal_hint="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
             source_excerpt="第一章 雨夜追魂",
-            usage_hint="可以直接一键试跑，也可以先把样例文本填入上传区。",
-            trial_limit_note="公开站默认按单 IP 限流。",
+            usage_hint="可以先快速试看预计算结果；如果要测试当前 endpoint / Key 和模型配置，再按当前配置重跑。",
+            trial_limit_note="快速试看不消耗额度；按当前配置重跑在使用部署默认 Key 时按单 IP 限流。",
             text_content="第一章 雨夜追魂\n\n沈照站在义庄门口。",
         )
+
+    def load_example_preview_run(self, *, example_id: str):
+        assert example_id == "sample_novel"
+        self.preview_calls += 1
+        preview_detail = self.detail.model_copy(
+            update={
+                "id": "example-preview-sample_novel",
+                "session_name": "sample_novel-demo",
+                "request": self.detail.request.model_copy(update={"use_existing_index": True}),
+                "progress": self.detail.progress.model_copy(update={"message": "已加载预计算样例结果"}),
+            }
+        )
+        return WebRunSummary.model_validate(preview_detail.model_dump(mode="json"))
 
     def get_public_showcase(self):
         return WebPublicShowcase(
@@ -338,6 +352,19 @@ def test_get_example_detail_endpoint() -> None:
     assert response.status_code == 200
     assert response.json()["input_filename"] == "sample_novel.txt"
     assert "沈照" in response.json()["text_content"]
+
+
+def test_create_example_preview_run_endpoint() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post("/api/examples/sample_novel/preview-run")
+
+    assert response.status_code == 201
+    assert response.json()["id"] == "example-preview-sample_novel"
+    assert response.json()["request"]["use_existing_index"] is True
+    assert manager.preview_calls == 1
 
 
 def test_get_run_endpoint_includes_source_preview() -> None:

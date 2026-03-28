@@ -306,8 +306,8 @@ class WebRunManager:
         else:
             window_label = f"{window_seconds} 秒"
         return (
-            f"使用部署默认 Key 的一键试跑默认按单 IP 限流：{window_label} 内最多 {limit} 次。"
-            "如果你填写了自己的 endpoint / Key，则不受这个试用额度限制。"
+            f"使用部署默认 Key 的“按当前配置重跑”默认按单 IP 限流：{window_label} 内最多 {limit} 次。"
+            "快速试看不消耗额度；如果你填写了自己的 endpoint / Key，重跑也不受这个试用额度限制。"
         )
 
     def _example_text(self, example_id: str) -> str:
@@ -316,6 +316,19 @@ class WebRunManager:
         if source_path.exists():
             return source_path.read_text(encoding="utf-8")
         return example.text_content
+
+    def _example_input_path_for_preview(self, example: BuiltInExample, manifest_input_path: str | None) -> Path:
+        if manifest_input_path:
+            candidate = Path(manifest_input_path)
+            if candidate.exists():
+                return candidate
+        source_path = self.settings.input_dir / example.input_filename
+        if source_path.exists():
+            return source_path
+        preview_path = self.settings.web_uploads_dir / f"{Path(example.input_filename).stem}-preview.txt"
+        if not preview_path.exists():
+            preview_path.write_text(example.text_content, encoding="utf-8")
+        return preview_path
 
     def _build_example_summary(self, example: BuiltInExample) -> WebExampleSummary:
         return WebExampleSummary(
@@ -406,6 +419,63 @@ class WebRunManager:
             arc_progress_score=score.arc_progress_score if score else None,
         )
 
+    def load_example_preview_run(self, *, example_id: str) -> WebRunSummary:
+        example = self._get_builtin_example(example_id)
+        if not example.preview_session_name:
+            raise ApiError("当前示例没有可复用的预计算结果。", 404, "Not Found")
+
+        manifest_path = self.settings.sessions_dir / example.preview_session_name / "run_manifest.json"
+        manifest = self._load_json_model(manifest_path, PipelineRunResult)
+        if not isinstance(manifest, PipelineRunResult):
+            raise ApiError("当前示例的预计算结果缺失，请先重新生成。", 404, "Not Found")
+
+        preview_input_path = self._example_input_path_for_preview(example, manifest.input_path)
+        run_id = f"example-preview-{example_id}"
+        existing = self._runs.get(run_id)
+        chapter_count = max(1, len(manifest.chapters) or 1)
+        created_at = existing.created_at if existing else (manifest.started_at or datetime.now(timezone.utc))
+        preview_request = WebRunRequest(
+            session_name=manifest.session_name,
+            chapters=chapter_count,
+            start_chapter=manifest.chapters[0].chapter_number if manifest.chapters else 1,
+            goal_hint=example.recommended_goal_hint,
+            use_existing_index=True,
+        )
+        run = WebRunDetail(
+            id=run_id,
+            status="completed",
+            created_at=created_at,
+            updated_at=datetime.now(timezone.utc),
+            session_name=manifest.session_name,
+            input_filename=example.input_filename,
+            request=preview_request,
+            progress=WebRunProgress(
+                total_steps=1 + chapter_count * 4,
+                completed_steps=1 + chapter_count * 4,
+                message="已加载预计算样例结果",
+            ),
+            input_path=str(preview_input_path),
+            log_messages=[
+                "已加载预计算样例结果",
+                "当前展示直接复用样例已保存的分析、规划和续写产物，不消耗当前 endpoint / Key。",
+            ],
+        )
+        with self._lock:
+            self._runs[run_id] = run
+            self._persist(run)
+
+        self._populate_outputs(run_id, manifest)
+        detail = self.get_run(run_id)
+        self._update_run(
+            run_id,
+            progress=detail.progress.model_copy(update={"message": "已加载预计算样例结果"}),
+            log_messages=[
+                "已加载预计算样例结果",
+                "当前展示直接复用样例已保存的分析、规划和续写产物，不消耗当前 endpoint / Key。",
+            ],
+        )
+        return WebRunSummary.model_validate(self.get_run(run_id).model_dump(mode="json"))
+
     def start_example_run(
         self,
         *,
@@ -419,9 +489,12 @@ class WebRunManager:
             example.input_filename,
             self._example_text(example_id).encode("utf-8"),
         )
+        session_name = request.session_name
+        if not session_name and not example.preview_session_name:
+            session_name = f"{suggested_name}-demo"
         request_payload = request.model_copy(
             update={
-                "session_name": request.session_name or f"{suggested_name}-demo",
+                "session_name": session_name,
                 "goal_hint": request.goal_hint or self._example_goal_hint(example_id),
             }
         )
