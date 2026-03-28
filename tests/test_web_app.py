@@ -35,6 +35,8 @@ class FakeRunManager:
             log_messages=["阶段1：索引与风格分析", "运行完成"],
             input_path="demo.txt",
             output_paths=["chapter_1.md"],
+            latest_source_preview_label="原文断点",
+            latest_source_preview="示例原文",
             latest_output_preview="示例正文",
         )
         self.start_calls = 0
@@ -336,6 +338,17 @@ def test_get_example_detail_endpoint() -> None:
     assert response.status_code == 200
     assert response.json()["input_filename"] == "sample_novel.txt"
     assert "沈照" in response.json()["text_content"]
+
+
+def test_get_run_endpoint_includes_source_preview() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/runs/run-1")
+
+    assert response.status_code == 200
+    assert response.json()["latest_source_preview_label"] == "原文断点"
+    assert response.json()["latest_source_preview"] == "示例原文"
 
 
 def test_create_example_run_endpoint() -> None:

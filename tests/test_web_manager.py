@@ -79,6 +79,11 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
     manager = WebRunManager(settings)
     session_dir = settings.sessions_dir / "demo-session"
     session_dir.mkdir(parents=True, exist_ok=True)
+    input_path = settings.web_uploads_dir / "demo.txt"
+    input_path.write_text(
+        "第一章 测试\n\n沈照站在义庄门口。\n\n雨越下越大。\n\n一队人已经到了门外。",
+        encoding="utf-8",
+    )
 
     (session_dir / "run_manifest.json").write_text(
         WebRunDetail(
@@ -90,6 +95,7 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
             input_filename="demo.txt",
             request=WebRunRequest(chapters=1, start_chapter=1),
             progress=WebRunProgress(total_steps=5, completed_steps=5),
+            input_path=str(input_path),
         ).model_dump_json(indent=2),
         encoding="utf-8",
     )
@@ -142,6 +148,7 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
         input_filename="demo.txt",
         request=WebRunRequest(chapters=1, start_chapter=1),
         progress=WebRunProgress(total_steps=5, completed_steps=5),
+        input_path=str(input_path),
         stage1_snapshot_path=str(session_dir / "stage1_snapshot.json"),
     )
     manager._runs["run-1"] = result
@@ -192,6 +199,8 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
     assert detail.latest_chapter_evaluation["summary"] == "推进稳定"
     assert detail.latest_skeleton_candidate_paths[0].endswith("chapter_1_skeleton_candidate_1.json")
     assert detail.latest_draft_candidate_paths[0].endswith("chapter_1_draft_candidate_1.md")
+    assert detail.latest_source_preview_label == "原文断点"
+    assert "一队人已经到了门外" in (detail.latest_source_preview or "")
 
 
 def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:
@@ -304,6 +313,38 @@ def test_web_run_manager_lists_examples(tmp_path: Path) -> None:
     assert examples[0].source_excerpt is not None
 
 
+def test_web_run_manager_backfills_source_preview_for_persisted_legacy_run(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    input_path = settings.web_uploads_dir / "legacy.txt"
+    input_path.write_text(
+        "第一章 雨夜\n\n沈照听见门外马蹄声。\n\n院中风灯摇晃不定。",
+        encoding="utf-8",
+    )
+    run = WebRunDetail(
+        id="legacy-run",
+        status="completed",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        session_name="legacy",
+        input_filename="legacy.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=5, completed_steps=5, message="运行完成"),
+        input_path=str(input_path),
+        output_paths=["chapter_1.md"],
+        latest_output_preview="示例正文",
+    )
+    (settings.web_runs_dir / "legacy-run.json").write_text(
+        run.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+    manager = WebRunManager(settings)
+    detail = manager.get_run("legacy-run")
+
+    assert detail.latest_source_preview_label == "原文断点"
+    assert "院中风灯摇晃不定" in (detail.latest_source_preview or "")
+
+
 def test_web_run_manager_gets_builtin_example_detail(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
     manager = WebRunManager(settings)
@@ -394,6 +435,101 @@ def test_web_run_manager_starts_builtin_example_without_disk_sample(tmp_path: Pa
     uploaded_files = list(settings.web_uploads_dir.glob("sample_novel-*.txt"))
     assert len(uploaded_files) == 1
     assert "沈照" in uploaded_files[0].read_text(encoding="utf-8")
+
+
+def test_web_run_manager_uses_previous_output_as_source_preview_for_later_chapter(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    input_path = settings.web_uploads_dir / "demo.txt"
+    input_path.write_text("第一章 原文", encoding="utf-8")
+    session_dir = settings.sessions_dir / "demo-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = settings.output_dir / "demo-session"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    chapter_1_output = output_dir / "chapter_1.md"
+    chapter_2_output = output_dir / "chapter_2.md"
+    chapter_1_output.write_text(
+        "# 第一章\n\n沈照在门前停住。\n\n铜扣还在掌心发凉。",
+        encoding="utf-8",
+    )
+    chapter_2_output.write_text("# 第二章\n\n顾行舟推门而入。", encoding="utf-8")
+    snapshot_path = session_dir / "stage1_snapshot.json"
+    snapshot_path.write_text(
+        '{"style_profile":{"summary":"测试风格"},"story_state":{"summary":"测试故事"}}',
+        encoding="utf-8",
+    )
+
+    run = WebRunDetail(
+        id="run-1",
+        status="completed",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        session_name="demo-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=2, start_chapter=1),
+        progress=WebRunProgress(total_steps=5, completed_steps=5),
+        input_path=str(input_path),
+        stage1_snapshot_path=str(snapshot_path),
+    )
+    manager._runs["run-1"] = run
+
+    manager._populate_outputs(
+        "run-1",
+        type(
+            "PipelineResult",
+            (),
+            {
+                "session_name": "demo-session",
+                "stage1_snapshot_path": str(snapshot_path),
+                "chapters": [
+                    type(
+                        "ChapterResult",
+                        (),
+                        {
+                            "chapter_number": 1,
+                            "status": "completed",
+                            "chapter_goal": "起冲突",
+                            "output_path": str(chapter_1_output),
+                            "quality_report": None,
+                            "consistency_report": None,
+                            "elapsed_seconds": 1.0,
+                            "skeleton_path": None,
+                            "draft_path": None,
+                        },
+                    )(),
+                    type(
+                        "ChapterResult",
+                        (),
+                        {
+                            "chapter_number": 2,
+                            "status": "completed",
+                            "chapter_goal": "推剧情",
+                            "output_path": str(chapter_2_output),
+                            "quality_report": None,
+                            "consistency_report": None,
+                            "elapsed_seconds": 1.0,
+                            "skeleton_path": None,
+                            "draft_path": None,
+                        },
+                    )(),
+                ],
+                "total_usage": type(
+                    "Usage",
+                    (),
+                    {
+                        "calls": 0,
+                        "total_tokens": 0,
+                        "total_cost_usd": 0.0,
+                    },
+                )(),
+            },
+        )(),
+    )
+
+    detail = manager.get_run("run-1")
+
+    assert detail.latest_source_preview_label == "上文衔接"
+    assert "铜扣还在掌心发凉" in (detail.latest_source_preview or "")
 
 
 def test_web_run_manager_reuses_background_event_loop(tmp_path: Path) -> None:

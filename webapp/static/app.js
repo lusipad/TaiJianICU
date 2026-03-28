@@ -108,6 +108,8 @@ const elements = {
   consistencySummary: document.getElementById("consistency-summary"),
   threadsList: document.getElementById("threads-list"),
   chapterList: document.getElementById("chapter-list"),
+  sourcePreviewLabel: document.getElementById("source-preview-label"),
+  sourcePreview: document.getElementById("source-preview"),
   outputPath: document.getElementById("output-path"),
   outputPreview: document.getElementById("output-preview"),
   runLogs: document.getElementById("run-logs"),
@@ -824,6 +826,8 @@ function renderRun(run) {
   elements.evaluationSummary.textContent = formatEvaluationSummary(run.latest_chapter_evaluation);
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
+  elements.sourcePreviewLabel.textContent = run.latest_source_preview_label || "原文断点";
+  elements.sourcePreview.innerHTML = renderMarkdownPreview(run.latest_source_preview);
   const latestOutputPath =
     run.artifact_paths?.latest_output ||
     (Array.isArray(run.output_paths) && run.output_paths.length ? run.output_paths[run.output_paths.length - 1] : "-");

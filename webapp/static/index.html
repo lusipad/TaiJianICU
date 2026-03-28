@@ -453,9 +453,23 @@
                     <p class="section-kicker">正文输出</p>
                     <h3>续写正文预览</h3>
                   </div>
-                  <span id="output-path" class="workspace-path">-</span>
                 </div>
-                <article id="output-preview" class="markdown-preview">-</article>
+                <div class="story-preview-stack">
+                  <section class="story-preview-panel">
+                    <div class="story-preview-panel-head">
+                      <p id="source-preview-label" class="label">原文断点</p>
+                    </div>
+                    <article id="source-preview" class="markdown-preview markdown-preview-source">-</article>
+                  </section>
+
+                  <section class="story-preview-panel story-preview-panel-ai">
+                    <div class="story-preview-panel-head">
+                      <p class="label">AI 续写正文</p>
+                      <span id="output-path" class="workspace-path">-</span>
+                    </div>
+                    <article id="output-preview" class="markdown-preview">-</article>
+                  </section>
+                </div>
               </section>
 
               <div class="result-grid result-grid-emphasis">

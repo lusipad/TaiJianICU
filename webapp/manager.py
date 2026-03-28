@@ -72,10 +72,50 @@ class WebRunManager:
                 run = WebRunDetail.model_validate_json(path.read_text(encoding="utf-8"))
             except Exception:
                 continue
+            run = self._ensure_story_previews(run)
             self._runs[run.id] = run
 
     def _persist(self, run: WebRunDetail) -> None:
         self._run_file(run.id).write_text(run.model_dump_json(indent=2), encoding="utf-8")
+
+    def _ensure_story_previews(self, run: WebRunDetail) -> WebRunDetail:
+        if run.latest_source_preview and run.latest_source_preview_label:
+            return run
+
+        source_label = None
+        source_preview = None
+        previous_output_path = None
+        if len(run.output_paths) >= 2:
+            previous_output_path = Path(run.output_paths[-2])
+        if previous_output_path is not None and previous_output_path.exists():
+            source_label = "上文衔接"
+            source_preview = self._excerpt_text(
+                previous_output_path.read_text(encoding="utf-8"),
+                take="tail",
+                max_blocks=5,
+                max_chars=1600,
+            )
+        elif run.input_path:
+            input_path = Path(run.input_path)
+            if input_path.exists():
+                source_label = "原文断点"
+                source_preview = self._excerpt_text(
+                    input_path.read_text(encoding="utf-8"),
+                    take="tail",
+                    max_blocks=5,
+                    max_chars=1600,
+                )
+
+        if source_label is None or source_preview is None:
+            return run
+        hydrated = run.model_copy(
+            update={
+                "latest_source_preview_label": source_label,
+                "latest_source_preview": source_preview,
+            }
+        )
+        self._persist(hydrated)
+        return hydrated
 
     def _ensure_async_runtime(self) -> asyncio.AbstractEventLoop:
         with self._runtime_lock:
@@ -156,6 +196,8 @@ class WebRunManager:
             run = self._runs.get(run_id)
             if run is None:
                 raise ApiError("找不到对应的运行任务。", 404, "Not Found")
+            run = self._ensure_story_previews(run)
+            self._runs[run.id] = run
             return run.model_copy(deep=True)
 
     def list_benchmarks(self) -> list[WebBenchmarkSummary]:
@@ -509,6 +551,7 @@ class WebRunManager:
         return model_cls.model_validate_json(path.read_text(encoding="utf-8"))
 
     def _populate_outputs(self, run_id: str, result: PipelineRunResult) -> None:
+        current_run = self.get_run(run_id)
         snapshot_path = Path(result.stage1_snapshot_path)
         session_dir = self.settings.sessions_dir / result.session_name
         snapshot = self._load_json_model(snapshot_path, ExtractionSnapshot)
@@ -546,6 +589,8 @@ class WebRunManager:
         latest_quality = None
         latest_consistency = None
         latest_chapter_goal = None
+        latest_source_preview_label = None
+        latest_source_preview = None
         latest_skeleton_path = None
         latest_brief = None
         latest_brief_path = None
@@ -598,6 +643,32 @@ class WebRunManager:
                 if latest_evaluation_model
                 else None
             )
+            previous_output_path = next(
+                (
+                    Path(item.output_path)
+                    for item in reversed(chapter_source[:-1])
+                    if getattr(item, "output_path", None)
+                ),
+                None,
+            )
+            if previous_output_path is not None and previous_output_path.exists():
+                latest_source_preview_label = "上文衔接"
+                latest_source_preview = self._excerpt_text(
+                    previous_output_path.read_text(encoding="utf-8"),
+                    take="tail",
+                    max_blocks=5,
+                    max_chars=1600,
+                )
+            elif current_run.input_path:
+                input_path = Path(current_run.input_path)
+                if input_path.exists():
+                    latest_source_preview_label = "原文断点"
+                    latest_source_preview = self._excerpt_text(
+                        input_path.read_text(encoding="utf-8"),
+                        take="tail",
+                        max_blocks=5,
+                        max_chars=1600,
+                    )
 
         unresolved_threads_path = self.settings.sessions_dir / result.session_name / "unresolved_threads.json"
         unresolved_threads: list[StoryThread] = []
@@ -635,9 +706,9 @@ class WebRunManager:
         self._update_run(
             run_id,
             status="completed",
-            progress=self.get_run(run_id).progress.model_copy(
+            progress=current_run.progress.model_copy(
                 update={
-                    "completed_steps": self.get_run(run_id).progress.total_steps,
+                    "completed_steps": current_run.progress.total_steps,
                     "message": "运行完成",
                 }
             ),
@@ -657,6 +728,8 @@ class WebRunManager:
             latest_chapter_evaluation=latest_evaluation,
             latest_skeleton_candidate_paths=latest_skeleton_candidate_paths,
             latest_draft_candidate_paths=latest_draft_candidate_paths,
+            latest_source_preview_label=latest_source_preview_label,
+            latest_source_preview=latest_source_preview,
             latest_output_preview=latest_output_preview,
             latest_quality_report=latest_quality,
             latest_consistency_report=latest_consistency,
