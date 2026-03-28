@@ -610,6 +610,7 @@
   position: relative;
   z-index: 1;
   margin-bottom: 12px;
+  flex-wrap: wrap;
   align-items: flex-end;
 }
 
@@ -619,10 +620,17 @@
 }
 
 .workspace-path {
-  max-width: 42%;
-  font-size: var(--text-xs);
-  text-align: right;
+  max-width: none;
+  width: 100%;
+  font-size: var(--text-2xs);
+  text-align: left;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+#output-path {
+  margin-top: 4px;
 }
 
 .run-meta {
@@ -778,6 +786,90 @@
 #run-logs {
   max-height: none;
   overflow: visible;
+}
+
+.markdown-preview {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: clamp(16px, 1.2vw, 18px);
+  line-height: 1.95;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  line-height: 1.28;
+}
+
+.markdown-preview h1 {
+  font-size: clamp(30px, 2.2vw, 36px);
+}
+
+.markdown-preview h2 {
+  font-size: clamp(23px, 1.7vw, 28px);
+}
+
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  font-size: clamp(18px, 1.35vw, 21px);
+}
+
+.markdown-preview p,
+.markdown-preview ul,
+.markdown-preview ol,
+.markdown-preview blockquote {
+  margin: 0;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  display: grid;
+  gap: 8px;
+  padding-left: 1.4em;
+}
+
+.markdown-preview li::marker {
+  color: var(--accent-light);
+}
+
+.markdown-preview blockquote {
+  padding-left: 16px;
+  border-left: 2px solid rgba(200, 149, 108, 0.32);
+  color: var(--text-secondary);
+}
+
+.markdown-preview strong {
+  color: var(--text-primary);
+}
+
+.markdown-preview em {
+  color: var(--accent-light);
+  font-style: normal;
+}
+
+.markdown-preview code {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent-light);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.markdown-empty {
+  color: var(--text-muted);
 }
 
 #try-example-button,

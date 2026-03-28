@@ -135,6 +135,64 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function renderInlineMarkdown(value) {
+  return escapeHtml(value ?? "")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+}
+
+function renderMarkdownPreview(markdown) {
+  const normalized = String(markdown || "")
+    .replace(/\r\n/g, "\n")
+    .trim();
+  if (!normalized || normalized === "-") {
+    return '<p class="markdown-empty">暂无正文预览</p>';
+  }
+
+  const blocks = normalized.split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
+  return blocks
+    .map((block) => {
+      const lines = block.split("\n").map((line) => line.trimEnd());
+      const headingMatch = lines.length === 1 ? lines[0].match(/^(#{1,6})\s+(.+)$/) : null;
+      if (headingMatch) {
+        const level = Math.min(6, headingMatch[1].length);
+        return `<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`;
+      }
+
+      const unorderedList = lines.every((line) => /^[-*]\s+/.test(line.trim()));
+      if (unorderedList) {
+        const items = lines
+          .map((line) => `<li>${renderInlineMarkdown(line.replace(/^[-*]\s+/, ""))}</li>`)
+          .join("");
+        return `<ul>${items}</ul>`;
+      }
+
+      const orderedList = lines.every((line) => /^\d+\.\s+/.test(line.trim()));
+      if (orderedList) {
+        const items = lines
+          .map((line) => `<li>${renderInlineMarkdown(line.replace(/^\d+\.\s+/, ""))}</li>`)
+          .join("");
+        return `<ol>${items}</ol>`;
+      }
+
+      const quoteBlock = lines.every((line) => line.trim().startsWith(">"));
+      if (quoteBlock) {
+        const content = lines
+          .map((line) => renderInlineMarkdown(line.replace(/^>\s?/, "")))
+          .join("<br>");
+        return `<blockquote><p>${content}</p></blockquote>`;
+      }
+
+      const paragraph = lines
+        .map((line) => renderInlineMarkdown(line.trim()))
+        .filter(Boolean)
+        .join("<br>");
+      return `<p>${paragraph}</p>`;
+    })
+    .join("");
+}
+
 function formatNumber(value) {
   return new Intl.NumberFormat("zh-CN").format(Number(value || 0));
 }
@@ -771,7 +829,7 @@ function renderRun(run) {
     (Array.isArray(run.output_paths) && run.output_paths.length ? run.output_paths[run.output_paths.length - 1] : "-");
   elements.outputPath.textContent = latestOutputPath;
   elements.outputPath.title = latestOutputPath;
-  elements.outputPreview.textContent = run.latest_output_preview || "-";
+  elements.outputPreview.innerHTML = renderMarkdownPreview(run.latest_output_preview);
 
   renderArtifacts(run.artifact_paths);
   renderCandidatePaths(elements.skeletonCandidateList, run.latest_skeleton_candidate_paths, "暂无提纲草稿");
