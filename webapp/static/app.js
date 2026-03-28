@@ -75,6 +75,7 @@ const elements = {
   exampleDescription: document.getElementById("example-description"),
   resetModelsButton: document.getElementById("reset-models-button"),
   clearApiConfigButton: document.getElementById("clear-api-config-button"),
+  openAdvancedOptionsButton: document.getElementById("open-advanced-options-button"),
   runtimeModelHint: document.getElementById("runtime-model-hint"),
   runtimeApiHint: document.getElementById("runtime-api-hint"),
   runList: document.getElementById("run-list"),
@@ -130,6 +131,7 @@ const elements = {
   apiKeyInput: document.getElementById("api-key-input"),
   goalHintInput: document.querySelector('textarea[name="goal_hint"]'),
   modelOptions: document.getElementById("model-options"),
+  advancedOptionsDetails: document.getElementById("advanced-options"),
   workspaceTabs: Array.from(document.querySelectorAll(".workspace-tab")),
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
   sidebarTabs: Array.from(document.querySelectorAll(".inspector-tab")),
@@ -430,8 +432,8 @@ function applyRuntimeConfig(config) {
   }
   if (elements.runtimeApiHint) {
     elements.runtimeApiHint.textContent = config.api_base_url
-      ? `默认 endpoint：${config.api_base_url}。留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。`
-      : "留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。";
+      ? `推荐填你自己的 endpoint / Key。当前部署默认 endpoint：${config.api_base_url}；如果留空，才会回退到服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。`
+      : "推荐填你自己的 endpoint / Key。留空时才会使用服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。";
   }
 }
 
@@ -443,6 +445,39 @@ function resetModelInputs() {
 function clearApiConfigInputs() {
   if (elements.apiBaseUrlInput) elements.apiBaseUrlInput.value = "";
   if (elements.apiKeyInput) elements.apiKeyInput.value = "";
+}
+
+function focusApiConfig({ scroll = true } = {}) {
+  const container = document.getElementById("bring-your-own-api");
+  if (scroll) {
+    container?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  const targetInput = elements.apiBaseUrlInput || elements.apiKeyInput;
+  if (targetInput) {
+    window.setTimeout(
+      () => targetInput.focus({ preventScroll: true }),
+      scroll ? 220 : 0
+    );
+  }
+}
+
+function openAdvancedOptions({ scroll = true } = {}) {
+  if (!elements.advancedOptionsDetails) return;
+  elements.advancedOptionsDetails.open = true;
+  if (scroll) {
+    elements.advancedOptionsDetails.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function applyStudioHashIntent() {
+  const hash = window.location.hash;
+  if (hash === "#bring-your-own-api") {
+    focusApiConfig({ scroll: false });
+    return;
+  }
+  if (hash === "#advanced-options") {
+    openAdvancedOptions({ scroll: false });
+  }
 }
 
 function collectRunFormData() {
@@ -490,18 +525,18 @@ function renderExamples(items) {
     elements.tryExampleButton.textContent = `快速试看：${example.title}`;
   }
   if (elements.loadExampleButton) {
-    elements.loadExampleButton.textContent = `按当前配置重跑：${example.title}`;
+    elements.loadExampleButton.textContent = `按当前 API 试跑：${example.title}`;
   }
   if (elements.emptyExampleButton) {
     elements.emptyExampleButton.textContent = `快速试看：${example.title}`;
   }
   if (elements.emptyFillExampleButton) {
-    elements.emptyFillExampleButton.textContent = `按当前配置重跑：${example.title}`;
+    elements.emptyFillExampleButton.textContent = `按当前 API 试跑：${example.title}`;
   }
   elements.exampleDescription.textContent = [
     `${example.title} · ${example.description}`,
-    example.usage_hint,
-    example.trial_limit_note,
+    "快速试看只加载固定结果，不消耗你当前填写的 endpoint / Key。",
+    "按当前 API 试跑样例会真的调用当前页面配置；如果你没有填写自己的 Key，则仍受平台单 IP 小额度限制。",
   ]
     .filter(Boolean)
     .join(" ");
@@ -559,7 +594,7 @@ async function previewExampleRun() {
     const payload = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}/preview-run`, {
       method: "POST",
     });
-    setFormStatus("已加载预计算样例结果。当前展示不消耗你的 endpoint / Key。");
+    setFormStatus("已加载预计算样例结果。当前展示不消耗你填写的 endpoint / Key。");
     await refreshRuns();
     await loadRun(payload.id);
   } catch (error) {
@@ -578,17 +613,17 @@ async function startExampleRun() {
   const formData = collectRunFormData();
   formData.delete("file");
   setActionBusy(true);
-  setFormStatus(`正在按当前配置重跑样例：${example.title}...`);
+  setFormStatus(`正在按当前 API 试跑样例：${example.title}...`);
   try {
     const payload = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}/runs`, {
       method: "POST",
       body: formData,
     });
-    setFormStatus("样例任务已创建，开始轮询。");
+    setFormStatus("样例试跑任务已创建，开始轮询。");
     await refreshRuns();
     await loadRun(payload.id);
   } catch (error) {
-    setFormStatus(`样例重跑失败：${error.message}`, "tone-error");
+    setFormStatus(`样例试跑失败：${error.message}`, "tone-error");
   } finally {
     setActionBusy(false);
   }
@@ -1226,6 +1261,10 @@ window.addEventListener("load", async () => {
     if (elements.clearApiConfigButton) {
       elements.clearApiConfigButton.addEventListener("click", clearApiConfigInputs);
     }
+    if (elements.openAdvancedOptionsButton) {
+      elements.openAdvancedOptionsButton.addEventListener("click", () => openAdvancedOptions());
+    }
+    window.addEventListener("hashchange", applyStudioHashIntent);
     setWorkspaceTab(state.activeWorkspaceTab);
     setSourceTab(state.activeSourceTab);
     setOutputTab(state.activeOutputTab);
@@ -1235,6 +1274,7 @@ window.addEventListener("load", async () => {
     await loadExamples();
     await refreshRuns({ autoSelect: true });
     await refreshBenchmarks();
+    applyStudioHashIntent();
   } catch (error) {
     setFormStatus(`初始化失败：${error.message}`, "tone-error");
   }

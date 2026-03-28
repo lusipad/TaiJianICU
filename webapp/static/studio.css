@@ -78,6 +78,10 @@
   align-items: start;
 }
 
+.anchor-target {
+  scroll-margin-top: 92px;
+}
+
 .panel,
 .recent-panel {
   position: relative;
@@ -156,12 +160,63 @@
   min-width: 0;
 }
 
+.quickstart-card-subtle {
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.02);
+}
+
 .quickstart-copy,
 .quickstart-actions,
 .form-subgroup {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.quickstart-priority-grid,
+.quickstart-panel,
+.quickstart-primary-actions {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.quickstart-priority-grid {
+  grid-template-columns: minmax(0, 1.14fr) minmax(0, 0.86fr);
+  align-items: start;
+}
+
+.quickstart-panel {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.quickstart-panel-primary {
+  border-color: rgba(200, 149, 108, 0.2);
+  background: linear-gradient(180deg, rgba(200, 149, 108, 0.08), transparent 24%), rgba(255, 255, 255, 0.03);
+}
+
+.quickstart-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.quickstart-panel-head strong {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  line-height: 1.35;
+}
+
+.quickstart-panel-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.75;
 }
 
 .dual-action-row,
@@ -317,6 +372,8 @@
 }
 
 .field input[type="text"],
+.field input[type="url"],
+.field input[type="password"],
 .field input[type="number"],
 .field select,
 .field textarea,
@@ -330,6 +387,8 @@
 }
 
 .field input[type="text"]:focus,
+.field input[type="url"]:focus,
+.field input[type="password"]:focus,
 .field input[type="number"]:focus,
 .field select:focus,
 .field textarea:focus,
@@ -1088,13 +1147,18 @@
 
   .form-section-head,
   .action-row,
-  .form-inline-actions {
+  .form-inline-actions,
+  .quickstart-panel-head {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .field-note {
     max-width: none;
+  }
+
+  .quickstart-priority-grid {
+    grid-template-columns: 1fr;
   }
 
   .run-meta {
@@ -1119,6 +1183,11 @@
     flex: 1 1 0;
     justify-content: center;
     text-align: center;
+  }
+
+  .quickstart-panel,
+  .quickstart-card {
+    padding: 16px;
   }
 }
 

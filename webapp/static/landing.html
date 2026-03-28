@@ -23,7 +23,7 @@
         <a class="landing-nav-link" href="#how-it-works">怎么开始</a>
         <a class="landing-nav-link" href="#showcase">续写示例</a>
         <a class="landing-nav-link" href="#benchmark">公开实证</a>
-        <a class="landing-button landing-button-primary" href="/studio">进入 Studio</a>
+        <a class="landing-button landing-button-primary" href="/studio#bring-your-own-api">使用我的 API</a>
       </div>
     </nav>
 
@@ -39,14 +39,14 @@
         <div class="hero-inner">
           <p class="hero-badge">
             <span class="dot"></span>
-            AI 续写 · 风格锁定 · 质量对照 · 全程可控
+            BYOK 优先 · 免费试看 · 小额度试跑 · 全程可控
           </p>
           <h1 class="hero-title">
             你的坑，
             <span>AI 来填。</span>
           </h1>
           <p class="hero-sub">
-            上传原著 .txt，AI 先读懂风格和世界观，再按原著的味道续写。有提纲、有质检、有对比。把被腰斩的故事，接回原来的呼吸里。
+            上传原著 .txt，AI 先读懂风格和世界观，再按原著的味道续写。推荐直接带你自己的 endpoint / Key 来跑；没有也可以先看固定样例和公开实证，再决定要不要真用。
           </p>
           <div class="hero-flow" aria-label="续写流程">
             <span>上传 .txt</span>
@@ -58,10 +58,22 @@
             <span>质量对比</span>
           </div>
           <div class="hero-actions">
-            <a class="landing-button landing-button-primary" href="/studio">进入续写工作台</a>
-            <a class="landing-button landing-button-secondary" href="#showcase">先看效果</a>
+            <a class="landing-button landing-button-primary" href="/studio#bring-your-own-api">使用我的 API 开始</a>
+            <a class="landing-button landing-button-secondary" href="/studio#quickstart-sample">先看免费样例</a>
           </div>
-          <p class="hero-note">不信？往下滑，先看续写示例再说。</p>
+          <div class="hero-paths">
+            <article class="hero-path hero-path-primary">
+              <p class="showcase-label">正式使用</p>
+              <strong>带你自己的 endpoint / Key 跑</strong>
+              <span>模型选择、成本归属、额度管理都在你自己手里。这是推荐主路径。</span>
+            </article>
+            <article class="hero-path">
+              <p class="showcase-label">免费试看</p>
+              <strong>先看固定样例，再做小额度试跑</strong>
+              <span>先判断味道和说服力；平台试跑保留，但只做体验入口，不做主路径。</span>
+            </article>
+          </div>
+          <p class="hero-note">不信？往下滑，先看公开实证，再决定要不要用你自己的 API 真跑。</p>
         </div>
       </section>
 
@@ -89,20 +101,20 @@
         <div class="landing-center">
           <p class="section-kicker">快速上手</p>
           <h2 class="landing-section-title" data-reveal>三步填坑，不废话</h2>
-          <p class="landing-section-desc" data-reveal>零配置，丢个 .txt 就能跑。</p>
+          <p class="landing-section-desc" data-reveal>推荐先填你自己的 endpoint / Key；没有也能先用样例判断效果。</p>
         </div>
 
         <div class="steps-grid">
           <article class="step-item" data-reveal>
             <div class="step-num">01</div>
-            <strong>上传小说文本</strong>
-            <span>支持 UTF-8 / GBK / GB18030，上传后自动转码。没有自己的文本，可以先用内置样例试跑。</span>
+            <strong>先选主路径</strong>
+            <span>正式使用时先填你自己的 endpoint / Key；如果只是试味道，就先看内置样例或做一次小额度试跑。</span>
             <p class="step-time">≈ 1 分钟</p>
           </article>
           <article class="step-item" data-reveal>
             <div class="step-num">02</div>
-            <strong>AI 自动读懂原著</strong>
-            <span>分析写作风格、人物关系、故事进度和伏笔，建立世界设定档案。整个阶段自动完成。</span>
+            <strong>上传原著并锁定风格</strong>
+            <span>支持 UTF-8 / GBK / GB18030。AI 会抽取人物关系、故事进度和伏笔，先建立世界设定档案。</span>
             <p class="step-time">≈ 1-2 分钟</p>
           </article>
           <article class="step-item" data-reveal>
@@ -258,9 +270,12 @@
         <div class="cta-glow" aria-hidden="true"></div>
         <div class="cta-panel" data-reveal>
           <p class="section-kicker">开始使用</p>
-          <h2>别光看别人的坑被填了，拿你自己的来试</h2>
-          <p>上传 .txt，看规划，看正文，看质量对比。觉得不行就关掉，不用把所有判断都交给一段黑盒回复。</p>
-          <a class="landing-button landing-button-primary" href="/studio">进入续写工作台</a>
+          <h2>样例负责说服你，正式使用就带上你自己的 API</h2>
+          <p>先用公开样例判断有没有说服力；一旦要跑你自己的文本，就把 endpoint / Key 带上来，把模型选择权和成本控制权握在自己手里。</p>
+          <div class="cta-actions">
+            <a class="landing-button landing-button-primary" href="/studio#bring-your-own-api">使用我的 API 开始</a>
+            <a class="landing-button landing-button-secondary" href="/studio#quickstart-sample">先看免费样例</a>
+          </div>
         </div>
       </section>
     </main>
