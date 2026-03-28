@@ -360,6 +360,33 @@ def test_web_run_manager_gets_builtin_example_detail(tmp_path: Path) -> None:
     assert example.trial_limit_note is not None
 
 
+def test_web_run_manager_reads_full_source_text(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    input_path = settings.web_uploads_dir / "demo.txt"
+    input_text = "第一章 雨夜追魂\n\n沈照站在义庄门口。\n\n门外雷声炸响。"
+    input_path.write_text(input_text, encoding="utf-8")
+
+    run = WebRunDetail(
+        id="run-1",
+        status="completed",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+        session_name="demo-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=5, completed_steps=5),
+        input_path=str(input_path),
+    )
+    manager._runs["run-1"] = run
+
+    source = manager.get_run_source_text("run-1")
+
+    assert source.input_filename == "demo.txt"
+    assert source.text_content == input_text
+    assert source.character_count == len(input_text)
+
+
 def test_web_run_manager_builds_public_showcase_from_builtin_fallback(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
     manager = WebRunManager(settings)

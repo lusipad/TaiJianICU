@@ -133,6 +133,12 @@ class WebRunDetail(WebRunSummary):
     chapter_summaries: list[WebChapterSummary] = Field(default_factory=list)
 
 
+class WebRunSourceText(BaseModel):
+    input_filename: str
+    text_content: str
+    character_count: int = 0
+
+
 class ApiErrorResponse(BaseModel):
     title: str
     status: int

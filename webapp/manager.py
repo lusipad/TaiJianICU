@@ -37,6 +37,7 @@ from webapp.models import (
     WebRunMetrics,
     WebRunProgress,
     WebRunRequest,
+    WebRunSourceText,
     WebRunSummary,
     WebRuntimeConfig,
 )
@@ -199,6 +200,20 @@ class WebRunManager:
             run = self._ensure_story_previews(run)
             self._runs[run.id] = run
             return run.model_copy(deep=True)
+
+    def get_run_source_text(self, run_id: str) -> WebRunSourceText:
+        run = self.get_run(run_id)
+        if not run.input_path:
+            raise ApiError("当前任务没有可读取的原文文件。", 404, "Not Found")
+        input_path = Path(run.input_path)
+        if not input_path.exists():
+            raise ApiError("找不到当前任务对应的原文文件。", 404, "Not Found")
+        text_content = input_path.read_text(encoding="utf-8")
+        return WebRunSourceText(
+            input_filename=run.input_filename,
+            text_content=text_content,
+            character_count=len(text_content),
+        )
 
     def list_benchmarks(self) -> list[WebBenchmarkSummary]:
         items: list[WebBenchmarkSummary] = []

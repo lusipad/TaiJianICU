@@ -47,7 +47,9 @@ document.addEventListener("DOMContentLoaded", initOnboarding);
 
 const state = {
   activeRunId: null,
+  activeRunDetail: null,
   activeBenchmarkKey: null,
+  activeSourceTab: "excerpt",
   activeWorkspaceTab: "overview",
   activeSidebarTab: "runs",
   exampleCache: [],
@@ -55,6 +57,7 @@ const state = {
   benchmarkCache: [],
   runtimeConfig: null,
   runCache: [],
+  sourceTextCache: {},
 };
 
 const elements = {
@@ -109,6 +112,7 @@ const elements = {
   threadsList: document.getElementById("threads-list"),
   chapterList: document.getElementById("chapter-list"),
   sourcePreviewLabel: document.getElementById("source-preview-label"),
+  sourcePreviewMeta: document.getElementById("source-preview-meta"),
   sourcePreview: document.getElementById("source-preview"),
   outputPath: document.getElementById("output-path"),
   outputPreview: document.getElementById("output-preview"),
@@ -126,6 +130,7 @@ const elements = {
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
   sidebarTabs: Array.from(document.querySelectorAll(".inspector-tab")),
   sidebarPanels: Array.from(document.querySelectorAll("[data-sidebar-panel]")),
+  sourceTabButtons: Array.from(document.querySelectorAll(".story-preview-tab")),
 };
 
 function escapeHtml(value) {
@@ -546,6 +551,17 @@ function setSidebarTab(tabName) {
   }
 }
 
+function setSourceTab(tabName) {
+  state.activeSourceTab = tabName;
+  for (const tab of elements.sourceTabButtons) {
+    tab.classList.toggle("is-active", tab.dataset.sourceTabTarget === tabName);
+  }
+  renderSourcePanel(state.activeRunDetail);
+  if (tabName === "full" && state.activeRunId) {
+    void ensureSourceTextLoaded(state.activeRunId);
+  }
+}
+
 function renderRunList(runs) {
   state.runCache = runs;
   if (!runs.length) {
@@ -779,7 +795,70 @@ function renderChapterList(chapters) {
     .join("");
 }
 
+function renderSourcePanel(run) {
+  const isFullText = state.activeSourceTab === "full";
+  for (const tab of elements.sourceTabButtons) {
+    tab.classList.toggle("is-active", tab.dataset.sourceTabTarget === state.activeSourceTab);
+  }
+
+  if (!run) {
+    elements.sourcePreviewLabel.textContent = "原文断点";
+    elements.sourcePreviewMeta.textContent = "仅展示当前衔接最相关的原文片段";
+    elements.sourcePreview.classList.remove("markdown-preview-scrollable");
+    elements.sourcePreview.innerHTML = renderMarkdownPreview(null);
+    return;
+  }
+
+  if (!isFullText) {
+    elements.sourcePreviewLabel.textContent = run.latest_source_preview_label || "原文断点";
+    elements.sourcePreviewMeta.textContent = "仅展示当前衔接最相关的原文片段";
+    elements.sourcePreview.classList.remove("markdown-preview-scrollable");
+    elements.sourcePreview.innerHTML = renderMarkdownPreview(run.latest_source_preview);
+    return;
+  }
+
+  elements.sourcePreviewLabel.textContent = "原始正文";
+  elements.sourcePreview.classList.add("markdown-preview-scrollable");
+  const entry = state.sourceTextCache[run.id];
+  if (!entry || entry.status === "loading") {
+    elements.sourcePreviewMeta.textContent = "正在加载原始正文...";
+    elements.sourcePreview.innerHTML = '<p class="markdown-empty">正在加载原始正文...</p>';
+    if (!entry) {
+      void ensureSourceTextLoaded(run.id);
+    }
+    return;
+  }
+  if (entry.status === "error") {
+    elements.sourcePreviewMeta.textContent = "原始正文加载失败";
+    elements.sourcePreview.innerHTML = `<p class="markdown-empty">${escapeHtml(entry.error || "加载失败")}</p>`;
+    return;
+  }
+  elements.sourcePreviewMeta.textContent = `${entry.payload.input_filename} · ${formatNumber(entry.payload.character_count)} 字`;
+  elements.sourcePreview.innerHTML = renderMarkdownPreview(entry.payload.text_content);
+}
+
+async function ensureSourceTextLoaded(runId) {
+  const existing = state.sourceTextCache[runId];
+  if (existing?.status === "loading" || existing?.status === "loaded") {
+    return;
+  }
+  state.sourceTextCache[runId] = { status: "loading" };
+  if (state.activeRunId === runId) {
+    renderSourcePanel(state.activeRunDetail);
+  }
+  try {
+    const payload = await fetchJson(`/api/runs/${encodeURIComponent(runId)}/source-text`);
+    state.sourceTextCache[runId] = { status: "loaded", payload };
+  } catch (error) {
+    state.sourceTextCache[runId] = { status: "error", error: error.message };
+  }
+  if (state.activeRunId === runId) {
+    renderSourcePanel(state.activeRunDetail);
+  }
+}
+
 function renderRun(run) {
+  state.activeRunDetail = run;
   elements.emptyState.classList.add("hidden");
   elements.runView.classList.remove("hidden");
 
@@ -817,8 +896,7 @@ function renderRun(run) {
   elements.evaluationSummary.textContent = formatEvaluationSummary(run.latest_chapter_evaluation);
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
-  elements.sourcePreviewLabel.textContent = run.latest_source_preview_label || "原文断点";
-  elements.sourcePreview.innerHTML = renderMarkdownPreview(run.latest_source_preview);
+  renderSourcePanel(run);
   const latestOutputPath =
     run.artifact_paths?.latest_output ||
     (Array.isArray(run.output_paths) && run.output_paths.length ? run.output_paths[run.output_paths.length - 1] : "-");
@@ -957,6 +1035,9 @@ window.addEventListener("load", async () => {
     for (const tab of elements.workspaceTabs) {
       tab.addEventListener("click", () => setWorkspaceTab(tab.dataset.tabTarget));
     }
+    for (const tab of elements.sourceTabButtons) {
+      tab.addEventListener("click", () => setSourceTab(tab.dataset.sourceTabTarget));
+    }
     for (const tab of elements.sidebarTabs) {
       tab.addEventListener("click", () => setSidebarTab(tab.dataset.sidebarTarget));
     }
@@ -979,6 +1060,7 @@ window.addEventListener("load", async () => {
       elements.clearApiConfigButton.addEventListener("click", clearApiConfigInputs);
     }
     setWorkspaceTab(state.activeWorkspaceTab);
+    setSourceTab(state.activeSourceTab);
     setSidebarTab(state.activeSidebarTab);
     await loadRuntimeConfig();
     clearApiConfigInputs();

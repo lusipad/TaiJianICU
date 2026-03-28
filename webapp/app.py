@@ -24,6 +24,7 @@ from webapp.models import (
     WebRuntimeConfig,
     WebRunDetail,
     WebRunRequest,
+    WebRunSourceText,
     WebRunSummary,
 )
 
@@ -170,6 +171,10 @@ def create_app(
     @app.get("/api/runs/{run_id}", response_model=WebRunDetail)
     async def get_run(run_id: str) -> WebRunDetail:
         return app.state.run_manager.get_run(run_id)
+
+    @app.get("/api/runs/{run_id}/source-text", response_model=WebRunSourceText)
+    async def get_run_source_text(run_id: str) -> WebRunSourceText:
+        return app.state.run_manager.get_run_source_text(run_id)
 
     @app.get("/api/benchmarks", response_model=list[WebBenchmarkSummary])
     async def list_benchmarks() -> list[WebBenchmarkSummary]:

@@ -16,6 +16,7 @@ from webapp.models import (
     WebRunDetail,
     WebRunProgress,
     WebRunRequest,
+    WebRunSourceText,
     WebRunSummary,
 )
 
@@ -166,6 +167,14 @@ class FakeRunManager:
     def get_run(self, run_id: str):
         assert run_id == "run-1"
         return self.detail
+
+    def get_run_source_text(self, run_id: str):
+        assert run_id == "run-1"
+        return WebRunSourceText(
+            input_filename="demo.txt",
+            text_content="第一章 雨夜追魂\n\n沈照站在义庄门口。",
+            character_count=18,
+        )
 
     def save_uploaded_text(self, filename: str, content: bytes):
         return Path("demo.txt"), "demo"
@@ -376,6 +385,17 @@ def test_get_run_endpoint_includes_source_preview() -> None:
     assert response.status_code == 200
     assert response.json()["latest_source_preview_label"] == "原文断点"
     assert response.json()["latest_source_preview"] == "示例原文"
+
+
+def test_get_run_source_text_endpoint() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/api/runs/run-1/source-text")
+
+    assert response.status_code == 200
+    assert response.json()["input_filename"] == "demo.txt"
+    assert "沈照站在义庄门口" in response.json()["text_content"]
 
 
 def test_create_example_run_endpoint() -> None:

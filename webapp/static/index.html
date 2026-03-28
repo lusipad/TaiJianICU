@@ -457,7 +457,21 @@
                 <div class="story-preview-stack">
                   <section class="story-preview-panel">
                     <div class="story-preview-panel-head">
-                      <p id="source-preview-label" class="label">原文断点</p>
+                      <div class="story-preview-copy">
+                        <p class="label">原文参考</p>
+                        <span id="source-preview-meta" class="workspace-path source-preview-meta">仅展示当前衔接最相关的原文片段</span>
+                      </div>
+                      <div class="story-preview-tabs" role="tablist" aria-label="原文视图切换">
+                        <button
+                          id="source-tab-excerpt"
+                          type="button"
+                          class="story-preview-tab is-active"
+                          data-source-tab-target="excerpt"
+                        >
+                          <span id="source-preview-label">原文断点</span>
+                        </button>
+                        <button type="button" class="story-preview-tab" data-source-tab-target="full">原始正文</button>
+                      </div>
                     </div>
                     <article id="source-preview" class="markdown-preview markdown-preview-source">-</article>
                   </section>
