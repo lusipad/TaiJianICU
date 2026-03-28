@@ -221,6 +221,8 @@ def test_web_health_and_index() -> None:
     assert studio.status_code == 200
     assert "TaiJianKiller Studio" in studio.text
     assert "世界设定" in studio.text
+    assert "AI 生成的续写章节" in studio.text
+    assert "拼接预览" in studio.text
     favicon = client.get("/static/favicon.svg")
     assert favicon.status_code == 200
     assert "image/svg+xml" in favicon.headers["content-type"]

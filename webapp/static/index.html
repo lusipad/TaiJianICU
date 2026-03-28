@@ -478,10 +478,29 @@
 
                   <section class="story-preview-panel story-preview-panel-ai">
                     <div class="story-preview-panel-head">
-                      <p class="label">续写正文</p>
-                      <span id="output-path" class="workspace-path">-</span>
+                      <div class="story-preview-copy">
+                        <p id="output-preview-label" class="label">AI 生成的续写章节</p>
+                        <span id="output-preview-meta" class="workspace-path output-preview-meta">
+                          按连续阅读方式展示：先原文断点，再接 AI 生成章节
+                        </span>
+                      </div>
+                      <div class="story-preview-panel-actions">
+                        <span id="output-path" class="workspace-path">-</span>
+                        <div class="story-preview-tabs" role="tablist" aria-label="续写视图切换">
+                          <button type="button" class="story-preview-tab" data-output-tab-target="chapter">
+                            续写章节
+                          </button>
+                          <button
+                            type="button"
+                            class="story-preview-tab is-active"
+                            data-output-tab-target="combined"
+                          >
+                            拼接预览
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <article id="output-preview" class="markdown-preview">-</article>
+                    <div id="output-preview" class="story-output-preview">-</div>
                   </section>
                 </div>
               </section>

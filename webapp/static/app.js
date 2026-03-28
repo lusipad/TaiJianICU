@@ -50,6 +50,7 @@ const state = {
   activeRunDetail: null,
   activeBenchmarkKey: null,
   activeSourceTab: "excerpt",
+  activeOutputTab: "combined",
   activeWorkspaceTab: "overview",
   activeSidebarTab: "runs",
   exampleCache: [],
@@ -115,6 +116,8 @@ const elements = {
   sourcePreviewLabel: document.getElementById("source-preview-label"),
   sourcePreviewMeta: document.getElementById("source-preview-meta"),
   sourcePreview: document.getElementById("source-preview"),
+  outputPreviewLabel: document.getElementById("output-preview-label"),
+  outputPreviewMeta: document.getElementById("output-preview-meta"),
   outputPath: document.getElementById("output-path"),
   outputPreview: document.getElementById("output-preview"),
   runLogs: document.getElementById("run-logs"),
@@ -131,7 +134,8 @@ const elements = {
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
   sidebarTabs: Array.from(document.querySelectorAll(".inspector-tab")),
   sidebarPanels: Array.from(document.querySelectorAll("[data-sidebar-panel]")),
-  sourceTabButtons: Array.from(document.querySelectorAll(".story-preview-tab")),
+  sourceTabButtons: Array.from(document.querySelectorAll("[data-source-tab-target]")),
+  outputTabButtons: Array.from(document.querySelectorAll("[data-output-tab-target]")),
 };
 
 function escapeHtml(value) {
@@ -168,6 +172,11 @@ function renderMarkdownPreview(markdown) {
         return `<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`;
       }
 
+      const thematicBreak = lines.length === 1 && /^([-*_])(?:\s*\1){2,}$/.test(lines[0].trim());
+      if (thematicBreak) {
+        return "<hr>";
+      }
+
       const unorderedList = lines.every((line) => /^[-*]\s+/.test(line.trim()));
       if (unorderedList) {
         const items = lines
@@ -199,6 +208,31 @@ function renderMarkdownPreview(markdown) {
       return `<p>${paragraph}</p>`;
     })
     .join("");
+}
+
+function splitOutputMarkdown(markdown) {
+  const normalized = String(markdown || "")
+    .replace(/\r\n/g, "\n")
+    .trim();
+  if (!normalized || normalized === "-") {
+    return { body: "", noteBody: "" };
+  }
+
+  const notePatterns = [
+    /\n---\s*\n\*\*(改写说明|创作说明|优化说明|续写说明)\*\*[:：]?\s*([\s\S]*)$/u,
+    /\n#{1,6}\s*(改写说明|创作说明|优化说明|续写说明)\s*\n([\s\S]*)$/u,
+  ];
+  for (const pattern of notePatterns) {
+    const match = pattern.exec(normalized);
+    if (!match || typeof match.index !== "number") continue;
+    const body = normalized.slice(0, match.index).trim();
+    const noteBody = String(match[2] || "").trim();
+    if (body && noteBody) {
+      return { body, noteBody };
+    }
+  }
+
+  return { body: normalized, noteBody: "" };
 }
 
 function formatNumber(value) {
@@ -591,6 +625,14 @@ function setSourceTab(tabName) {
   }
 }
 
+function setOutputTab(tabName) {
+  state.activeOutputTab = tabName;
+  for (const tab of elements.outputTabButtons) {
+    tab.classList.toggle("is-active", tab.dataset.outputTabTarget === tabName);
+  }
+  renderOutputPanel(state.activeRunDetail);
+}
+
 function renderRunList(runs) {
   state.runCache = runs;
   if (!runs.length) {
@@ -866,6 +908,86 @@ function renderSourcePanel(run) {
   elements.sourcePreview.innerHTML = renderMarkdownPreview(entry.payload.text_content);
 }
 
+function renderOutputNote(noteBody) {
+  if (!noteBody) return "";
+  return `
+    <section class="output-note">
+      <div class="stitched-preview-heading">
+        <p class="label">模型附注</p>
+        <span class="stitched-preview-note">原始输出里带有说明文字，已与续写正文分开展示</span>
+      </div>
+      <div class="markdown-preview markdown-preview-note">${renderMarkdownPreview(noteBody)}</div>
+    </section>
+  `;
+}
+
+function renderOutputPanel(run) {
+  for (const tab of elements.outputTabButtons) {
+    tab.classList.toggle("is-active", tab.dataset.outputTabTarget === state.activeOutputTab);
+  }
+
+  if (!run) {
+    elements.outputPreviewLabel.textContent = "AI 生成的续写章节";
+    elements.outputPreviewMeta.textContent = "按连续阅读方式展示：先原文断点，再接 AI 生成章节";
+    elements.outputPath.textContent = "-";
+    elements.outputPath.title = "";
+    elements.outputPreview.innerHTML = '<div class="markdown-preview"><p class="markdown-empty">暂无正文预览</p></div>';
+    return;
+  }
+
+  const latestOutputPath =
+    run.artifact_paths?.latest_output ||
+    (Array.isArray(run.output_paths) && run.output_paths.length ? run.output_paths[run.output_paths.length - 1] : "-");
+  const { body, noteBody } = splitOutputMarkdown(run.latest_output_preview);
+  const outputBody = body || run.latest_output_preview;
+  const sourceLabel = run.latest_source_preview_label || "原文断点";
+  const sourcePreviewHtml = renderMarkdownPreview(run.latest_source_preview);
+  const outputPreviewHtml = renderMarkdownPreview(outputBody);
+  const noteHtml = renderOutputNote(noteBody);
+
+  elements.outputPath.textContent = latestOutputPath;
+  elements.outputPath.title = latestOutputPath;
+  elements.outputPreviewLabel.textContent = "AI 生成的续写章节";
+
+  if (state.activeOutputTab === "chapter") {
+    elements.outputPreviewMeta.textContent = "仅展示 AI 新生成章节正文，便于单独评估文风、节奏和信息推进。";
+    elements.outputPreview.innerHTML = `
+      <section class="stitched-preview-section stitched-preview-section-output stitched-preview-section-single">
+        <div class="stitched-preview-heading">
+          <p class="label">续写章节</p>
+          <span class="stitched-preview-note">以下内容为模型新生成的章节正文</span>
+        </div>
+        <div class="markdown-preview">${outputPreviewHtml}</div>
+      </section>
+      ${noteHtml}
+    `;
+    return;
+  }
+
+  elements.outputPreviewMeta.textContent = "按连续阅读方式展示：先原文断点 / 上文衔接，再接 AI 生成章节。";
+  elements.outputPreview.innerHTML = `
+    <section class="stitched-preview-section stitched-preview-section-source">
+      <div class="stitched-preview-heading">
+        <p class="label">${escapeHtml(sourceLabel)}</p>
+        <span class="stitched-preview-note">先看进入续写前的原文衔接内容</span>
+      </div>
+      <div class="markdown-preview markdown-preview-source">${sourcePreviewHtml}</div>
+    </section>
+    <div class="stitched-preview-divider" aria-hidden="true">
+      <span>AI 从这里开始续写</span>
+      <small>先看上文断点，再判断 AI 是否顺着原文继续推进</small>
+    </div>
+    <section class="stitched-preview-section stitched-preview-section-output">
+      <div class="stitched-preview-heading">
+        <p class="label">续写章节</p>
+        <span class="stitched-preview-note">以下内容为模型新生成的章节正文</span>
+      </div>
+      <div class="markdown-preview">${outputPreviewHtml}</div>
+    </section>
+    ${noteHtml}
+  `;
+}
+
 async function ensureSourceTextLoaded(runId) {
   const existing = state.sourceTextCache[runId];
   if (existing?.status === "loading" || existing?.status === "loaded") {
@@ -944,12 +1066,7 @@ function renderRun(run) {
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
   renderSourcePanel(run);
-  const latestOutputPath =
-    run.artifact_paths?.latest_output ||
-    (Array.isArray(run.output_paths) && run.output_paths.length ? run.output_paths[run.output_paths.length - 1] : "-");
-  elements.outputPath.textContent = latestOutputPath;
-  elements.outputPath.title = latestOutputPath;
-  elements.outputPreview.innerHTML = renderMarkdownPreview(run.latest_output_preview);
+  renderOutputPanel(run);
 
   renderArtifacts(run.artifact_paths);
   renderCandidatePaths(elements.skeletonCandidateList, run.latest_skeleton_candidate_paths, "暂无提纲草稿");
@@ -1085,6 +1202,9 @@ window.addEventListener("load", async () => {
     for (const tab of elements.sourceTabButtons) {
       tab.addEventListener("click", () => setSourceTab(tab.dataset.sourceTabTarget));
     }
+    for (const tab of elements.outputTabButtons) {
+      tab.addEventListener("click", () => setOutputTab(tab.dataset.outputTabTarget));
+    }
     for (const tab of elements.sidebarTabs) {
       tab.addEventListener("click", () => setSidebarTab(tab.dataset.sidebarTarget));
     }
@@ -1108,6 +1228,7 @@ window.addEventListener("load", async () => {
     }
     setWorkspaceTab(state.activeWorkspaceTab);
     setSourceTab(state.activeSourceTab);
+    setOutputTab(state.activeOutputTab);
     setSidebarTab(state.activeSidebarTab);
     await loadRuntimeConfig();
     clearApiConfigInputs();
