@@ -215,16 +215,18 @@ def test_web_health_and_index() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "TaiJianKiller" in response.text
-    assert "推荐直接带你自己的 endpoint / Key 来跑" in response.text
-    assert "使用我的 API 开始" in response.text
+    assert "第一次使用，先看固定样例和免费试跑就够了" in response.text
+    assert "先免费试看" in response.text
+    assert "支持本地版本" in response.text
     studio = client.get("/studio")
     assert studio.status_code == 200
     assert "TaiJianKiller Studio" in studio.text
     assert "世界设定" in studio.text
     assert "AI 生成的续写章节" in studio.text
     assert "拼接预览" in studio.text
-    assert "正式使用，先填你自己的 API" in studio.text
-    assert "按当前 API 试跑样例" in studio.text
+    assert "第一次用？先免费试看，再决定要不要真跑" in studio.text
+    assert "按当前配置试跑样例" in studio.text
+    assert "使用自己的 Key，或者直接用本地版本" in studio.text
     favicon = client.get("/static/favicon.svg")
     assert favicon.status_code == 200
     assert "image/svg+xml" in favicon.headers["content-type"]
@@ -242,7 +244,7 @@ def test_web_requires_basic_auth_when_password_configured() -> None:
 
     authed_response = client.get("/", auth=("admin", "secret123"))
     assert authed_response.status_code == 200
-    assert "推荐直接带你自己的 endpoint / Key 来跑" in authed_response.text
+    assert "第一次使用，先看固定样例和免费试跑就够了" in authed_response.text
 
     studio_response = client.get("/studio", auth=("admin", "secret123"))
     assert studio_response.status_code == 200

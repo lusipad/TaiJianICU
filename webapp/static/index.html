@@ -39,7 +39,7 @@
             <p class="onboarding-body">
               一个 <strong>.txt 格式的小说文本</strong>就够了。支持 UTF-8、GBK、GB18030，上传后自动处理。其他参数都有默认值。
             </p>
-            <p class="onboarding-note">正式使用建议先填你自己的 endpoint / Key；没有也可以先快速试看内置原创样例。</p>
+            <p class="onboarding-note">第一次建议先快速试看内置原创样例；如果要长期使用，也支持自带 Key 或本地版本。</p>
           </div>
 
           <div class="onboarding-step hidden" data-step="3">
@@ -47,7 +47,7 @@
             <p class="onboarding-step-num">3 / 3</p>
             <h2 class="onboarding-title">怎么开始？</h2>
             <p class="onboarding-body">
-              正式使用时，先在左侧填好 <strong>API endpoint / Key</strong> 再上传原著；如果只是先判断效果，可以点「快速试看原创样例」。
+              先点左侧的 <strong>「快速试看原创样例」</strong> 看固定结果；如果觉得效果对，再上传自己的原著。需要更多控制权时，再去右侧填写 endpoint / Key 或用本地版本。
             </p>
             <p class="onboarding-note">右侧切换「总览 / 规划 / 诊断」查看不同层级的结果。</p>
           </div>
@@ -84,28 +84,49 @@
           <div class="panel-head">
             <p class="section-kicker">输入区</p>
             <h1>续写工作台</h1>
-            <p class="panel-copy">推荐先填你自己的 API endpoint / Key，再上传原著开始正式续写；样例和小额度试跑只负责帮你判断效果。</p>
+            <p class="panel-copy">第一次先免费试看和平台试跑；满意后再上传自己的原著。自带 Key 和本地版本保留，但只是额外方式，不是默认主路径。</p>
           </div>
 
           <form id="run-form" class="run-form">
-            <section id="bring-your-own-api" class="quickstart-card anchor-target">
+            <section class="quickstart-card">
               <div class="quickstart-copy">
-                <p class="section-kicker">推荐路径</p>
-                <h2>正式使用，先填你自己的 API</h2>
-                <p class="hint">成本归你自己控制，模型也由你自己决定。平台免费试看保留，但不再是默认主路径。</p>
+                <p class="section-kicker">快速开始</p>
+                <h2>第一次用？先免费试看，再决定要不要真跑</h2>
+                <p class="hint">默认主路径是固定样例和小额度平台试跑。确定有说服力以后，再上传自己的原著；你自己的 Key 和本地版本只是附加能力。</p>
               </div>
 
               <div class="quickstart-priority-grid">
-                <section class="quickstart-panel quickstart-panel-primary">
+                <section id="quickstart-sample" class="quickstart-panel quickstart-panel-primary anchor-target">
                   <div class="quickstart-panel-head">
                     <div>
-                      <p class="label">正式使用</p>
-                      <strong>带你自己的 endpoint / Key 运行</strong>
+                      <p class="label">免费试看</p>
+                      <strong>先看固定样例，再做一次平台试跑</strong>
+                    </div>
+                  </div>
+                  <div class="quickstart-steps">
+                    <span>1. 「快速试看」直接加载预计算结果，不消耗你当前填写的 endpoint / Key</span>
+                    <span>2. 「按当前配置试跑样例」会真的调用当前页面配置；如果你没填自己的 Key，就走平台小额度试跑</span>
+                    <span>3. 确认效果以后，再上传自己的原著文本开始正式续写</span>
+                  </div>
+                  <div class="quickstart-actions">
+                    <div class="dual-action-row">
+                      <button id="try-example-button" type="button">快速试看原创样例</button>
+                      <button id="load-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
+                    </div>
+                    <p id="example-description" class="hint">正在加载示例信息...</p>
+                  </div>
+                </section>
+
+                <section id="bring-your-own-api" class="quickstart-panel quickstart-panel-secondary anchor-target">
+                  <div class="quickstart-panel-head">
+                    <div>
+                      <p class="label">额外方式</p>
+                      <strong>使用自己的 Key，或者直接用本地版本</strong>
                     </div>
                     <button id="clear-api-config-button" class="utility-button" type="button">清空当前 API</button>
                   </div>
                   <p class="quickstart-panel-copy">
-                    你的 Key 只在当前页面和这次提交里生效，不会写入任务记录。模型路由和更细的规划参数，可以在下方高级选项里继续调整。
+                    如果你想自己控制模型、成本和额度，可以在这里填 endpoint / Key。你的 Key 只在当前页面和这次提交里生效，不会写入任务记录。仓库也已经提供本地部署方案，适合长期使用。
                   </p>
                   <div class="field-grid model-grid">
                     <label class="field">
@@ -139,27 +160,6 @@
                     </span>
                   </div>
                 </section>
-
-                <section id="quickstart-sample" class="quickstart-panel quickstart-panel-secondary anchor-target">
-                  <div class="quickstart-panel-head">
-                    <div>
-                      <p class="label">试看与试跑</p>
-                      <strong>先看固定样例，再决定要不要真跑</strong>
-                    </div>
-                  </div>
-                  <div class="quickstart-steps">
-                    <span>1. 「快速试看」直接加载预计算结果，不消耗你当前填写的 endpoint / Key</span>
-                    <span>2. 「按当前 API 试跑样例」会真的调用当前页面配置，用来验证 provider、模型和质量</span>
-                    <span>3. 平台试跑建议只做体验；正式续写自己的文本，优先走你自己的 API</span>
-                  </div>
-                  <div class="quickstart-actions">
-                    <div class="dual-action-row">
-                      <button id="try-example-button" type="button">快速试看原创样例</button>
-                      <button id="load-example-button" class="utility-button" type="button">按当前 API 试跑样例</button>
-                    </div>
-                    <p id="example-description" class="hint">正在加载示例信息...</p>
-                  </div>
-                </section>
               </div>
             </section>
 
@@ -167,13 +167,13 @@
               <div class="quickstart-copy">
                 <p class="section-kicker">正式提交</p>
                 <h2>上传原著，再开始真正的续写任务</h2>
-                <p class="hint">上面的 API 配置决定本次运行使用哪条模型通路；下面只负责输入原著和章节范围。</p>
+                <p class="hint">免费试看确认效果以后，再来这里上传自己的文本。上面的 API 配置只是额外能力，没填也能继续走平台默认配置。</p>
               </div>
 
               <div class="quickstart-steps">
-                <span>推荐顺序：先填 API endpoint / Key，再上传原著文本</span>
-                <span>如果只想先看效果，回到上面的「快速试看原创样例」即可</span>
-                <span>要继续细调模型路由、候选数和规划模式，再展开「高级选项」</span>
+                <span>推荐顺序：先免费试看样例，再上传原著文本</span>
+                <span>如果你想控成本或切模型，再去右侧额外方式里填写自己的 endpoint / Key</span>
+                <span>如果要长期使用，也可以直接部署本地版本，再回到这里继续用同一套界面</span>
               </div>
             </section>
 
@@ -184,7 +184,7 @@
                     <p class="section-kicker">原著输入</p>
                     <h3>文本与章节</h3>
                   </div>
-                  <span class="field-note">填好 API 后上传原著文件，设置续写章节数，然后直接开始。</span>
+                  <span class="field-note">试看满意后上传原著文件，设置续写章节数，然后直接开始。</span>
                 </div>
               </div>
 
@@ -215,7 +215,7 @@
 
                 <div class="action-row">
                   <button id="submit-button" type="submit">开始分析并续写</button>
-                  <p id="form-status" class="hint">提交后会自动轮询任务进度；优先使用你上面填写的 endpoint / Key。</p>
+                  <p id="form-status" class="hint">提交后会自动轮询任务进度。默认走平台当前配置；如果你填写了自己的 endpoint / Key，会只对这次提交生效。</p>
                 </div>
               </div>
             </section>
@@ -227,7 +227,7 @@
                     <p class="section-kicker">高级选项</p>
                     <h3>模型路由、规划与执行</h3>
                   </div>
-                  <span class="field-note">可选。API 配置已放到上方主路径，这里只留模型路由和更细的执行参数。</span>
+                  <span class="field-note">可选。上方已经提供免费试看和额外 API 方式，这里只留模型路由和更细的执行参数。</span>
                 </div>
               </summary>
 
@@ -391,16 +391,16 @@
           <div id="empty-state" class="empty-state">
             <div class="empty-state-icon" aria-hidden="true">✍</div>
             <p class="empty-state-title">还没有选中任务</p>
-            <p>推荐先在左侧填自己的 API endpoint / Key 再上传原著；如果只是先判断效果，也可以先快速试看样例。</p>
+            <p>推荐先在左侧快速试看样例，判断值不值得用；满意后再上传自己的原著。自带 Key 和本地版本只是额外方式。</p>
             <div class="empty-state-steps">
-              <span>推荐：先填左侧 API endpoint / Key，作为正式使用主路径</span>
-              <span>上传 .txt 后开始正式续写；模型路由可在高级选项继续细调</span>
-              <span>只想先看效果时，再点「快速试看样例」或「按当前 API 试跑样例」</span>
+              <span>先点左侧「快速试看样例」或「按当前配置试跑样例」</span>
+              <span>确认效果以后，再上传 .txt 做正式续写；模型路由可在高级选项继续细调</span>
+              <span>如果你想自己控模型和成本，再去右侧额外方式填写自己的 Key，或者直接使用本地版本</span>
             </div>
             <div class="empty-state-actions">
               <div class="dual-action-row">
                 <button id="empty-example-button" type="button">快速试看样例</button>
-                <button id="empty-fill-example-button" class="utility-button" type="button">按当前 API 试跑样例</button>
+                <button id="empty-fill-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
               </div>
             </div>
           </div>

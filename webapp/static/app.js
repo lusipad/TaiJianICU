@@ -432,8 +432,8 @@ function applyRuntimeConfig(config) {
   }
   if (elements.runtimeApiHint) {
     elements.runtimeApiHint.textContent = config.api_base_url
-      ? `推荐填你自己的 endpoint / Key。当前部署默认 endpoint：${config.api_base_url}；如果留空，才会回退到服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。`
-      : "推荐填你自己的 endpoint / Key。留空时才会使用服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。";
+      ? `如果你想用自己的 endpoint / Key，这里可以直接填。当前部署默认 endpoint：${config.api_base_url}；如果留空，会继续走服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。`
+      : "如果你想用自己的 endpoint / Key，这里可以直接填。留空时会继续走服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。";
   }
 }
 
@@ -525,18 +525,18 @@ function renderExamples(items) {
     elements.tryExampleButton.textContent = `快速试看：${example.title}`;
   }
   if (elements.loadExampleButton) {
-    elements.loadExampleButton.textContent = `按当前 API 试跑：${example.title}`;
+    elements.loadExampleButton.textContent = `按当前配置试跑：${example.title}`;
   }
   if (elements.emptyExampleButton) {
     elements.emptyExampleButton.textContent = `快速试看：${example.title}`;
   }
   if (elements.emptyFillExampleButton) {
-    elements.emptyFillExampleButton.textContent = `按当前 API 试跑：${example.title}`;
+    elements.emptyFillExampleButton.textContent = `按当前配置试跑：${example.title}`;
   }
   elements.exampleDescription.textContent = [
     `${example.title} · ${example.description}`,
     "快速试看只加载固定结果，不消耗你当前填写的 endpoint / Key。",
-    "按当前 API 试跑样例会真的调用当前页面配置；如果你没有填写自己的 Key，则仍受平台单 IP 小额度限制。",
+    "按当前配置试跑样例会真的调用当前页面配置；如果你没有填写自己的 Key，则仍受平台单 IP 小额度限制。需要长期使用时，也可以切到自己的 Key 或本地版本。",
   ]
     .filter(Boolean)
     .join(" ");
@@ -613,7 +613,7 @@ async function startExampleRun() {
   const formData = collectRunFormData();
   formData.delete("file");
   setActionBusy(true);
-  setFormStatus(`正在按当前 API 试跑样例：${example.title}...`);
+  setFormStatus(`正在按当前配置试跑样例：${example.title}...`);
   try {
     const payload = await fetchJson(`/api/examples/${encodeURIComponent(example.id)}/runs`, {
       method: "POST",
