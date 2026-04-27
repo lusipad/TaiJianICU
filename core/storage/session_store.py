@@ -105,6 +105,21 @@ class SessionStore:
     def selected_references_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "selected_references.json"
 
+    def work_skill_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "work_skill.json"
+
+    def arc_options_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "arc_options.json"
+
+    def selected_arc_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "selected_arc.json"
+
+    def revival_diagnosis_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "revival_diagnosis.json"
+
+    def blind_challenge_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "blind_challenge.json"
+
     def chapter_brief_path(self, session_name: str, chapter_number: int) -> Path:
         return self.session_dir(session_name) / f"chapter_{chapter_number}_brief.json"
 

@@ -19,3 +19,13 @@ def test_session_store_roundtrip_threads(tmp_path: Path) -> None:
 
     assert loaded == threads
     assert store.unresolved_threads_path("demo").exists()
+
+
+def test_session_store_revival_artifact_paths(tmp_path: Path) -> None:
+    store = SessionStore(tmp_path)
+
+    assert store.work_skill_path("demo") == tmp_path / "demo" / "work_skill.json"
+    assert store.arc_options_path("demo") == tmp_path / "demo" / "arc_options.json"
+    assert store.selected_arc_path("demo") == tmp_path / "demo" / "selected_arc.json"
+    assert store.revival_diagnosis_path("demo") == tmp_path / "demo" / "revival_diagnosis.json"
+    assert store.blind_challenge_path("demo") == tmp_path / "demo" / "blind_challenge.json"
