@@ -82,7 +82,7 @@ def _unauthorized_response() -> JSONResponse:
     return JSONResponse(
         status_code=401,
         content={"title": "Unauthorized", "status": 401, "detail": "需要认证后才能访问。"},
-        headers={"WWW-Authenticate": 'Basic realm="TaiJianKiller"'},
+        headers={"WWW-Authenticate": 'Basic realm="TaiJianICU"'},
     )
 
 
@@ -133,7 +133,7 @@ def create_app(
     manager = run_manager or WebRunManager(app_settings)
     static_dir = Path(__file__).resolve().parent / "static"
 
-    app = FastAPI(title="TaiJianKiller Web", version="0.1.0")
+    app = FastAPI(title="TaiJianICU Web", version="0.1.0")
     app.state.settings = app_settings
     app.state.run_manager = manager
     app.state.example_rate_limiter = _ExampleRunRateLimiter(

@@ -1,8 +1,8 @@
-# 太监杀手 V2 实施路线图
+# TaiJianICU V2 实施路线图
 
 ## 1. 目标
 
-本文档把 [DESIGN_V2.md](D:\Repos\TaiJianKiller\DESIGN_V2.md) 拆成可执行的开发路线图，目标是把 V2 从设计稿完整落地为可运行、可验证、可交付的系统。
+本文档把 [DESIGN_V2.md](DESIGN_V2.md) 拆成可执行的开发路线图，目标是把 V2 从设计稿完整落地为可运行、可验证、可交付的系统。
 
 V2 完成定义：
 
@@ -113,8 +113,8 @@ V2 按七个大里程碑推进：
 
 建议重构：
 
-- [orchestrator.py](D:\Repos\TaiJianKiller\orchestrator.py)
-- [core/storage/session_store.py](D:\Repos\TaiJianKiller\core\storage\session_store.py)
+- [orchestrator.py](orchestrator.py)
+- [core/storage/session_store.py](core/storage/session_store.py)
 
 建议新增服务目录：
 
@@ -164,7 +164,7 @@ V2 按七个大里程碑推进：
 
 建议升级：
 
-- [pipeline/stage1_extraction/style_analyzer.py](D:\Repos\TaiJianKiller\pipeline\stage1_extraction\style_analyzer.py)
+- [pipeline/stage1_extraction/style_analyzer.py](pipeline/stage1_extraction/style_analyzer.py)
 
 ### 6.5 关键能力
 
@@ -217,7 +217,7 @@ V2 按七个大里程碑推进：
 
 建议重构：
 
-- [orchestrator.py](D:\Repos\TaiJianKiller\orchestrator.py)
+- [orchestrator.py](orchestrator.py)
 
 ### 7.5 关键能力
 
@@ -310,10 +310,10 @@ V2 按七个大里程碑推进：
 
 建议升级：
 
-- [pipeline/stage2_plot/debate_graph.py](D:\Repos\TaiJianKiller\pipeline\stage2_plot\debate_graph.py)
-- [pipeline/stage2_plot/agent_nodes.py](D:\Repos\TaiJianKiller\pipeline\stage2_plot\agent_nodes.py)
-- [pipeline/stage3_generation/chapter_generator.py](D:\Repos\TaiJianKiller\pipeline\stage3_generation\chapter_generator.py)
-- [pipeline/stage3_generation/quality_checker.py](D:\Repos\TaiJianKiller\pipeline\stage3_generation\quality_checker.py)
+- [pipeline/stage2_plot/debate_graph.py](pipeline/stage2_plot/debate_graph.py)
+- [pipeline/stage2_plot/agent_nodes.py](pipeline/stage2_plot/agent_nodes.py)
+- [pipeline/stage3_generation/chapter_generator.py](pipeline/stage3_generation/chapter_generator.py)
+- [pipeline/stage3_generation/quality_checker.py](pipeline/stage3_generation/quality_checker.py)
 
 建议新增：
 
@@ -377,12 +377,12 @@ V2 按七个大里程碑推进：
 
 建议升级：
 
-- [webapp/app.py](D:\Repos\TaiJianKiller\webapp\app.py)
-- [webapp/manager.py](D:\Repos\TaiJianKiller\webapp\manager.py)
-- [webapp/models.py](D:\Repos\TaiJianKiller\webapp\models.py)
-- [webapp/static/index.html](D:\Repos\TaiJianKiller\webapp\static\index.html)
-- [webapp/static/styles.css](D:\Repos\TaiJianKiller\webapp\static\styles.css)
-- [webapp/static/app.js](D:\Repos\TaiJianKiller\webapp\static\app.js)
+- [webapp/app.py](webapp/app.py)
+- [webapp/manager.py](webapp/manager.py)
+- [webapp/models.py](webapp/models.py)
+- [webapp/static/index.html](webapp/static/index.html)
+- [webapp/static/styles.css](webapp/static/styles.css)
+- [webapp/static/app.js](webapp/static/app.js)
 
 ### 10.5 页面结构
 
@@ -568,4 +568,4 @@ V2 的开发方式不是“想到什么做什么”，而是严格按：
 
 > 世界层 -> 规划层 -> 执行层 -> 参考层 -> 工作台 -> benchmark
 
-这个顺序逐步推进，直到 [DESIGN_V2.md](D:\Repos\TaiJianKiller\DESIGN_V2.md) 中定义的能力全部落地。
+这个顺序逐步推进，直到 [DESIGN_V2.md](DESIGN_V2.md) 中定义的能力全部落地。

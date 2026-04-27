@@ -153,7 +153,7 @@ class BenchmarkRunner:
         with httpx.Client(timeout=60, follow_redirects=True) as client:
             response = client.get(
                 spec.source_url,
-                headers={"user-agent": "Mozilla/5.0 TaiJianKiller Benchmark"},
+                headers={"user-agent": "Mozilla/5.0 TaiJianICU Benchmark"},
             )
             response.raise_for_status()
         output_path.write_text(

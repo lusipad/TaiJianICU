@@ -214,13 +214,13 @@ def test_web_health_and_index() -> None:
     assert client.get("/ready").json() == {"status": "ok"}
     response = client.get("/")
     assert response.status_code == 200
-    assert "TaiJianKiller" in response.text
+    assert "TaiJianICU" in response.text
     assert "第一次使用，先看固定样例和免费试跑就够了" in response.text
     assert "先免费试看" in response.text
     assert "支持本地版本" in response.text
     studio = client.get("/studio")
     assert studio.status_code == 200
-    assert "TaiJianKiller Studio" in studio.text
+    assert "TaiJianICU Studio" in studio.text
     assert "世界设定" in studio.text
     assert "AI 生成的续写章节" in studio.text
     assert "拼接预览" in studio.text
@@ -248,7 +248,7 @@ def test_web_requires_basic_auth_when_password_configured() -> None:
 
     studio_response = client.get("/studio", auth=("admin", "secret123"))
     assert studio_response.status_code == 200
-    assert "TaiJianKiller Studio" in studio_response.text
+    assert "TaiJianICU Studio" in studio_response.text
 
 
 def test_api_requires_basic_auth_when_password_configured() -> None:

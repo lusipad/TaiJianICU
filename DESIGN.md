@@ -1,4 +1,4 @@
-# 太监杀手（TaiJianKiller）实现计划
+# TaiJianICU 实现计划
 
 ## Context
 
@@ -207,7 +207,7 @@ await rag.aquery("主角与反派之间的未解决仇恨？", param=QueryParam(
 ## 项目目录结构
 
 ```
-TaiJianKiller/
+TaiJianICU/
 ├── pyproject.toml
 ├── .env.example
 ├── config/
@@ -328,7 +328,7 @@ LightRAG 图谱记录实体间关系。额外维护 `data/sessions/unresolved_th
 
 ## 人工干预节点（4个）
 
-1. **图谱确认**（阶段1完成后）— 运行 `taijian inspect`，查看并补充遗漏的伏笔/关系
+1. **图谱确认**（阶段1完成后）— 运行 `taijianicu inspect`，查看并补充遗漏的伏笔/关系
 2. **辩论议题注入**（每章辩论前）— 在 `data/sessions/chapter_N_config.json` 预设"本章必须发生的事"
 3. **骨架审阅**（`--pause-after-skeleton`）— 直接编辑 `ChapterSkeleton` JSON
 4. **初稿审阅**（`--pause-after-draft`）— 手动修改文本后程序继续润色
@@ -343,7 +343,7 @@ LightRAG 图谱记录实体间关系。额外维护 `data/sessions/unresolved_th
 3. LightRAG 集成：`novel_indexer.py`（Gemini 2.5 Pro 建图）
 4. LangGraph 辩论图：`debate_graph.py` + `agent_nodes.py`（2轮简化，DeepSeek）
 5. 文本生成：`chapter_generator.py`（Claude Sonnet 4.6，无风格感知）
-6. CLI 入口 `taijian run` + 端到端测试
+6. CLI 入口 `taijianicu run` + 端到端测试
 
 ### Beta（完善核心）
 7. 风格感知：`style_analyzer.py` + `style_sampler.py`（LightRAG hybrid 检索 few-shot）
@@ -355,7 +355,7 @@ LightRAG 图谱记录实体间关系。额外维护 `data/sessions/unresolved_th
 ### 完整版
 12. 人工干预流程（4个节点完整实现）
 13. 质量评分 + 自动重试（DeepEval G-Eval）
-14. `taijian inspect` 可视化图谱
+14. `taijianicu inspect` 可视化图谱
 15. Rich 进度条 + 成本报告
 
 ---
@@ -373,7 +373,7 @@ LightRAG 图谱记录实体间关系。额外维护 `data/sessions/unresolved_th
 ## 验证方式
 
 1. 准备一部有明确伏笔的小说前 50 章（推荐：斗破苍穹）
-2. 运行 `taijian run --input data/input/novel.txt --chapters 3`
+2. 运行 `taijianicu run --input data/input/novel.txt --chapters 3`
 3. 检查输出：
    - `data/lightrag/` 中是否正确建立了知识图谱
    - `data/sessions/chapter_N_skeleton.json` 骨架是否合理

@@ -3,7 +3,7 @@ requires = ["setuptools>=82", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "taijiankiller"
+name = "taijianicu"
 version = "0.1.0"
 description = "用多阶段 Agent 流水线续写被腰斩网络小说的 CLI 工具"
 readme = "README.md"
@@ -33,6 +33,7 @@ dev = [
 ]
 
 [project.scripts]
+taijianicu = "cli.main:app"
 taijian = "cli.main:app"
 
 [tool.setuptools]
