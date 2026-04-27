@@ -13,10 +13,11 @@ from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation, EvaluationScore
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
+from core.models.revival import DirectorArcOption, DirectorArcOptions, WorkSkill
 from core.models.story_state import StoryWorldState
 from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
-from orchestrator import ChapterRunResult, PipelineRunResult
+from orchestrator import ChapterRunResult, PipelineRunResult, RevivalAnalysisResult
 from pipeline.stage1_extraction.novel_indexer import IndexingResult
 from webapp.manager import WebRunManager
 from webapp.models import WebRunDetail, WebRunProgress, WebRunRequest, WebRuntimeApiOverride
@@ -205,6 +206,74 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
     assert detail.latest_draft_candidate_paths[0].endswith("chapter_1_draft_candidate_1.md")
     assert detail.latest_source_preview_label == "原文断点"
     assert "一队人已经到了门外" in (detail.latest_source_preview or "")
+
+
+def test_web_run_manager_populates_revival_analysis_artifacts(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    session_dir = settings.sessions_dir / "revival-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    input_path = settings.web_uploads_dir / "demo.txt"
+    input_path.write_text("第一章 测试\n\n沈照站在义庄门口。", encoding="utf-8")
+    now = datetime.now(timezone.utc)
+
+    snapshot = ExtractionSnapshot(
+        style_profile=StyleProfile(summary="沉稳"),
+        story_state=StoryWorldState(summary="旧案重启"),
+    )
+    (session_dir / "stage1_snapshot.json").write_text(snapshot.model_dump_json(indent=2), encoding="utf-8")
+    (session_dir / "world_model.json").write_text(WorldModel(summary="世界扩张").model_dump_json(indent=2), encoding="utf-8")
+    (session_dir / "lorebook.json").write_text(LorebookBundle().model_dump_json(indent=2), encoding="utf-8")
+    (session_dir / "selected_references.json").write_text('{"profiles":[]}', encoding="utf-8")
+    (session_dir / "work_skill.json").write_text(
+        WorkSkill(source_digest="abc123", generated_at=now, voice_rules=["沉稳"]).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    (session_dir / "arc_options.json").write_text(
+        DirectorArcOptions(
+            generated_at=now,
+            options=[
+                DirectorArcOption(id="arc_a", title="稳住节奏"),
+                DirectorArcOption(id="arc_b", title="情绪升温"),
+                DirectorArcOption(id="arc_c", title="局势逼转"),
+            ],
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    run = WebRunDetail(
+        id="run-1",
+        status="analyzing",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=4, completed_steps=1),
+        input_path=str(input_path),
+    )
+    manager._runs["run-1"] = run
+
+    manager._populate_revival_analysis_outputs(
+        "run-1",
+        RevivalAnalysisResult(
+            session_name="revival-session",
+            input_path=str(input_path),
+            stage1_snapshot_path=str(session_dir / "stage1_snapshot.json"),
+            world_model_path=str(session_dir / "world_model.json"),
+            work_skill_path=str(session_dir / "work_skill.json"),
+            arc_options_path=str(session_dir / "arc_options.json"),
+            index_result=IndexingResult(source_path=str(input_path), chunk_count=1, character_count=20),
+        ),
+    )
+
+    detail = manager.get_run("run-1")
+    assert detail.status == "awaiting_arc_selection"
+    assert detail.work_skill is not None
+    assert detail.work_skill.voice_rules == ["沉稳"]
+    assert detail.arc_options is not None
+    assert len(detail.arc_options.options) == 3
+    assert detail.artifact_paths.work_skill and detail.artifact_paths.work_skill.endswith("work_skill.json")
+    assert detail.artifact_paths.arc_options and detail.artifact_paths.arc_options.endswith("arc_options.json")
 
 
 def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:

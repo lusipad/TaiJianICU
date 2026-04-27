@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -8,7 +10,8 @@ from pydantic import BaseModel, Field
 
 from config.settings import AppSettings, get_settings
 from core.llm.litellm_client import LLMUsageSummary, LiteLLMService
-from core.models.chapter_brief import ChapterBrief
+from core.models.arc_outline import ArcOutline
+from core.models.chapter_brief import ChapterBrief, ExpansionBudget
 from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
@@ -31,6 +34,7 @@ from pipeline.stage2_plot.skeleton_builder import SkeletonBuilder
 from pipeline.stage3_generation.chapter_generator import ChapterGenerator
 from pipeline.stage3_generation.quality_checker import QualityChecker, QualityReport
 from pipeline.stage3_generation.style_sampler import StyleSampler
+from pipeline.revival import RevivalArcPlanner, WorkSkillBuilder
 
 
 class ChapterRunResult(BaseModel):
@@ -61,8 +65,37 @@ class PipelineRunResult(BaseModel):
     status: str = "completed"
 
 
+class RevivalAnalysisResult(BaseModel):
+    session_name: str
+    input_path: str
+    stage1_snapshot_path: str
+    world_model_path: str
+    work_skill_path: str
+    arc_options_path: str
+    index_result: IndexingResult
+    stage1_usage: LLMUsageSummary = Field(default_factory=LLMUsageSummary)
+    total_usage: LLMUsageSummary = Field(default_factory=LLMUsageSummary)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    finished_at: datetime | None = None
+    status: str = "awaiting_arc_selection"
+
+
 class ReferenceProfileBundle(BaseModel):
     profiles: list[ReferenceProfile] = Field(default_factory=list)
+
+
+@dataclass
+class PreparedStoryContext:
+    index_result: IndexingResult
+    snapshot: ExtractionSnapshot
+    snapshot_path: str
+    stage1_usage: LLMUsageSummary
+    world_model: WorldModel
+    world_model_path: Path
+    lorebook: LorebookBundle
+    selected_references: list[ReferenceProfile]
+    arc_outline: ArcOutline
+    expansion_budget: ExpansionBudget
 
 
 class TaiJianOrchestrator:
@@ -103,6 +136,8 @@ class TaiJianOrchestrator:
         self.style_sampler = StyleSampler(self.rag_store)
         self.chapter_generator = ChapterGenerator(self.settings, self.llm_service)
         self.quality_checker = QualityChecker(self.settings, self.llm_service)
+        self.work_skill_builder = WorkSkillBuilder()
+        self.revival_arc_planner = RevivalArcPlanner()
         self.intervention = InterventionManager(self.session_store)
 
     @staticmethod
@@ -353,6 +388,94 @@ class TaiJianOrchestrator:
         )
         return index_result, snapshot, str(snapshot_path)
 
+    async def _prepare_story_context(
+        self,
+        *,
+        session_name: str,
+        input_path: Path,
+        chapters: int,
+        start_chapter: int,
+        planning_mode: str,
+        new_character_budget: int | None,
+        new_location_budget: int | None,
+        new_faction_budget: int | None,
+        use_existing_index: bool,
+        refresh_snapshot: bool,
+        overall_usage_mark: int,
+        progress_callback: Callable[[str], None] | None,
+    ) -> PreparedStoryContext:
+        self._emit(progress_callback, "阶段1：索引与风格分析")
+        index_result, snapshot, snapshot_path = await self._stage1(
+            session_name=session_name,
+            input_path=input_path,
+            use_existing_index=use_existing_index,
+            refresh_snapshot=refresh_snapshot,
+        )
+        stage1_usage = self.llm_service.usage_summary(overall_usage_mark)
+        world_model_path = self.session_store.world_model_path(session_name)
+        previous_world_model = self.session_store.load_model(world_model_path, WorldModel)
+        world_model = self.world_refresh.refresh(
+            snapshot=snapshot,
+            previous=previous_world_model if isinstance(previous_world_model, WorldModel) else None,
+            chapter_number=max(0, start_chapter - 1),
+        )
+        self.session_store.save_model(world_model_path, world_model)
+        memory_snapshot = self.memory_compressor.compress(input_path.read_text(encoding="utf-8"))
+        lorebook = self.lorebook_manager.build(
+            world_model=world_model,
+            memory_snapshot=memory_snapshot,
+        )
+        self.session_store.save_model(
+            self.session_store.lorebook_path(session_name),
+            lorebook,
+        )
+        selected_references = self.reference_planner.select_profiles(
+            world_model=world_model,
+            reference_profiles=self.reference_planner.load_profiles(self.settings.references_dir),
+            limit=2,
+        )
+        self.session_store.save_model(
+            self.session_store.selected_references_path(session_name),
+            ReferenceProfileBundle(profiles=selected_references),
+        )
+        arc_length = min(max(1, chapters), 5)
+        expansion_budget = self.expansion_allocator.allocate(
+            world_model=world_model,
+            mode=planning_mode,
+            arc_length=arc_length,
+        )
+        budget_updates: dict[str, int] = {}
+        if new_character_budget is not None:
+            budget_updates["new_character_budget"] = new_character_budget
+        if new_location_budget is not None:
+            budget_updates["new_location_budget"] = new_location_budget
+        if new_faction_budget is not None:
+            budget_updates["new_faction_budget"] = new_faction_budget
+        if budget_updates:
+            expansion_budget = expansion_budget.model_copy(update=budget_updates)
+        arc_outline = self.arc_planner.plan(
+            world_model=world_model,
+            start_chapter=start_chapter,
+            arc_length=arc_length,
+            expansion_budget=expansion_budget,
+        )
+        self.session_store.save_model(
+            self.session_store.arc_outline_path(session_name, arc_outline.arc_id),
+            arc_outline,
+        )
+        return PreparedStoryContext(
+            index_result=index_result,
+            snapshot=snapshot,
+            snapshot_path=snapshot_path,
+            stage1_usage=stage1_usage,
+            world_model=world_model,
+            world_model_path=world_model_path,
+            lorebook=lorebook,
+            selected_references=selected_references,
+            arc_outline=arc_outline,
+            expansion_budget=expansion_budget,
+        )
+
     async def _prepare_skeleton(
         self,
         *,
@@ -527,6 +650,69 @@ class TaiJianOrchestrator:
             )
         return final_text, quality_report
 
+    async def prepare_revival_analysis(
+        self,
+        *,
+        input_path: Path,
+        session_name: str | None = None,
+        planning_mode: str = "balanced",
+        new_character_budget: int | None = None,
+        new_location_budget: int | None = None,
+        new_faction_budget: int | None = None,
+        use_existing_index: bool = False,
+        refresh_snapshot: bool = False,
+        start_chapter: int = 1,
+        progress_callback: Callable[[str], None] | None = None,
+    ) -> RevivalAnalysisResult:
+        session_name = session_name or self._default_session_name(input_path)
+        run_started_at = datetime.now(timezone.utc)
+        overall_usage_mark = self.llm_service.usage_mark()
+        context = await self._prepare_story_context(
+            session_name=session_name,
+            input_path=input_path,
+            chapters=1,
+            start_chapter=start_chapter,
+            planning_mode=planning_mode,
+            new_character_budget=new_character_budget,
+            new_location_budget=new_location_budget,
+            new_faction_budget=new_faction_budget,
+            use_existing_index=use_existing_index,
+            refresh_snapshot=refresh_snapshot,
+            overall_usage_mark=overall_usage_mark,
+            progress_callback=progress_callback,
+        )
+        source_digest = hashlib.sha256(input_path.read_bytes()).hexdigest()
+        work_skill = self.work_skill_builder.build(
+            snapshot=context.snapshot,
+            world_model=context.world_model,
+            lorebook=context.lorebook,
+            source_digest=source_digest,
+        )
+        work_skill_path = self.session_store.work_skill_path(session_name)
+        self.session_store.save_model(work_skill_path, work_skill)
+        arc_options = self.revival_arc_planner.plan_options(
+            work_skill=work_skill,
+            snapshot=context.snapshot,
+            world_model=context.world_model,
+            arc_outline=context.arc_outline,
+        )
+        arc_options_path = self.session_store.arc_options_path(session_name)
+        self.session_store.save_model(arc_options_path, arc_options)
+        self._emit(progress_callback, "复活分析：已生成作品 skill 与人物弧线")
+        return RevivalAnalysisResult(
+            session_name=session_name,
+            input_path=str(input_path),
+            stage1_snapshot_path=context.snapshot_path,
+            world_model_path=str(context.world_model_path),
+            work_skill_path=str(work_skill_path),
+            arc_options_path=str(arc_options_path),
+            index_result=context.index_result,
+            stage1_usage=context.stage1_usage,
+            total_usage=self.llm_service.usage_summary(overall_usage_mark),
+            started_at=run_started_at,
+            finished_at=datetime.now(timezone.utc),
+        )
+
     async def run(
         self,
         *,
@@ -561,73 +747,35 @@ class TaiJianOrchestrator:
             draft_candidates or self.settings.tuning.draft_candidate_count,
         )
 
-        self._emit(progress_callback, "阶段1：索引与风格分析")
-        index_result, snapshot, snapshot_path = await self._stage1(
+        context = await self._prepare_story_context(
             session_name=session_name,
             input_path=input_path,
+            chapters=chapters,
+            start_chapter=start_chapter,
+            planning_mode=planning_mode,
+            new_character_budget=new_character_budget,
+            new_location_budget=new_location_budget,
+            new_faction_budget=new_faction_budget,
             use_existing_index=use_existing_index or resume,
             refresh_snapshot=refresh_snapshot,
+            overall_usage_mark=overall_usage_mark,
+            progress_callback=progress_callback,
         )
-        stage1_usage = self.llm_service.usage_summary(overall_usage_mark)
         current_threads = self.session_store.load_unresolved_threads(session_name)
-        world_model_path = self.session_store.world_model_path(session_name)
-        previous_world_model = self.session_store.load_model(world_model_path, WorldModel)
-        world_model = self.world_refresh.refresh(
-            snapshot=snapshot,
-            previous=previous_world_model if isinstance(previous_world_model, WorldModel) else None,
-            chapter_number=max(0, start_chapter - 1),
-        )
-        self.session_store.save_model(world_model_path, world_model)
-        memory_snapshot = self.memory_compressor.compress(Path(input_path).read_text(encoding="utf-8"))
-        lorebook = self.lorebook_manager.build(
-            world_model=world_model,
-            memory_snapshot=memory_snapshot,
-        )
-        self.session_store.save_model(
-            self.session_store.lorebook_path(session_name),
-            lorebook,
-        )
-        selected_references = self.reference_planner.select_profiles(
-            world_model=world_model,
-            reference_profiles=self.reference_planner.load_profiles(self.settings.references_dir),
-            limit=2,
-        )
-        self.session_store.save_model(
-            self.session_store.selected_references_path(session_name),
-            ReferenceProfileBundle(profiles=selected_references),
-        )
-        arc_length = min(max(1, chapters), 5)
-        expansion_budget = self.expansion_allocator.allocate(
-            world_model=world_model,
-            mode=planning_mode,
-            arc_length=arc_length,
-        )
-        budget_updates: dict[str, int] = {}
-        if new_character_budget is not None:
-            budget_updates["new_character_budget"] = new_character_budget
-        if new_location_budget is not None:
-            budget_updates["new_location_budget"] = new_location_budget
-        if new_faction_budget is not None:
-            budget_updates["new_faction_budget"] = new_faction_budget
-        if budget_updates:
-            expansion_budget = expansion_budget.model_copy(update=budget_updates)
-        arc_outline = self.arc_planner.plan(
-            world_model=world_model,
-            start_chapter=start_chapter,
-            arc_length=arc_length,
-            expansion_budget=expansion_budget,
-        )
-        self.session_store.save_model(
-            self.session_store.arc_outline_path(session_name, arc_outline.arc_id),
-            arc_outline,
-        )
+        snapshot = context.snapshot
+        world_model = context.world_model
+        world_model_path = context.world_model_path
+        lorebook = context.lorebook
+        selected_references = context.selected_references
+        arc_outline = context.arc_outline
+        expansion_budget = context.expansion_budget
         result = PipelineRunResult(
             session_name=session_name,
             input_path=str(input_path),
-            stage1_snapshot_path=snapshot_path,
-            world_model_path=str(world_model_path),
-            index_result=index_result,
-            stage1_usage=stage1_usage,
+            stage1_snapshot_path=context.snapshot_path,
+            world_model_path=str(context.world_model_path),
+            index_result=context.index_result,
+            stage1_usage=context.stage1_usage,
             started_at=run_started_at,
         )
 

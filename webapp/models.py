@@ -5,10 +5,20 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field
 
+from core.models.revival import BlindChallenge, DirectorArcOptions, RevivalDiagnosis, SelectedArc, WorkSkill
 from core.models.story_state import StoryThread
 
 
-RunStatus = Literal["queued", "running", "completed", "failed"]
+RunStatus = Literal[
+    "queued",
+    "running",
+    "analyzing",
+    "awaiting_arc_selection",
+    "generating",
+    "completed",
+    "completed_with_warnings",
+    "failed",
+]
 
 
 class WebRunRequest(BaseModel):
@@ -86,6 +96,11 @@ class WebRunArtifactPaths(BaseModel):
     world_model: str | None = None
     lorebook: str | None = None
     selected_references: str | None = None
+    work_skill: str | None = None
+    arc_options: str | None = None
+    selected_arc: str | None = None
+    revival_diagnosis: str | None = None
+    blind_challenge: str | None = None
     latest_skeleton: str | None = None
     latest_chapter_brief: str | None = None
     latest_chapter_evaluation: str | None = None
@@ -115,6 +130,11 @@ class WebRunDetail(WebRunSummary):
     story_state: dict | None = None
     world_model: dict | None = None
     lorebook: dict | None = None
+    work_skill: WorkSkill | None = None
+    arc_options: DirectorArcOptions | None = None
+    selected_arc: SelectedArc | None = None
+    revival_diagnosis: RevivalDiagnosis | None = None
+    blind_challenge: BlindChallenge | None = None
     selected_references: list[dict] = Field(default_factory=list)
     arc_outlines: list[dict] = Field(default_factory=list)
     latest_chapter_brief: dict | None = None

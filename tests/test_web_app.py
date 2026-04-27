@@ -41,6 +41,7 @@ class FakeRunManager:
             latest_output_preview="示例正文",
         )
         self.start_calls = 0
+        self.revival_start_calls = 0
         self.preview_calls = 0
         self.last_request = None
         self.last_runtime_api_override = None
@@ -192,6 +193,25 @@ class FakeRunManager:
         self.last_runtime_api_override = runtime_api_override
         return WebRunSummary.model_validate(self.detail.model_dump(mode="json"))
 
+    def start_revival_analysis_run(
+        self,
+        *,
+        input_path: Path,
+        input_filename: str,
+        request: WebRunRequest,
+        runtime_api_override: WebRuntimeApiOverride | None = None,
+    ):
+        self.revival_start_calls += 1
+        self.last_request = request
+        self.last_runtime_api_override = runtime_api_override
+        revival_detail = self.detail.model_copy(
+            update={
+                "status": "queued",
+                "request": request,
+            }
+        )
+        return WebRunSummary.model_validate(revival_detail.model_dump(mode="json"))
+
     def start_example_run(
         self,
         *,
@@ -319,6 +339,32 @@ def test_create_run_accepts_txt_upload() -> None:
     assert manager.last_request.style_model == "openai/gpt-4.1-mini"
     assert manager.last_request.plot_model == "openai/gpt-4.1-mini"
     assert manager.last_request.lightrag_model_name == "openai/gpt-4.1-mini"
+    assert manager.last_runtime_api_override == WebRuntimeApiOverride(
+        api_base_url="https://openrouter.ai/api/v1",
+        api_key="sk-demo",
+    )
+
+
+def test_create_revival_run_accepts_txt_upload() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/revival/runs",
+        files={"file": ("demo.txt", "第一章 测试".encode("utf-8"), "text/plain")},
+        data={
+            "start_chapter": "1",
+            "planning_mode": "balanced",
+            "api_base_url": "https://openrouter.ai/api/v1",
+            "api_key": "sk-demo",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id"] == "run-1"
+    assert manager.revival_start_calls == 1
+    assert manager.last_request.chapters == 1
     assert manager.last_runtime_api_override == WebRuntimeApiOverride(
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",

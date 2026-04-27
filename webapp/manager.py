@@ -18,10 +18,11 @@ from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
+from core.models.revival import DirectorArcOptions, WorkSkill
 from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
 from core.models.world_model import WorldModel
-from orchestrator import PipelineRunResult, TaiJianOrchestrator
+from orchestrator import PipelineRunResult, RevivalAnalysisResult, TaiJianOrchestrator
 from webapp.builtin_examples import BUILT_IN_EXAMPLES, BuiltInExample
 from webapp.errors import ApiError
 from webapp.models import (
@@ -588,6 +589,71 @@ class WebRunManager:
             )
         return WebRunSummary.model_validate(run.model_dump(mode="json"))
 
+    def start_revival_analysis_run(
+        self,
+        *,
+        input_path: Path,
+        input_filename: str,
+        request: WebRunRequest,
+        runtime_api_override: WebRuntimeApiOverride | None = None,
+    ) -> WebRunSummary:
+        run_id = uuid4().hex
+        created_at = datetime.now(timezone.utc)
+        session_name = request.session_name or f"{self._slugify_session(Path(input_filename).stem)}-{created_at.strftime('%Y%m%d-%H%M%S')}"
+        run = WebRunDetail(
+            id=run_id,
+            status="queued",
+            created_at=created_at,
+            updated_at=created_at,
+            session_name=session_name,
+            input_filename=input_filename,
+            request=request.model_copy(update={"chapters": 1}),
+            progress=WebRunProgress(total_steps=4, completed_steps=0),
+            input_path=str(input_path),
+            log_messages=["复活分析任务已创建，等待执行"],
+        )
+        with self._lock:
+            self._runs[run_id] = run
+            self._persist(run)
+
+        run_settings = self._settings_for_request(run.request, runtime_api_override)
+        try:
+            self._schedule_revival_analysis(run_id, run_settings)
+        except Exception as exc:
+            self._update_run(
+                run_id,
+                status="failed",
+                error_message=f"任务调度失败：{exc}",
+                progress=run.progress.model_copy(update={"message": "运行失败"}),
+            )
+        return WebRunSummary.model_validate(run.model_dump(mode="json"))
+
+    def _schedule_revival_analysis(self, run_id: str, run_settings: AppSettings | None = None) -> None:
+        loop = self._ensure_async_runtime()
+        future = asyncio.run_coroutine_threadsafe(
+            self._run_revival_analysis_async(run_id, run_settings),
+            loop,
+        )
+        with self._runtime_lock:
+            self._async_futures[run_id] = future
+
+        def _cleanup(completed: ConcurrentFuture[None]) -> None:
+            with self._runtime_lock:
+                self._async_futures.pop(run_id, None)
+            try:
+                completed.result()
+            except Exception as exc:
+                current = self._runs.get(run_id)
+                if current and current.status in {"queued", "running", "analyzing"}:
+                    self._update_run(
+                        run_id,
+                        status="failed",
+                        error_message=str(exc),
+                        progress=current.progress.model_copy(update={"message": "运行失败"}),
+                    )
+
+        future.add_done_callback(_cleanup)
+
     def _update_run(self, run_id: str, **changes) -> None:
         with self._lock:
             current = self._runs[run_id]
@@ -848,6 +914,61 @@ class WebRunManager:
             chapter_summaries=chapter_summaries,
         )
 
+    def _populate_revival_analysis_outputs(
+        self,
+        run_id: str,
+        result: RevivalAnalysisResult,
+    ) -> None:
+        session_dir = self.settings.sessions_dir / result.session_name
+        snapshot_path = Path(result.stage1_snapshot_path)
+        snapshot = self._load_json_model(snapshot_path, ExtractionSnapshot)
+        world_model = self._load_json_model(session_dir / "world_model.json", WorldModel)
+        lorebook = self._load_json_model(session_dir / "lorebook.json", LorebookBundle)
+        work_skill = self._load_json_model(session_dir / "work_skill.json", WorkSkill)
+        arc_options = self._load_json_model(session_dir / "arc_options.json", DirectorArcOptions)
+        selected_references_bundle = self._load_json_model(
+            session_dir / "selected_references.json",
+            _ReferenceProfileBundle,
+        )
+        self._update_run(
+            run_id,
+            status="awaiting_arc_selection",
+            progress=self.get_run(run_id).progress.model_copy(
+                update={
+                    "completed_steps": self.get_run(run_id).progress.total_steps,
+                    "message": "请选择人物走向",
+                }
+            ),
+            stage1_snapshot_path=result.stage1_snapshot_path,
+            style_profile=snapshot.style_profile.model_dump(mode="json") if snapshot else None,
+            story_state=snapshot.story_state.model_dump(mode="json") if snapshot else None,
+            world_model=world_model.model_dump(mode="json") if world_model else None,
+            lorebook=lorebook.model_dump(mode="json") if lorebook else None,
+            work_skill=work_skill,
+            arc_options=arc_options,
+            selected_references=[
+                item.model_dump(mode="json")
+                for item in (selected_references_bundle.profiles if selected_references_bundle else [])
+            ],
+            artifact_paths=WebRunArtifactPaths(
+                stage1_snapshot=result.stage1_snapshot_path,
+                world_model=str(session_dir / "world_model.json") if (session_dir / "world_model.json").exists() else None,
+                lorebook=str(session_dir / "lorebook.json") if (session_dir / "lorebook.json").exists() else None,
+                selected_references=(
+                    str(session_dir / "selected_references.json")
+                    if (session_dir / "selected_references.json").exists()
+                    else None
+                ),
+                work_skill=str(session_dir / "work_skill.json") if (session_dir / "work_skill.json").exists() else None,
+                arc_options=str(session_dir / "arc_options.json") if (session_dir / "arc_options.json").exists() else None,
+            ),
+            metrics=WebRunMetrics(
+                total_calls=result.total_usage.calls,
+                total_tokens=result.total_usage.total_tokens,
+                total_cost_usd=result.total_usage.total_cost_usd,
+            ),
+        )
+
     async def _run_pipeline_async(
         self,
         run_id: str,
@@ -875,6 +996,42 @@ class WebRunManager:
                 progress_callback=lambda message: self._append_log(run_id, message),
             )
             self._populate_outputs(run_id, result)
+        except Exception as exc:
+            self._update_run(
+                run_id,
+                status="failed",
+                error_message=str(exc),
+                progress=self.get_run(run_id).progress.model_copy(update={"message": "运行失败"}),
+            )
+
+    async def _run_revival_analysis_async(
+        self,
+        run_id: str,
+        run_settings: AppSettings | None = None,
+    ) -> None:
+        current = self.get_run(run_id)
+        orchestrator = TaiJianOrchestrator(run_settings or self._settings_for_request(current.request))
+
+        try:
+            self._update_run(
+                run_id,
+                status="analyzing",
+                progress=current.progress.model_copy(
+                    update={"completed_steps": 1, "message": "正在分析原著"}
+                ),
+            )
+            result = await orchestrator.prepare_revival_analysis(
+                input_path=Path(current.input_path or ""),
+                session_name=current.session_name,
+                planning_mode=current.request.planning_mode,
+                new_character_budget=current.request.new_character_budget,
+                new_location_budget=current.request.new_location_budget,
+                new_faction_budget=current.request.new_faction_budget,
+                use_existing_index=current.request.use_existing_index,
+                start_chapter=current.request.start_chapter,
+                progress_callback=lambda message: self._append_log(run_id, message),
+            )
+            self._populate_revival_analysis_outputs(run_id, result)
         except Exception as exc:
             self._update_run(
                 run_id,

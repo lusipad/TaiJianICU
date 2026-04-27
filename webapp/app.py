@@ -266,6 +266,58 @@ def create_app(
             runtime_api_override=runtime_api_override,
         )
 
+    @app.post("/api/revival/runs", response_model=WebRunSummary, status_code=201)
+    async def create_revival_run(
+        file: UploadFile = File(...),
+        start_chapter: int = Form(1),
+        session_name: str = Form(""),
+        planning_mode: str = Form("balanced"),
+        new_character_budget: int | None = Form(None),
+        new_location_budget: int | None = Form(None),
+        new_faction_budget: int | None = Form(None),
+        style_model: str = Form(""),
+        plot_model: str = Form(""),
+        draft_model: str = Form(""),
+        quality_model: str = Form(""),
+        lightrag_model_name: str = Form(""),
+        api_base_url: str = Form(""),
+        api_key: str = Form(""),
+        use_existing_index: bool = Form(False),
+    ) -> WebRunSummary:
+        if not file.filename:
+            raise ApiError("请上传一个文本文件。", 422, "Invalid Input")
+        if not file.filename.lower().endswith(".txt"):
+            raise ApiError("当前只支持 .txt 文本文件。", 422, "Invalid Input")
+        content = await file.read()
+        if not content:
+            raise ApiError("上传文件为空。", 422, "Invalid Input")
+        input_path, _suggested_name = app.state.run_manager.save_uploaded_text(file.filename, content)
+        request = WebRunRequest(
+            session_name=session_name.strip() or None,
+            chapters=1,
+            start_chapter=start_chapter,
+            planning_mode=planning_mode,  # type: ignore[arg-type]
+            new_character_budget=new_character_budget,
+            new_location_budget=new_location_budget,
+            new_faction_budget=new_faction_budget,
+            style_model=style_model.strip() or None,
+            plot_model=plot_model.strip() or None,
+            draft_model=draft_model.strip() or None,
+            quality_model=quality_model.strip() or None,
+            lightrag_model_name=lightrag_model_name.strip() or None,
+            use_existing_index=use_existing_index,
+        )
+        runtime_api_override = _build_runtime_api_override(
+            api_base_url=api_base_url,
+            api_key=api_key,
+        )
+        return app.state.run_manager.start_revival_analysis_run(
+            input_path=input_path,
+            input_filename=file.filename,
+            request=request,
+            runtime_api_override=runtime_api_override,
+        )
+
     @app.post("/api/examples/{example_id}/runs", response_model=WebRunSummary, status_code=201)
     async def create_example_run(
         http_request: Request,
