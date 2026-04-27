@@ -12,6 +12,8 @@ from webapp.models import (
     WebBenchmarkDetail,
     WebExampleSummary,
     WebPublicShowcase,
+    WebArcSelectionRequest,
+    WebBlindChallengeRatingRequest,
     WebRuntimeApiOverride,
     WebRunDetail,
     WebRunProgress,
@@ -42,6 +44,8 @@ class FakeRunManager:
         )
         self.start_calls = 0
         self.revival_start_calls = 0
+        self.arc_selection_calls = 0
+        self.blind_rating_calls = 0
         self.preview_calls = 0
         self.last_request = None
         self.last_runtime_api_override = None
@@ -212,6 +216,20 @@ class FakeRunManager:
         )
         return WebRunSummary.model_validate(revival_detail.model_dump(mode="json"))
 
+    def select_revival_arc(self, run_id: str, request: WebArcSelectionRequest):
+        assert run_id == "run-1"
+        self.arc_selection_calls += 1
+        self.last_request = request
+        return WebRunSummary.model_validate(
+            self.detail.model_copy(update={"status": "generating"}).model_dump(mode="json")
+        )
+
+    def save_blind_challenge_rating(self, run_id: str, request: WebBlindChallengeRatingRequest):
+        assert run_id == "run-1"
+        self.blind_rating_calls += 1
+        self.last_request = request
+        return self.detail
+
     def start_example_run(
         self,
         *,
@@ -369,6 +387,43 @@ def test_create_revival_run_accepts_txt_upload() -> None:
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",
     )
+
+
+def test_revival_arc_selection_endpoint() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/revival/runs/run-1/arc-selection",
+        json={"selected_option_id": "arc_a", "arc_options_digest": "digest", "user_note": "稳住节奏"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "generating"
+    assert manager.arc_selection_calls == 1
+    assert manager.last_request.selected_option_id == "arc_a"
+
+
+def test_revival_blind_challenge_endpoint() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/revival/runs/run-1/blind-challenge",
+        json={
+            "voice_match_score": 5,
+            "rhythm_match_score": 4,
+            "character_voice_score": 5,
+            "notes": "像",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == "run-1"
+    assert manager.blind_rating_calls == 1
+    assert manager.last_request.voice_match_score == 5
 
 
 def test_get_runtime_config_endpoint() -> None:

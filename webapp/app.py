@@ -15,6 +15,8 @@ from config.settings import AppSettings, get_settings
 from webapp.errors import ApiError, register_error_handlers
 from webapp.manager import WebRunManager
 from webapp.models import (
+    WebArcSelectionRequest,
+    WebBlindChallengeRatingRequest,
     WebExampleDetail,
     WebExampleSummary,
     WebBenchmarkDetail,
@@ -317,6 +319,20 @@ def create_app(
             request=request,
             runtime_api_override=runtime_api_override,
         )
+
+    @app.post("/api/revival/runs/{run_id}/arc-selection", response_model=WebRunSummary)
+    async def select_revival_arc(
+        run_id: str,
+        request: WebArcSelectionRequest,
+    ) -> WebRunSummary:
+        return app.state.run_manager.select_revival_arc(run_id, request)
+
+    @app.post("/api/revival/runs/{run_id}/blind-challenge", response_model=WebRunDetail)
+    async def save_revival_blind_challenge(
+        run_id: str,
+        request: WebBlindChallengeRatingRequest,
+    ) -> WebRunDetail:
+        return app.state.run_manager.save_blind_challenge_rating(run_id, request)
 
     @app.post("/api/examples/{example_id}/runs", response_model=WebRunSummary, status_code=201)
     async def create_example_run(

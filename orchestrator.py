@@ -15,6 +15,7 @@ from core.models.chapter_brief import ChapterBrief, ExpansionBudget
 from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
+from core.models.revival import DirectorArcOptions, SelectedArc
 from core.models.skeleton import ChapterSkeleton
 from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
@@ -34,7 +35,13 @@ from pipeline.stage2_plot.skeleton_builder import SkeletonBuilder
 from pipeline.stage3_generation.chapter_generator import ChapterGenerator
 from pipeline.stage3_generation.quality_checker import QualityChecker, QualityReport
 from pipeline.stage3_generation.style_sampler import StyleSampler
-from pipeline.revival import RevivalArcPlanner, WorkSkillBuilder
+from pipeline.revival import (
+    BlindChallengeBuilder,
+    CleanProseGate,
+    RevivalArcPlanner,
+    RevivalDiagnosisBuilder,
+    WorkSkillBuilder,
+)
 
 
 class ChapterRunResult(BaseModel):
@@ -138,6 +145,9 @@ class TaiJianOrchestrator:
         self.quality_checker = QualityChecker(self.settings, self.llm_service)
         self.work_skill_builder = WorkSkillBuilder()
         self.revival_arc_planner = RevivalArcPlanner()
+        self.clean_prose_gate = CleanProseGate(min_chinese_chars=1000)
+        self.revival_diagnosis_builder = RevivalDiagnosisBuilder()
+        self.blind_challenge_builder = BlindChallengeBuilder()
         self.intervention = InterventionManager(self.session_store)
 
     @staticmethod
@@ -712,6 +722,305 @@ class TaiJianOrchestrator:
             started_at=run_started_at,
             finished_at=datetime.now(timezone.utc),
         )
+
+    def _apply_selected_arc_to_brief(
+        self,
+        *,
+        chapter_brief: ChapterBrief,
+        selected_option,
+    ) -> ChapterBrief:
+        note = "；".join(
+            item
+            for item in [
+                chapter_brief.chapter_note,
+                f"导演弧线：{selected_option.title}",
+                selected_option.emotional_direction,
+            ]
+            if item
+        )
+        return chapter_brief.model_copy(
+            update={
+                "chapter_note": note,
+                "must_happen": list(
+                    dict.fromkeys([*chapter_brief.must_happen, *selected_option.must_happen])
+                ),
+                "must_not_break": list(
+                    dict.fromkeys([*chapter_brief.must_not_break, *selected_option.must_not_break])
+                ),
+            }
+        )
+
+    async def run_revival_generation(
+        self,
+        *,
+        input_path: Path,
+        session_name: str,
+        goal_hint: str | None = None,
+        planning_mode: str = "balanced",
+        new_character_budget: int | None = None,
+        new_location_budget: int | None = None,
+        new_faction_budget: int | None = None,
+        skeleton_candidates: int | None = None,
+        draft_candidates: int | None = None,
+        use_existing_index: bool = True,
+        overwrite: bool = False,
+        start_chapter: int = 1,
+        progress_callback: Callable[[str], None] | None = None,
+    ) -> PipelineRunResult:
+        selected_arc = self.session_store.load_model(
+            self.session_store.selected_arc_path(session_name),
+            SelectedArc,
+        )
+        if not isinstance(selected_arc, SelectedArc):
+            raise ValueError("请先选择人物走向。")
+        arc_options = self.session_store.load_model(
+            self.session_store.arc_options_path(session_name),
+            DirectorArcOptions,
+        )
+        if not isinstance(arc_options, DirectorArcOptions):
+            raise ValueError("找不到人物走向选项，请重新分析。")
+        selected_option = next(
+            (option for option in arc_options.options if option.id == selected_arc.selected_option_id),
+            None,
+        )
+        if selected_option is None:
+            raise ValueError("已选择的人物走向不在当前选项中，请重新分析。")
+
+        run_started_at = datetime.now(timezone.utc)
+        overall_usage_mark = self.llm_service.usage_mark()
+        skeleton_candidate_count = max(
+            1,
+            skeleton_candidates or self.settings.tuning.skeleton_candidate_count,
+        )
+        draft_candidate_count = max(
+            1,
+            draft_candidates or self.settings.tuning.draft_candidate_count,
+        )
+        context = await self._prepare_story_context(
+            session_name=session_name,
+            input_path=input_path,
+            chapters=1,
+            start_chapter=start_chapter,
+            planning_mode=planning_mode,
+            new_character_budget=new_character_budget,
+            new_location_budget=new_location_budget,
+            new_faction_budget=new_faction_budget,
+            use_existing_index=use_existing_index,
+            refresh_snapshot=False,
+            overall_usage_mark=overall_usage_mark,
+            progress_callback=progress_callback,
+        )
+        current_threads = self.session_store.load_unresolved_threads(session_name)
+        snapshot = context.snapshot
+        world_model = context.world_model
+        world_model_path = context.world_model_path
+        lorebook = context.lorebook
+        selected_references = context.selected_references
+        arc_outline = context.arc_outline
+        expansion_budget = context.expansion_budget
+        chapter_number = start_chapter
+        result = PipelineRunResult(
+            session_name=session_name,
+            input_path=str(input_path),
+            stage1_snapshot_path=context.snapshot_path,
+            world_model_path=str(context.world_model_path),
+            index_result=context.index_result,
+            stage1_usage=context.stage1_usage,
+            started_at=run_started_at,
+        )
+
+        chapter_usage_mark = self.llm_service.usage_mark()
+        chapter_started_at = datetime.now(timezone.utc)
+        intervention_config = self.intervention.load_or_create(session_name, chapter_number)
+        chapter_brief = self.chapter_allocator.allocate(
+            world_model=world_model,
+            arc_outline=arc_outline,
+            chapter_number=chapter_number,
+            expansion_budget=expansion_budget,
+            reference_profiles=selected_references,
+        )
+        chapter_brief = self._apply_selected_arc_to_brief(
+            chapter_brief=chapter_brief,
+            selected_option=selected_option,
+        )
+        chapter_brief = self._apply_chapter_brief_overrides(
+            chapter_brief=chapter_brief,
+            intervention_must_happen=intervention_config.must_happen,
+            intervention_notes=intervention_config.notes,
+            goal_hint=goal_hint,
+        )
+        self.session_store.save_model(
+            self.session_store.chapter_brief_path(session_name, chapter_number),
+            chapter_brief,
+        )
+        focus_threads = self._select_focus_threads(
+            current_threads or snapshot.story_state.unresolved_threads,
+            intervention_config.focus_thread_ids or chapter_brief.focus_threads,
+        )
+        chapter_goal = self._build_chapter_goal(
+            chapter_brief=chapter_brief,
+            focus_threads=focus_threads,
+        )
+        lorebook_context = self._match_lorebook_for_chapter(
+            lorebook=lorebook,
+            chapter_brief=chapter_brief,
+            focus_threads=focus_threads,
+        )
+
+        skeleton_path = self.session_store.chapter_skeleton_path(session_name, chapter_number)
+        draft_path = self.session_store.chapter_draft_path(session_name, chapter_number)
+        output_path = self.settings.output_dir / session_name / f"chapter_{chapter_number}.md"
+        chapter_result = ChapterRunResult(
+            chapter_number=chapter_number,
+            skeleton_path=str(skeleton_path),
+            chapter_goal=chapter_goal,
+        )
+
+        self._emit(progress_callback, f"章节{chapter_number}：情节辩论")
+        skeleton, consistency_report = await self._prepare_skeleton(
+            session_name=session_name,
+            chapter_number=chapter_number,
+            chapter_goal=chapter_goal,
+            world_model=world_model,
+            chapter_brief=chapter_brief,
+            lorebook_context=lorebook_context,
+            snapshot=snapshot,
+            focus_threads=focus_threads,
+            candidate_count=skeleton_candidate_count,
+            resume=True,
+            overwrite=overwrite,
+        )
+        chapter_result.consistency_report = consistency_report
+        style_samples = await self.style_sampler.sample(
+            session_name,
+            skeleton,
+            snapshot.style_profile,
+        )
+
+        self._emit(progress_callback, f"章节{chapter_number}：生成草稿")
+        draft_text, saved_draft_path = await self._prepare_draft(
+            session_name=session_name,
+            chapter_number=chapter_number,
+            skeleton=skeleton,
+            world_model=world_model,
+            chapter_brief=chapter_brief,
+            lorebook_context=lorebook_context,
+            snapshot=snapshot,
+            style_samples=style_samples,
+            candidate_count=draft_candidate_count,
+            resume=True,
+            overwrite=overwrite,
+        )
+        chapter_result.draft_path = str(saved_draft_path)
+
+        self._emit(progress_callback, f"章节{chapter_number}：润色与质检")
+        final_text, quality_report = await self._finalize_output(
+            session_name=session_name,
+            chapter_number=chapter_number,
+            skeleton=skeleton,
+            world_model=world_model,
+            chapter_brief=chapter_brief,
+            lorebook_context=lorebook_context,
+            snapshot=snapshot,
+            draft_text=draft_text,
+            style_samples=style_samples,
+        )
+        gate_result = self.clean_prose_gate.check(final_text)
+        clean_retry_count = 0
+        while (
+            not gate_result.passed
+            and clean_retry_count < self.settings.tuning.quality_retry_limit
+        ):
+            clean_retry_count += 1
+            final_text = await self.chapter_generator.revise(
+                draft_text=final_text,
+                style_profile=snapshot.style_profile,
+                issues=[hit.label for hit in gate_result.hits],
+                skeleton=skeleton,
+                world_model=world_model,
+                chapter_brief=chapter_brief,
+                lorebook_context=lorebook_context,
+            )
+            quality_report = await self.quality_checker.evaluate(
+                skeleton=skeleton,
+                draft_text=final_text,
+                style_samples=style_samples,
+            )
+            gate_result = self.clean_prose_gate.check(final_text)
+
+        diagnosis = self.revival_diagnosis_builder.build(
+            gate_result=gate_result,
+            quality_score=quality_report.score,
+            retry_count=clean_retry_count,
+        )
+        self.session_store.save_model(
+            self.session_store.revival_diagnosis_path(session_name),
+            diagnosis,
+        )
+        chapter_result.quality_report = quality_report
+        if not gate_result.passed:
+            chapter_result.status = "failed_clean_prose"
+            chapter_result.usage_summary = self.llm_service.usage_summary(chapter_usage_mark)
+            chapter_result.elapsed_seconds = (datetime.now(timezone.utc) - chapter_started_at).total_seconds()
+            result.chapters.append(chapter_result)
+            result.status = "failed"
+            result.total_usage = self.llm_service.usage_summary(overall_usage_mark)
+            result.finished_at = datetime.now(timezone.utc)
+            self.session_store.save_model(self.session_store.run_manifest_path(session_name), result)
+            return result
+
+        self._emit(progress_callback, f"章节{chapter_number}：写回会话")
+        self.session_store.save_text(output_path, final_text)
+        await self.rag_store.append_text(session_name, final_text)
+        current_threads = self._update_threads(
+            current_threads or snapshot.story_state.unresolved_threads,
+            skeleton.threads_to_advance,
+            skeleton.threads_to_close,
+            chapter_number,
+        )
+        self.session_store.save_unresolved_threads(session_name, current_threads)
+        world_model = self.world_refresh.refresh_with_chapter(
+            previous=world_model,
+            chapter_text=final_text,
+            active_threads=current_threads,
+            chapter_number=chapter_number,
+            chapter_goal=chapter_goal,
+        )
+        self.session_store.save_model(world_model_path, world_model)
+        blind_challenge = self.blind_challenge_builder.build(final_text)
+        self.session_store.save_model(
+            self.session_store.blind_challenge_path(session_name),
+            blind_challenge,
+        )
+
+        chapter_result.output_path = str(output_path)
+        chapter_result.chapter_evaluation = self.reflection_updater.evaluate_chapter(
+            chapter_number=chapter_number,
+            chapter_brief=chapter_brief,
+            world_model=world_model,
+            skeleton=skeleton,
+            consistency_report=consistency_report,
+            quality_report=quality_report,
+            final_text=final_text,
+        )
+        self.session_store.save_model(
+            self.session_store.chapter_evaluation_path(session_name, chapter_number),
+            chapter_result.chapter_evaluation,
+        )
+        chapter_result.status = (
+            "completed"
+            if quality_report.verdict == "pass" and consistency_report.passed
+            else "completed_with_warnings"
+        )
+        chapter_result.usage_summary = self.llm_service.usage_summary(chapter_usage_mark)
+        chapter_result.elapsed_seconds = (datetime.now(timezone.utc) - chapter_started_at).total_seconds()
+        result.chapters.append(chapter_result)
+        result.total_usage = self.llm_service.usage_summary(overall_usage_mark)
+        result.finished_at = datetime.now(timezone.utc)
+        result.status = chapter_result.status
+        session_manifest = self._build_session_manifest(session_name, result)
+        self.session_store.save_model(self.session_store.run_manifest_path(session_name), session_manifest)
+        return result
 
     async def run(
         self,

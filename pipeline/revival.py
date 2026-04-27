@@ -9,11 +9,13 @@ from datetime import datetime, timezone
 from core.models.arc_outline import ArcOutline
 from core.models.lorebook import LorebookBundle
 from core.models.revival import (
+    BlindChallenge,
     CharacterVoiceRule,
     CleanProseGateResult,
     CleanProseHit,
     DirectorArcOption,
     DirectorArcOptions,
+    RevivalDiagnosis,
     WorkSkill,
     WorkSkillEvidenceRef,
 )
@@ -196,4 +198,49 @@ class RevivalArcPlanner:
         return DirectorArcOptions(
             generated_at=datetime.now(timezone.utc),
             options=options,
+        )
+
+
+class RevivalDiagnosisBuilder:
+    def build(
+        self,
+        *,
+        gate_result: CleanProseGateResult,
+        quality_score: float | None,
+        retry_count: int,
+    ) -> RevivalDiagnosis:
+        failure_reasons = [hit.label for hit in gate_result.hits]
+        status = "pass" if gate_result.passed else "fail"
+        recommended_fix = ""
+        if not gate_result.passed:
+            recommended_fix = "重新生成正文，并禁止输出说明、总结、续写建议或 AI 身份表达。"
+        return RevivalDiagnosis(
+            status=status,
+            gate_results=[gate_result],
+            contamination_hits=gate_result.hits,
+            voice_fit=quality_score,
+            plot_alignment=quality_score,
+            character_fit=quality_score,
+            retry_count=retry_count,
+            failure_reasons=failure_reasons,
+            recommended_fix=recommended_fix,
+        )
+
+
+class BlindChallengeBuilder:
+    def build(self, chapter_text: str, target_chars: int = 1000) -> BlindChallenge:
+        target_chars = max(1, target_chars)
+        excerpt_chars: list[str] = []
+        chinese_count = 0
+        for char in chapter_text:
+            excerpt_chars.append(char)
+            if _CHINESE_CHAR_RE.match(char):
+                chinese_count += 1
+            if chinese_count >= target_chars:
+                break
+        excerpt = "".join(excerpt_chars).strip()
+        return BlindChallenge(
+            excerpt_text=excerpt,
+            excerpt_char_count=chinese_count,
+            source_label_hidden=True,
         )

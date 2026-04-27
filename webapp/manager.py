@@ -18,11 +18,19 @@ from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
-from core.models.revival import DirectorArcOptions, WorkSkill
+from core.models.revival import (
+    BlindChallenge,
+    BlindChallengeRating,
+    DirectorArcOptions,
+    RevivalDiagnosis,
+    SelectedArc,
+    WorkSkill,
+)
 from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
 from core.models.world_model import WorldModel
 from orchestrator import PipelineRunResult, RevivalAnalysisResult, TaiJianOrchestrator
+from pipeline.revival import digest_payload
 from webapp.builtin_examples import BUILT_IN_EXAMPLES, BuiltInExample
 from webapp.errors import ApiError
 from webapp.models import (
@@ -32,6 +40,8 @@ from webapp.models import (
     WebBenchmarkSummary,
     WebChapterSummary,
     WebPublicShowcase,
+    WebArcSelectionRequest,
+    WebBlindChallengeRatingRequest,
     WebRunArtifactPaths,
     WebRuntimeApiOverride,
     WebRunDetail,
@@ -654,6 +664,32 @@ class WebRunManager:
 
         future.add_done_callback(_cleanup)
 
+    def _schedule_revival_generation(self, run_id: str, run_settings: AppSettings | None = None) -> None:
+        loop = self._ensure_async_runtime()
+        future = asyncio.run_coroutine_threadsafe(
+            self._run_revival_generation_async(run_id, run_settings),
+            loop,
+        )
+        with self._runtime_lock:
+            self._async_futures[run_id] = future
+
+        def _cleanup(completed: ConcurrentFuture[None]) -> None:
+            with self._runtime_lock:
+                self._async_futures.pop(run_id, None)
+            try:
+                completed.result()
+            except Exception as exc:
+                current = self._runs.get(run_id)
+                if current and current.status in {"queued", "running", "generating"}:
+                    self._update_run(
+                        run_id,
+                        status="failed",
+                        error_message=str(exc),
+                        progress=current.progress.model_copy(update={"message": "运行失败"}),
+                    )
+
+        future.add_done_callback(_cleanup)
+
     def _update_run(self, run_id: str, **changes) -> None:
         with self._lock:
             current = self._runs[run_id]
@@ -711,6 +747,11 @@ class WebRunManager:
         snapshot = self._load_json_model(snapshot_path, ExtractionSnapshot)
         world_model = self._load_json_model(session_dir / "world_model.json", WorldModel)
         lorebook = self._load_json_model(session_dir / "lorebook.json", LorebookBundle)
+        work_skill = self._load_json_model(session_dir / "work_skill.json", WorkSkill)
+        arc_options = self._load_json_model(session_dir / "arc_options.json", DirectorArcOptions)
+        selected_arc = self._load_json_model(session_dir / "selected_arc.json", SelectedArc)
+        revival_diagnosis = self._load_json_model(session_dir / "revival_diagnosis.json", RevivalDiagnosis)
+        blind_challenge = self._load_json_model(session_dir / "blind_challenge.json", BlindChallenge)
         selected_references_bundle = self._load_json_model(
             session_dir / "selected_references.json",
             _ReferenceProfileBundle,
@@ -873,6 +914,11 @@ class WebRunManager:
             story_state=snapshot.story_state.model_dump(mode="json") if snapshot else None,
             world_model=world_model.model_dump(mode="json") if world_model else None,
             lorebook=lorebook.model_dump(mode="json") if lorebook else None,
+            work_skill=work_skill,
+            arc_options=arc_options,
+            selected_arc=selected_arc,
+            revival_diagnosis=revival_diagnosis,
+            blind_challenge=blind_challenge,
             selected_references=[
                 item.model_dump(mode="json")
                 for item in (selected_references_bundle.profiles if selected_references_bundle else [])
@@ -897,6 +943,19 @@ class WebRunManager:
                 selected_references=(
                     str(session_dir / "selected_references.json")
                     if (session_dir / "selected_references.json").exists()
+                    else None
+                ),
+                work_skill=str(session_dir / "work_skill.json") if (session_dir / "work_skill.json").exists() else None,
+                arc_options=str(session_dir / "arc_options.json") if (session_dir / "arc_options.json").exists() else None,
+                selected_arc=str(session_dir / "selected_arc.json") if (session_dir / "selected_arc.json").exists() else None,
+                revival_diagnosis=(
+                    str(session_dir / "revival_diagnosis.json")
+                    if (session_dir / "revival_diagnosis.json").exists()
+                    else None
+                ),
+                blind_challenge=(
+                    str(session_dir / "blind_challenge.json")
+                    if (session_dir / "blind_challenge.json").exists()
                     else None
                 ),
                 latest_skeleton=latest_skeleton_path,
@@ -969,6 +1028,115 @@ class WebRunManager:
             ),
         )
 
+    def select_revival_arc(
+        self,
+        run_id: str,
+        request: WebArcSelectionRequest,
+    ) -> WebRunSummary:
+        current = self.get_run(run_id)
+        if current.status == "generating":
+            selected_arc = self._load_json_model(
+                self.settings.sessions_dir / current.session_name / "selected_arc.json",
+                SelectedArc,
+            )
+            if isinstance(selected_arc, SelectedArc) and selected_arc.selected_option_id == request.selected_option_id:
+                return WebRunSummary.model_validate(current.model_dump(mode="json"))
+            raise ApiError("章节已开始生成，不能改选人物走向。", 409, "Conflict")
+        if current.status not in {"awaiting_arc_selection", "failed"}:
+            raise ApiError("当前任务还不能选择人物走向。", 409, "Conflict")
+
+        session_dir = self.settings.sessions_dir / current.session_name
+        arc_options = self._load_json_model(session_dir / "arc_options.json", DirectorArcOptions)
+        if not isinstance(arc_options, DirectorArcOptions):
+            raise ApiError("当前任务没有可选择的人物走向，请先重新分析。", 404, "Not Found")
+        digest = digest_payload(arc_options.model_dump(mode="json"))
+        if request.arc_options_digest and request.arc_options_digest != digest:
+            raise ApiError("人物走向选项已过期，请重新分析。", 409, "Conflict")
+        selected_option = next(
+            (option for option in arc_options.options if option.id == request.selected_option_id),
+            None,
+        )
+        if selected_option is None:
+            raise ApiError("找不到对应的人物走向。", 422, "Invalid Input")
+
+        selected_arc = SelectedArc(
+            selected_option_id=selected_option.id,
+            selected_at=datetime.now(timezone.utc),
+            arc_options_digest=digest,
+            user_note=request.user_note.strip(),
+            locked_constraints=[
+                *selected_option.must_happen,
+                *selected_option.must_not_break,
+            ],
+        )
+        selected_arc_path = session_dir / "selected_arc.json"
+        selected_arc_path.write_text(selected_arc.model_dump_json(indent=2), encoding="utf-8")
+        updated = current.model_copy(
+            update={
+                "status": "generating",
+                "selected_arc": selected_arc,
+                "artifact_paths": current.artifact_paths.model_copy(
+                    update={"selected_arc": str(selected_arc_path)}
+                ),
+                "progress": current.progress.model_copy(
+                    update={"completed_steps": 0, "message": "已选择人物走向，开始生成章节"}
+                ),
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+        with self._lock:
+            self._runs[run_id] = updated
+            self._persist(updated)
+
+        run_settings = self._settings_for_request(updated.request)
+        try:
+            self._schedule_revival_generation(run_id, run_settings)
+        except Exception as exc:
+            self._update_run(
+                run_id,
+                status="failed",
+                error_message=f"任务调度失败：{exc}",
+                progress=updated.progress.model_copy(update={"message": "运行失败"}),
+            )
+        return WebRunSummary.model_validate(updated.model_dump(mode="json"))
+
+    def save_blind_challenge_rating(
+        self,
+        run_id: str,
+        request: WebBlindChallengeRatingRequest,
+    ) -> WebRunDetail:
+        current = self.get_run(run_id)
+        challenge_path = self.settings.sessions_dir / current.session_name / "blind_challenge.json"
+        challenge = self._load_json_model(challenge_path, BlindChallenge)
+        if not isinstance(challenge, BlindChallenge):
+            raise ApiError("当前任务还没有可评分的盲测片段。", 404, "Not Found")
+        updated_challenge = challenge.model_copy(
+            update={
+                "ratings": BlindChallengeRating(
+                    voice_match_score=request.voice_match_score,
+                    rhythm_match_score=request.rhythm_match_score,
+                    character_voice_score=request.character_voice_score,
+                    notes=request.notes.strip(),
+                ),
+                "rated_at": datetime.now(timezone.utc),
+                "notes": request.notes.strip(),
+            }
+        )
+        challenge_path.write_text(updated_challenge.model_dump_json(indent=2), encoding="utf-8")
+        updated = current.model_copy(
+            update={
+                "blind_challenge": updated_challenge,
+                "artifact_paths": current.artifact_paths.model_copy(
+                    update={"blind_challenge": str(challenge_path)}
+                ),
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+        with self._lock:
+            self._runs[run_id] = updated
+            self._persist(updated)
+        return updated
+
     async def _run_pipeline_async(
         self,
         run_id: str,
@@ -1032,6 +1200,54 @@ class WebRunManager:
                 progress_callback=lambda message: self._append_log(run_id, message),
             )
             self._populate_revival_analysis_outputs(run_id, result)
+        except Exception as exc:
+            self._update_run(
+                run_id,
+                status="failed",
+                error_message=str(exc),
+                progress=self.get_run(run_id).progress.model_copy(update={"message": "运行失败"}),
+            )
+
+    async def _run_revival_generation_async(
+        self,
+        run_id: str,
+        run_settings: AppSettings | None = None,
+    ) -> None:
+        current = self.get_run(run_id)
+        orchestrator = TaiJianOrchestrator(run_settings or self._settings_for_request(current.request))
+
+        try:
+            self._update_run(
+                run_id,
+                status="generating",
+                progress=current.progress.model_copy(
+                    update={"completed_steps": 1, "message": "正在按所选走向生成章节"}
+                ),
+            )
+            result = await orchestrator.run_revival_generation(
+                input_path=Path(current.input_path or ""),
+                session_name=current.session_name,
+                goal_hint=current.request.goal_hint,
+                planning_mode=current.request.planning_mode,
+                new_character_budget=current.request.new_character_budget,
+                new_location_budget=current.request.new_location_budget,
+                new_faction_budget=current.request.new_faction_budget,
+                skeleton_candidates=current.request.skeleton_candidates,
+                draft_candidates=current.request.draft_candidates,
+                use_existing_index=True,
+                overwrite=current.request.overwrite,
+                start_chapter=current.request.start_chapter,
+                progress_callback=lambda message: self._append_log(run_id, message),
+            )
+            self._populate_outputs(run_id, result)
+            if result.status == "failed":
+                failed = self.get_run(run_id)
+                self._update_run(
+                    run_id,
+                    status="failed",
+                    error_message="正文未通过 clean-prose gate。",
+                    progress=failed.progress.model_copy(update={"message": "正文质检失败"}),
+                )
         except Exception as exc:
             self._update_run(
                 run_id,

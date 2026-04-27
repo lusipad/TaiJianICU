@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from config.settings import AppSettings, RuntimeTuning
 from core.models.chapter_brief import ChapterBrief
+from core.models.revival import DirectorArcOption
 from core.models.story_state import StoryThread
 from core.llm.litellm_client import LLMUsageSummary
 from core.storage.session_store import SessionStore
@@ -129,6 +130,32 @@ def test_apply_chapter_brief_overrides_and_build_goal() -> None:
     assert "必须发生：主角拿到线索；反派必须露面" in goal
     assert "优先推进伏笔：T001:黑玉去向" in goal
     assert "不可破坏设定：黑玉不能突然完整出现" in goal
+
+
+def test_apply_selected_arc_to_chapter_brief() -> None:
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    brief = ChapterBrief(
+        chapter_number=1,
+        chapter_goal="推进主线",
+        chapter_note="保持慢热",
+        must_happen=["主角拿到线索"],
+        must_not_break=["黑玉不能完整出现"],
+    )
+
+    merged = orchestrator._apply_selected_arc_to_brief(
+        chapter_brief=brief,
+        selected_option=DirectorArcOption(
+            id="arc_a",
+            title="暗压升温",
+            emotional_direction="让关系压力升温",
+            must_happen=["反派露面"],
+            must_not_break=["不能直接揭底"],
+        ),
+    )
+
+    assert "导演弧线：暗压升温" in merged.chapter_note
+    assert merged.must_happen == ["主角拿到线索", "反派露面"]
+    assert merged.must_not_break == ["黑玉不能完整出现", "不能直接揭底"]
 
 
 def test_settings_candidate_counts_can_be_overridden() -> None:

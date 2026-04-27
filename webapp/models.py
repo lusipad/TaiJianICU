@@ -159,6 +159,19 @@ class WebRunSourceText(BaseModel):
     character_count: int = 0
 
 
+class WebArcSelectionRequest(BaseModel):
+    selected_option_id: str
+    arc_options_digest: str | None = None
+    user_note: str = ""
+
+
+class WebBlindChallengeRatingRequest(BaseModel):
+    voice_match_score: int | None = Field(default=None, ge=1, le=5)
+    rhythm_match_score: int | None = Field(default=None, ge=1, le=5)
+    character_voice_score: int | None = Field(default=None, ge=1, le=5)
+    notes: str = ""
+
+
 class ApiErrorResponse(BaseModel):
     title: str
     status: int

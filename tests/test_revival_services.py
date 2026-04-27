@@ -5,7 +5,14 @@ from core.models.lorebook import LorebookBundle, LorebookEntry
 from core.models.story_state import CharacterCard, StoryThread, StoryWorldState
 from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
-from pipeline.revival import RevivalArcPlanner, WorkSkillBuilder, digest_payload
+from pipeline.revival import (
+    BlindChallengeBuilder,
+    CleanProseGate,
+    RevivalArcPlanner,
+    RevivalDiagnosisBuilder,
+    WorkSkillBuilder,
+    digest_payload,
+)
 
 
 def _snapshot() -> ExtractionSnapshot:
@@ -89,3 +96,18 @@ def test_revival_arc_planner_returns_three_stable_options() -> None:
         "arc_pressure_turn",
     ]
     assert digest_payload(options.model_dump(mode="json"))
+
+
+def test_revival_diagnosis_and_blind_challenge_builders() -> None:
+    gate_result = CleanProseGate().check("沈照站在义庄门口。")
+    diagnosis = RevivalDiagnosisBuilder().build(
+        gate_result=gate_result,
+        quality_score=0.8,
+        retry_count=0,
+    )
+    challenge = BlindChallengeBuilder().build("沈照站在义庄门口。" * 200, target_chars=1000)
+
+    assert diagnosis.status == "pass"
+    assert diagnosis.voice_fit == 0.8
+    assert challenge.excerpt_char_count == 1000
+    assert challenge.source_label_hidden is True
