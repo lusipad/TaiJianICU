@@ -31,6 +31,18 @@ def build_usage(*, calls: int, total_tokens: int, total_cost_usd: float) -> LLMU
     )
 
 
+def test_revival_analysis_rejects_too_short_source(tmp_path) -> None:
+    input_path = tmp_path / "tiny.txt"
+    input_path.write_text("沈照站在雨里。", encoding="utf-8")
+
+    try:
+        TaiJianOrchestrator._validate_revival_source_text(input_path)
+    except ValueError as exc:
+        assert "文本太短，无法提取作品声纹" in str(exc)
+    else:
+        raise AssertionError("short revival source should fail")
+
+
 def test_build_session_manifest_preserves_existing_resume_details(tmp_path) -> None:
     orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
     orchestrator.session_store = SessionStore(tmp_path)

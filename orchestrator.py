@@ -44,6 +44,9 @@ from pipeline.revival import (
 )
 
 
+_REVIVAL_MIN_CHINESE_CHARS = 100
+
+
 class ChapterRunResult(BaseModel):
     chapter_number: int
     skeleton_path: str
@@ -154,6 +157,15 @@ class TaiJianOrchestrator:
     def _emit(progress_callback: Callable[[str], None] | None, message: str) -> None:
         if progress_callback is not None:
             progress_callback(message)
+
+    @staticmethod
+    def _validate_revival_source_text(input_path: Path) -> None:
+        text = input_path.read_text(encoding="utf-8")
+        chinese_chars = sum(1 for char in text if "\u4e00" <= char <= "\u9fff")
+        if chinese_chars < _REVIVAL_MIN_CHINESE_CHARS:
+            raise ValueError(
+                f"文本太短，无法提取作品声纹。至少需要 {_REVIVAL_MIN_CHINESE_CHARS} 个中文字符。"
+            )
 
     def _default_session_name(self, input_path: Path) -> str:
         return input_path.stem
@@ -676,6 +688,7 @@ class TaiJianOrchestrator:
     ) -> RevivalAnalysisResult:
         session_name = session_name or self._default_session_name(input_path)
         run_started_at = datetime.now(timezone.utc)
+        self._validate_revival_source_text(input_path)
         overall_usage_mark = self.llm_service.usage_mark()
         context = await self._prepare_story_context(
             session_name=session_name,
