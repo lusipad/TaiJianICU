@@ -1306,7 +1306,10 @@ async function selectArcOption(optionId) {
   const payload = await fetchJson(`/api/revival/runs/${encodeURIComponent(state.activeRunId)}/arc-selection`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ selected_option_id: optionId }),
+    body: JSON.stringify({
+      selected_option_id: optionId,
+      arc_options_digest: state.activeRunDetail?.arc_options_digest || null,
+    }),
   });
   setFormStatus("人物走向已选择，开始生成章节。");
   await refreshRuns();

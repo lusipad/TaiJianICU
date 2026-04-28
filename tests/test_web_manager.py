@@ -18,6 +18,7 @@ from core.models.story_state import StoryWorldState
 from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
 from orchestrator import ChapterRunResult, PipelineRunResult, RevivalAnalysisResult
+from pipeline.revival import digest_payload
 from pipeline.stage1_extraction.novel_indexer import IndexingResult
 from webapp.manager import WebRunManager
 from webapp.models import (
@@ -278,6 +279,7 @@ def test_web_run_manager_populates_revival_analysis_artifacts(tmp_path: Path) ->
     assert detail.work_skill is not None
     assert detail.work_skill.voice_rules == ["沉稳"]
     assert detail.arc_options is not None
+    assert detail.arc_options_digest == digest_payload(detail.arc_options.model_dump(mode="json"))
     assert len(detail.arc_options.options) == 3
     assert detail.artifact_paths.work_skill and detail.artifact_paths.work_skill.endswith("work_skill.json")
     assert detail.artifact_paths.arc_options and detail.artifact_paths.arc_options.endswith("arc_options.json")
@@ -326,6 +328,14 @@ def test_web_run_manager_selects_revival_arc(tmp_path: Path) -> None:
     assert detail.selected_arc.selected_option_id == "arc_a"
     assert (session_dir / "selected_arc.json").exists()
 
+    duplicate_summary = manager.select_revival_arc(
+        "run-1",
+        WebArcSelectionRequest(selected_option_id="arc_a"),
+    )
+
+    assert duplicate_summary.status == "generating"
+    assert scheduled == ["run-1"]
+
 
 def test_web_run_manager_rejects_invalid_revival_arc(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
@@ -365,6 +375,46 @@ def test_web_run_manager_rejects_invalid_revival_arc(tmp_path: Path) -> None:
         assert "找不到对应的人物走向" in str(exc)
     else:
         raise AssertionError("invalid arc should fail")
+
+
+def test_web_run_manager_rejects_stale_revival_arc_digest(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    session_dir = settings.sessions_dir / "revival-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc)
+    (session_dir / "arc_options.json").write_text(
+        DirectorArcOptions(
+            generated_at=now,
+            options=[
+                DirectorArcOption(id="arc_a", title="稳住节奏"),
+                DirectorArcOption(id="arc_b", title="情绪升温"),
+                DirectorArcOption(id="arc_c", title="局势逼转"),
+            ],
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    manager._runs["run-1"] = WebRunDetail(
+        id="run-1",
+        status="awaiting_arc_selection",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=4, completed_steps=4),
+        input_path="demo.txt",
+    )
+
+    try:
+        manager.select_revival_arc(
+            "run-1",
+            WebArcSelectionRequest(selected_option_id="arc_a", arc_options_digest="stale"),
+        )
+    except Exception as exc:
+        assert "人物走向选项已过期" in str(exc)
+    else:
+        raise AssertionError("stale arc digest should fail")
 
 
 def test_web_run_manager_saves_blind_challenge_rating(tmp_path: Path) -> None:

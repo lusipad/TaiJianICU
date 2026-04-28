@@ -85,6 +85,7 @@ class WebRunManager:
             except Exception:
                 continue
             run = self._ensure_story_previews(run)
+            run = self._ensure_arc_options_digest(run)
             self._runs[run.id] = run
 
     def _persist(self, run: WebRunDetail) -> None:
@@ -128,6 +129,19 @@ class WebRunManager:
         )
         self._persist(hydrated)
         return hydrated
+
+    def _ensure_arc_options_digest(self, run: WebRunDetail) -> WebRunDetail:
+        if run.arc_options_digest or run.arc_options is None:
+            return run
+        hydrated = run.model_copy(
+            update={"arc_options_digest": self._arc_options_digest(run.arc_options)}
+        )
+        self._persist(hydrated)
+        return hydrated
+
+    @staticmethod
+    def _arc_options_digest(arc_options: DirectorArcOptions) -> str:
+        return digest_payload(arc_options.model_dump(mode="json"))
 
     def _ensure_async_runtime(self) -> asyncio.AbstractEventLoop:
         with self._runtime_lock:
@@ -209,6 +223,7 @@ class WebRunManager:
             if run is None:
                 raise ApiError("找不到对应的运行任务。", 404, "Not Found")
             run = self._ensure_story_previews(run)
+            run = self._ensure_arc_options_digest(run)
             self._runs[run.id] = run
             return run.model_copy(deep=True)
 
@@ -916,6 +931,7 @@ class WebRunManager:
             lorebook=lorebook.model_dump(mode="json") if lorebook else None,
             work_skill=work_skill,
             arc_options=arc_options,
+            arc_options_digest=self._arc_options_digest(arc_options) if arc_options else None,
             selected_arc=selected_arc,
             revival_diagnosis=revival_diagnosis,
             blind_challenge=blind_challenge,
@@ -1005,6 +1021,7 @@ class WebRunManager:
             lorebook=lorebook.model_dump(mode="json") if lorebook else None,
             work_skill=work_skill,
             arc_options=arc_options,
+            arc_options_digest=self._arc_options_digest(arc_options) if arc_options else None,
             selected_references=[
                 item.model_dump(mode="json")
                 for item in (selected_references_bundle.profiles if selected_references_bundle else [])
@@ -1049,7 +1066,7 @@ class WebRunManager:
         arc_options = self._load_json_model(session_dir / "arc_options.json", DirectorArcOptions)
         if not isinstance(arc_options, DirectorArcOptions):
             raise ApiError("当前任务没有可选择的人物走向，请先重新分析。", 404, "Not Found")
-        digest = digest_payload(arc_options.model_dump(mode="json"))
+        digest = self._arc_options_digest(arc_options)
         if request.arc_options_digest and request.arc_options_digest != digest:
             raise ApiError("人物走向选项已过期，请重新分析。", 409, "Conflict")
         selected_option = next(

@@ -132,6 +132,7 @@ class WebRunDetail(WebRunSummary):
     lorebook: dict | None = None
     work_skill: WorkSkill | None = None
     arc_options: DirectorArcOptions | None = None
+    arc_options_digest: str | None = None
     selected_arc: SelectedArc | None = None
     revival_diagnosis: RevivalDiagnosis | None = None
     blind_challenge: BlindChallenge | None = None
