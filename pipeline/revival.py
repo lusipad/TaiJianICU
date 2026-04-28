@@ -132,6 +132,13 @@ class WorkSkillBuilder:
             WorkSkillEvidenceRef(source=entry.entry_id, note=entry.title)
             for entry in lorebook.entries[:8]
         ]
+        world_rules = list(
+            dict.fromkeys(
+                item
+                for item in [*story.world_rules, *world_model.power_system_rules]
+                if item
+            )
+        )
         return WorkSkill(
             source_digest=source_digest,
             generated_at=datetime.now(timezone.utc),
@@ -139,7 +146,7 @@ class WorkSkillBuilder:
             voice_rules=voice_rules,
             rhythm_rules=rhythm_rules,
             character_voice_map=character_voice_map,
-            world_rules=[*story.world_rules, *world_model.power_system_rules],
+            world_rules=world_rules,
             open_threads=[
                 f"{thread.id}: {thread.description}"
                 for thread in story.unresolved_threads

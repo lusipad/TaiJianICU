@@ -49,7 +49,7 @@ def _snapshot() -> ExtractionSnapshot:
 def test_work_skill_builder_reuses_snapshot_world_and_lorebook() -> None:
     work_skill = WorkSkillBuilder().build(
         snapshot=_snapshot(),
-        world_model=WorldModel(power_system_rules=["黑玉规则稳定"]),
+        world_model=WorldModel(power_system_rules=["义庄旧案不能直接公开", "黑玉规则稳定"]),
         lorebook=LorebookBundle(
             entries=[
                 LorebookEntry(
@@ -65,6 +65,7 @@ def test_work_skill_builder_reuses_snapshot_world_and_lorebook() -> None:
     assert work_skill.work_title == "雨夜追魂"
     assert "叙事人称：第三人称" in work_skill.voice_rules
     assert work_skill.character_voice_map[0].character_name == "沈照"
+    assert work_skill.world_rules == ["义庄旧案不能直接公开", "黑玉规则稳定"]
     assert work_skill.open_threads == ["T001: 黑玉去向"]
     assert work_skill.evidence_refs[0].source == "L001"
 
