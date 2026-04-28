@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from pydantic import BaseModel
 
 from config.settings import AppSettings, RuntimeTuning
 from core.llm import litellm_client
@@ -67,3 +68,71 @@ async def test_complete_text_retries_transient_errors(monkeypatch: pytest.Monkey
     assert response.text == "重试成功"
     assert calls == 2
     assert service.usage_summary().calls == 1
+
+
+@pytest.mark.asyncio
+async def test_complete_text_uses_responses_wire_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = {}
+
+    async def fake_aresponses(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            output_text="OK",
+            usage=SimpleNamespace(input_tokens=7, output_tokens=2, total_tokens=9),
+        )
+
+    monkeypatch.setattr(litellm_client, "aresponses", fake_aresponses)
+    service = LiteLLMService(
+        AppSettings(
+            runtime_api_base_url="https://api.clawto.link",
+            runtime_api_key="sk-test",
+            runtime_wire_api="responses",
+        )
+    )
+
+    response = await service.complete_text(
+        model="gpt-5.5",
+        messages=[{"role": "user", "content": "只回复 OK"}],
+    )
+
+    assert response.text == "OK"
+    assert captured["api_base"] == "https://api.clawto.link"
+    assert captured["api_key"] == "sk-test"
+    assert captured["custom_llm_provider"] == "openai"
+    assert "base_url" not in captured
+    assert response.usage.prompt_tokens == 7
+    assert response.usage.completion_tokens == 2
+
+
+class StructuredProbe(BaseModel):
+    answer: str
+
+
+@pytest.mark.asyncio
+async def test_complete_structured_uses_responses_text_format(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured = {}
+
+    async def fake_aresponses(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            output_text='{"answer":"OK"}',
+            usage=SimpleNamespace(input_tokens=8, output_tokens=4, total_tokens=12),
+        )
+
+    monkeypatch.setattr(litellm_client, "aresponses", fake_aresponses)
+    service = LiteLLMService(
+        AppSettings(
+            runtime_api_base_url="https://api.clawto.link",
+            runtime_api_key="sk-test",
+            runtime_wire_api="responses",
+        )
+    )
+
+    response = await service.complete_structured(
+        model="gpt-5.5",
+        messages=[{"role": "user", "content": "返回 JSON"}],
+        response_model=StructuredProbe,
+    )
+
+    assert response == StructuredProbe(answer="OK")
+    assert captured["text_format"] is StructuredProbe

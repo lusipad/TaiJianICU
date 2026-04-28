@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable, TypeVar
 
 import instructor
-from litellm import acompletion, completion_cost
+from litellm import acompletion, aresponses, completion_cost
 from pydantic import BaseModel, Field
 
 from config.settings import AppSettings
@@ -112,6 +112,21 @@ class LiteLLMService:
             **self._provider_kwargs(model),
         }
 
+    def _responses_request_kwargs(self, model: str) -> dict[str, Any]:
+        kwargs = {
+            "timeout": self.settings.tuning.llm_request_timeout_seconds,
+            **self._provider_kwargs(model),
+        }
+        base_url = kwargs.pop("base_url", None)
+        if base_url:
+            kwargs["api_base"] = base_url
+        kwargs.setdefault("custom_llm_provider", "openai")
+        return kwargs
+
+    @staticmethod
+    def _responses_input(messages: list[Message]) -> list[Message]:
+        return [{"role": item["role"], "content": item["content"]} for item in messages]
+
     def _is_transient_error(self, error: Exception) -> bool:
         current: BaseException | None = error
         while current is not None:
@@ -146,13 +161,23 @@ class LiteLLMService:
     def _extract_usage(response: Any) -> LLMUsage:
         usage = getattr(response, "usage", None)
         prompt_details = getattr(usage, "prompt_tokens_details", None) if usage else None
+        prompt_details = prompt_details or (getattr(usage, "input_tokens_details", None) if usage else None)
         cached_tokens = getattr(prompt_details, "cached_tokens", 0) if prompt_details else 0
         return LLMUsage(
-            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
-            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            prompt_tokens=(getattr(usage, "prompt_tokens", None) or getattr(usage, "input_tokens", 0) or 0),
+            completion_tokens=(
+                getattr(usage, "completion_tokens", None) or getattr(usage, "output_tokens", 0) or 0
+            ),
             total_tokens=getattr(usage, "total_tokens", 0) or 0,
             cached_tokens=cached_tokens or 0,
         )
+
+    @staticmethod
+    def _extract_responses_text(response: Any) -> str:
+        output_text = getattr(response, "output_text", None)
+        if isinstance(output_text, str):
+            return output_text.strip()
+        return str(response).strip()
 
     def _record_response(
         self,
@@ -228,6 +253,28 @@ class LiteLLMService:
         operation: str = "general",
         **kwargs: Any,
     ) -> LLMTextResponse:
+        if self.settings.runtime_wire_api == "responses":
+            response = await self._retry_async(
+                call=lambda: aresponses(
+                    model=model,
+                    input=self._responses_input(messages),
+                    temperature=temperature,
+                    max_output_tokens=max_tokens or self.settings.models.max_tokens,
+                    **self._responses_request_kwargs(model),
+                    **kwargs,
+                )
+            )
+            usage, cost = self._record_response(
+                operation=operation,
+                model=model,
+                response=response,
+            )
+            return LLMTextResponse(
+                text=self._extract_responses_text(response),
+                usage=usage,
+                cost_usd=cost,
+            )
+
         response = await self._retry_async(
             call=lambda: acompletion(
                 model=model,
@@ -257,6 +304,21 @@ class LiteLLMService:
         operation: str = "structured",
         **kwargs: Any,
     ) -> BaseModel:
+        if self.settings.runtime_wire_api == "responses":
+            response = await self._retry_async(
+                call=lambda: aresponses(
+                    model=model,
+                    input=self._responses_input(messages),
+                    temperature=temperature,
+                    max_output_tokens=max_tokens or self.settings.models.max_tokens,
+                    text_format=response_model,
+                    **self._responses_request_kwargs(model),
+                    **kwargs,
+                )
+            )
+            self._record_response(operation=operation, model=model, response=response)
+            return response_model.model_validate_json(self._extract_responses_text(response))
+
         try:
             parsed, raw = await self._retry_async(
                 call=lambda: self._structured_client.chat.completions.create_with_completion(

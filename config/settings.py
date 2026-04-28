@@ -60,6 +60,7 @@ class AppSettings(BaseSettings):
     openai_api_key: str | None = Field(default=None, alias="OPENAI_API_KEY")
     runtime_api_base_url: str | None = None
     runtime_api_key: str | None = None
+    runtime_wire_api: Literal["chat", "responses"] = "chat"
 
     work_dir: Path = ROOT_DIR / "data"
     input_dir: Path = ROOT_DIR / "data" / "input"
@@ -124,6 +125,10 @@ def get_settings() -> AppSettings:
     settings.models.deepseek_base_url = os.getenv(
         "DEEPSEEK_BASE_URL",
         settings.models.deepseek_base_url,
+    )
+    settings.runtime_wire_api = os.getenv(
+        "TAIJIAN_WIRE_API",
+        settings.runtime_wire_api,
     )
     settings.web_host = os.getenv("TAIJIAN_WEB_HOST", settings.web_host)
     settings.web_port = int(os.getenv("TAIJIAN_WEB_PORT", str(settings.web_port)))
