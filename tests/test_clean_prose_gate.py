@@ -42,6 +42,26 @@ def test_clean_prose_gate_detects_explanatory_wrappers() -> None:
     }
 
 
+def test_clean_prose_gate_detects_creation_notes() -> None:
+    text = (
+        "沈照站在义庄门口。\n\n"
+        "创作说明：本段强化原作节奏。\n"
+        "续写说明：后续可以继续推进。\n"
+        "优化说明：压缩句子。\n"
+        "模型附注：已尽量贴近原文。"
+    )
+
+    result = CleanProseGate().check(text)
+
+    assert result.passed is False
+    assert {hit.code for hit in result.hits} >= {
+        "creation_note",
+        "continuation_note",
+        "polish_note",
+        "model_note",
+    }
+
+
 def test_clean_prose_gate_can_enforce_minimum_length() -> None:
     result = CleanProseGate(min_chinese_chars=1000).check("沈照站在雨里。")
 

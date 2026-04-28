@@ -38,6 +38,10 @@ class CleanProseGate:
         self.min_chinese_chars = max(0, min_chinese_chars)
         self._patterns = [
             ForbiddenPattern("rewrite_note", "改写说明", re.compile(r"改写说明")),
+            ForbiddenPattern("creation_note", "创作说明", re.compile(r"创作说明")),
+            ForbiddenPattern("continuation_note", "续写说明", re.compile(r"续写说明")),
+            ForbiddenPattern("polish_note", "优化说明", re.compile(r"优化说明")),
+            ForbiddenPattern("model_note", "模型附注", re.compile(r"模型附注")),
             ForbiddenPattern("offer_more", "如果您需要", re.compile(r"如果[你您]需要")),
             ForbiddenPattern("can_continue", "我可以继续", re.compile(r"我可以继续")),
             ForbiddenPattern("ai_disclaimer", "AI 身份说明", re.compile(r"作为\s*(?:AI|人工智能|一个\s*AI)", re.I)),
