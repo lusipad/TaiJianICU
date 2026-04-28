@@ -132,6 +132,7 @@ const elements = {
   lightragModelInput: document.getElementById("lightrag-model-input"),
   apiBaseUrlInput: document.getElementById("api-base-url-input"),
   apiKeyInput: document.getElementById("api-key-input"),
+  wireApiInput: document.getElementById("wire-api-input"),
   goalHintInput: document.querySelector('textarea[name="goal_hint"]'),
   modelOptions: document.getElementById("model-options"),
   advancedOptionsDetails: document.getElementById("advanced-options"),
@@ -472,10 +473,13 @@ function applyRuntimeConfig(config) {
   if (elements.apiBaseUrlInput) {
     elements.apiBaseUrlInput.placeholder = config.api_base_url || "留空则使用部署默认 endpoint";
   }
+  if (elements.wireApiInput) {
+    elements.wireApiInput.value = config.wire_api || "chat";
+  }
   if (elements.runtimeApiHint) {
     elements.runtimeApiHint.textContent = config.api_base_url
-      ? `如果你想用自己的 endpoint / Key，这里可以直接填。当前部署默认 endpoint：${config.api_base_url}；如果留空，会继续走服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。`
-      : "如果你想用自己的 endpoint / Key，这里可以直接填。留空时会继续走服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。";
+      ? `如果你想用自己的 endpoint / Key，这里可以直接填。当前部署默认 endpoint：${config.api_base_url}，Wire API：${config.wire_api || "chat"}；如果留空，会继续走服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。`
+      : `如果你想用自己的 endpoint / Key，这里可以直接填。当前 Wire API：${config.wire_api || "chat"}。留空时会继续走服务端默认配置。仅当前页面有效，刷新后清空，不会写入任务记录。`;
   }
 }
 
@@ -487,6 +491,7 @@ function resetModelInputs() {
 function clearApiConfigInputs() {
   if (elements.apiBaseUrlInput) elements.apiBaseUrlInput.value = "";
   if (elements.apiKeyInput) elements.apiKeyInput.value = "";
+  if (elements.wireApiInput) elements.wireApiInput.value = state.runtimeConfig?.wire_api || "chat";
 }
 
 function focusApiConfig({ scroll = true } = {}) {

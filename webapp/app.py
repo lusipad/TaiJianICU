@@ -114,16 +114,21 @@ def _build_runtime_api_override(
     *,
     api_base_url: str,
     api_key: str,
+    wire_api: str = "",
 ) -> WebRuntimeApiOverride | None:
     normalized_base_url = api_base_url.strip()
     normalized_api_key = api_key.strip()
+    normalized_wire_api = wire_api.strip()
     if normalized_base_url and not normalized_base_url.startswith(("http://", "https://")):
         raise ApiError("API endpoint 必须以 http:// 或 https:// 开头。", 422, "Invalid Input")
-    if not normalized_base_url and not normalized_api_key:
+    if normalized_wire_api and normalized_wire_api not in {"chat", "responses"}:
+        raise ApiError("Wire API 只支持 chat 或 responses。", 422, "Invalid Input")
+    if not normalized_base_url and not normalized_api_key and not normalized_wire_api:
         return None
     return WebRuntimeApiOverride(
         api_base_url=normalized_base_url or None,
         api_key=normalized_api_key or None,
+        wire_api=normalized_wire_api or None,
     )
 
 
@@ -226,6 +231,7 @@ def create_app(
         lightrag_model_name: str = Form(""),
         api_base_url: str = Form(""),
         api_key: str = Form(""),
+        wire_api: str = Form(""),
         use_existing_index: bool = Form(False),
         overwrite: bool = Form(False),
     ) -> WebRunSummary:
@@ -241,6 +247,7 @@ def create_app(
         runtime_api_override = _build_runtime_api_override(
             api_base_url=api_base_url,
             api_key=api_key,
+            wire_api=wire_api,
         )
         request = WebRunRequest(
             session_name=session_name.strip() or None,
@@ -284,6 +291,7 @@ def create_app(
         lightrag_model_name: str = Form(""),
         api_base_url: str = Form(""),
         api_key: str = Form(""),
+        wire_api: str = Form(""),
         use_existing_index: bool = Form(False),
     ) -> WebRunSummary:
         if not file.filename:
@@ -312,6 +320,7 @@ def create_app(
         runtime_api_override = _build_runtime_api_override(
             api_base_url=api_base_url,
             api_key=api_key,
+            wire_api=wire_api,
         )
         return app.state.run_manager.start_revival_analysis_run(
             input_path=input_path,
@@ -355,12 +364,14 @@ def create_app(
         lightrag_model_name: str = Form(""),
         api_base_url: str = Form(""),
         api_key: str = Form(""),
+        wire_api: str = Form(""),
         use_existing_index: bool = Form(False),
         overwrite: bool = Form(False),
     ) -> WebRunSummary:
         runtime_api_override = _build_runtime_api_override(
             api_base_url=api_base_url,
             api_key=api_key,
+            wire_api=wire_api,
         )
         run_request = WebRunRequest(
             session_name=session_name.strip() or None,

@@ -541,16 +541,19 @@ def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path
         WebRuntimeApiOverride(
             api_base_url="https://openrouter.ai/api/v1",
             api_key="sk-demo",
+            wire_api="responses",
         ),
     )
 
     assert "openai/gpt-4.1-mini" in runtime.model_options
     assert runtime.api_base_url == "https://api.deepseek.com"
+    assert runtime.wire_api == "chat"
     assert run_settings.models.style_model == "openai/gpt-4.1-mini"
     assert run_settings.models.plot_model == "openai/gpt-4.1-mini"
     assert run_settings.models.lightrag_model_name == "openai/gpt-4.1-mini"
     assert run_settings.runtime_api_base_url == "https://openrouter.ai/api/v1"
     assert run_settings.runtime_api_key == "sk-demo"
+    assert run_settings.runtime_wire_api == "responses"
     assert settings.models.style_model == "deepseek/deepseek-chat"
     assert settings.runtime_api_key is None
 
@@ -976,6 +979,7 @@ def test_web_run_manager_does_not_persist_runtime_api_override(tmp_path: Path) -
         runtime_api_override=WebRuntimeApiOverride(
             api_base_url="https://openrouter.ai/api/v1",
             api_key="sk-demo",
+            wire_api="responses",
         ),
     )
 
@@ -984,3 +988,4 @@ def test_web_run_manager_does_not_persist_runtime_api_override(tmp_path: Path) -
     assert "sk-demo" not in persisted
     assert "openrouter.ai" not in persisted
     assert captured["settings"].runtime_api_key == "sk-demo"
+    assert captured["settings"].runtime_wire_api == "responses"

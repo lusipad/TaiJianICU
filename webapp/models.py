@@ -44,6 +44,7 @@ class WebRunRequest(BaseModel):
 class WebRuntimeApiOverride(BaseModel):
     api_base_url: str | None = None
     api_key: str | None = None
+    wire_api: Literal["chat", "responses"] | None = None
 
 
 class WebRunProgress(BaseModel):
@@ -186,6 +187,7 @@ class WebRuntimeConfig(BaseModel):
     quality_model: str
     lightrag_model_name: str
     api_base_url: str | None = None
+    wire_api: Literal["chat", "responses"] = "chat"
     model_options: list[str] = Field(default_factory=list)
 
 

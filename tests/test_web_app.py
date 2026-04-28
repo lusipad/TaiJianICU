@@ -61,6 +61,7 @@ class FakeRunManager:
             "quality_model": "deepseek/deepseek-chat",
             "lightrag_model_name": "deepseek-chat",
             "api_base_url": "https://api.deepseek.com",
+            "wire_api": "chat",
             "model_options": [
                 "deepseek/deepseek-chat",
                 "deepseek/deepseek-reasoner",
@@ -342,6 +343,7 @@ def test_create_run_accepts_txt_upload() -> None:
             "lightrag_model_name": "openai/gpt-4.1-mini",
             "api_base_url": "https://openrouter.ai/api/v1",
             "api_key": "sk-demo",
+            "wire_api": "responses",
         },
     )
 
@@ -362,6 +364,7 @@ def test_create_run_accepts_txt_upload() -> None:
     assert manager.last_runtime_api_override == WebRuntimeApiOverride(
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",
+        wire_api="responses",
     )
 
 
@@ -378,6 +381,7 @@ def test_create_revival_run_accepts_txt_upload() -> None:
             "planning_mode": "balanced",
             "api_base_url": "https://openrouter.ai/api/v1",
             "api_key": "sk-demo",
+            "wire_api": "responses",
         },
     )
 
@@ -388,6 +392,7 @@ def test_create_revival_run_accepts_txt_upload() -> None:
     assert manager.last_runtime_api_override == WebRuntimeApiOverride(
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",
+        wire_api="responses",
     )
 
 
@@ -437,6 +442,7 @@ def test_get_runtime_config_endpoint() -> None:
     assert response.status_code == 200
     assert response.json()["style_model"] == "deepseek/deepseek-chat"
     assert response.json()["api_base_url"] == "https://api.deepseek.com"
+    assert response.json()["wire_api"] == "chat"
     assert "openai/gpt-4.1-mini" in response.json()["model_options"]
 
 
@@ -520,6 +526,7 @@ def test_create_example_run_endpoint() -> None:
             "draft_model": "deepseek/deepseek-chat",
             "api_base_url": "https://openrouter.ai/api/v1",
             "api_key": "sk-demo",
+            "wire_api": "responses",
         },
     )
 
@@ -530,6 +537,7 @@ def test_create_example_run_endpoint() -> None:
     assert manager.last_runtime_api_override == WebRuntimeApiOverride(
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",
+        wire_api="responses",
     )
 
 
@@ -588,6 +596,24 @@ def test_create_run_rejects_invalid_api_endpoint() -> None:
 
     assert response.status_code == 422
     assert "endpoint" in response.json()["detail"]
+
+
+def test_create_run_rejects_invalid_wire_api() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/runs",
+        files={"file": ("demo.txt", "第一章 测试".encode("utf-8"), "text/plain")},
+        data={
+            "chapters": "1",
+            "start_chapter": "1",
+            "wire_api": "assistants",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Wire API" in response.json()["detail"]
 
 
 def test_list_benchmarks_endpoint() -> None:

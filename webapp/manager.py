@@ -325,6 +325,7 @@ class WebRunManager:
             quality_model=self.settings.models.quality_model,
             lightrag_model_name=self.settings.models.lightrag_model_name,
             api_base_url=self.settings.models.deepseek_base_url or None,
+            wire_api=self.settings.runtime_wire_api,
             model_options=options,
         )
 
@@ -573,6 +574,8 @@ class WebRunManager:
                 run_settings.runtime_api_base_url = runtime_api_override.api_base_url.strip()
             if runtime_api_override.api_key and runtime_api_override.api_key.strip():
                 run_settings.runtime_api_key = runtime_api_override.api_key.strip()
+            if runtime_api_override.wire_api:
+                run_settings.runtime_wire_api = runtime_api_override.wire_api
         return run_settings
 
     def start_run(
