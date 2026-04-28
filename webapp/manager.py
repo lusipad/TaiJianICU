@@ -890,6 +890,9 @@ class WebRunManager:
 
         story_graph_path = self.settings.sessions_dir / result.session_name / "story_graph.mmd"
         chapter_summaries = self._chapter_summaries(manifest or result)
+        run_status = getattr(result, "status", "completed")
+        if run_status not in {"completed", "completed_with_warnings", "failed"}:
+            run_status = "completed"
         latest_summary = chapter_summaries[-1] if chapter_summaries else None
         metrics = WebRunMetrics(
             total_calls=(manifest.total_usage.calls if manifest else result.total_usage.calls),
@@ -915,7 +918,7 @@ class WebRunManager:
 
         self._update_run(
             run_id,
-            status="completed",
+            status=run_status,
             progress=current_run.progress.model_copy(
                 update={
                     "completed_steps": current_run.progress.total_steps,

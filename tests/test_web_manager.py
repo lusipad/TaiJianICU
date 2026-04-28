@@ -172,6 +172,7 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
             (),
             {
                 "session_name": "demo-session",
+                "status": "completed_with_warnings",
                 "stage1_snapshot_path": str(session_dir / "stage1_snapshot.json"),
                 "chapters": [
                     type(
@@ -205,6 +206,7 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
 
     detail = manager.get_run("run-1")
 
+    assert detail.status == "completed_with_warnings"
     assert detail.world_model["summary"] == "世界扩张"
     assert detail.selected_references[0]["name"] == "世界扩张参考"
     assert detail.arc_outlines[0]["arc_id"] == "arc_0001_0003"
