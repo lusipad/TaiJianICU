@@ -100,6 +100,7 @@ const elements = {
   modelSummary: document.getElementById("model-summary"),
   styleSummary: document.getElementById("style-summary"),
   storySummary: document.getElementById("story-summary"),
+  workSkillSummary: document.getElementById("work-skill-summary"),
   worldSummary: document.getElementById("world-summary"),
   lorebookSummary: document.getElementById("lorebook-summary"),
   goalSummary: document.getElementById("goal-summary"),
@@ -112,6 +113,8 @@ const elements = {
   arcList: document.getElementById("arc-list"),
   qualitySummary: document.getElementById("quality-summary"),
   consistencySummary: document.getElementById("consistency-summary"),
+  revivalDiagnosisSummary: document.getElementById("revival-diagnosis-summary"),
+  blindChallenge: document.getElementById("blind-challenge"),
   threadsList: document.getElementById("threads-list"),
   chapterList: document.getElementById("chapter-list"),
   sourcePreviewLabel: document.getElementById("source-preview-label"),
@@ -251,13 +254,25 @@ function formatRunStatus(value) {
       return "排队中";
     case "running":
       return "运行中";
+    case "analyzing":
+      return "分析中";
+    case "awaiting_arc_selection":
+      return "等待选择人物走向";
+    case "generating":
+      return "生成中";
     case "completed":
       return "已完成";
+    case "completed_with_warnings":
+      return "已完成，有警告";
     case "failed":
       return "失败";
     default:
       return value || "-";
   }
+}
+
+function isLiveRunStatus(status) {
+  return ["queued", "running", "analyzing", "generating"].includes(status);
 }
 
 function formatBenchmarkWinner(value) {
@@ -349,6 +364,17 @@ function formatLorebookSummary(lorebook) {
     .join("\n\n");
 }
 
+function formatWorkSkillSummary(workSkill) {
+  if (!workSkill) return "-";
+  const lines = [];
+  if (workSkill.work_title) lines.push(`作品：${workSkill.work_title}`);
+  if (workSkill.voice_rules?.length) lines.push(`声口：\n- ${workSkill.voice_rules.slice(0, 5).join("\n- ")}`);
+  if (workSkill.rhythm_rules?.length) lines.push(`节奏：\n- ${workSkill.rhythm_rules.slice(0, 5).join("\n- ")}`);
+  if (workSkill.open_threads?.length) lines.push(`未收束：\n- ${workSkill.open_threads.slice(0, 5).join("\n- ")}`);
+  if (workSkill.forbidden_moves?.length) lines.push(`禁区：\n- ${workSkill.forbidden_moves.slice(0, 5).join("\n- ")}`);
+  return lines.join("\n\n") || "-";
+}
+
 function formatBriefSummary(brief) {
   if (!brief) return "-";
   const lines = [];
@@ -391,6 +417,22 @@ function formatConsistencySummary(report) {
   if (!report) return "-";
   const lines = [`通过：${report.passed ? "是" : "否"}`];
   if (report.issues?.length) lines.push(`问题：\n- ${report.issues.join("\n- ")}`);
+  return lines.join("\n");
+}
+
+function formatRevivalDiagnosis(diagnosis) {
+  if (!diagnosis) return "-";
+  const lines = [`状态：${diagnosis.status || "-"}`, `重试：${diagnosis.retry_count || 0}`];
+  if (diagnosis.voice_fit != null) lines.push(`声口贴合：${Number(diagnosis.voice_fit).toFixed(2)}`);
+  if (diagnosis.plot_alignment != null) lines.push(`剧情贴合：${Number(diagnosis.plot_alignment).toFixed(2)}`);
+  if (diagnosis.character_fit != null) lines.push(`人物贴合：${Number(diagnosis.character_fit).toFixed(2)}`);
+  if (diagnosis.contamination_hits?.length) {
+    lines.push(`污染命中：\n- ${diagnosis.contamination_hits.map((hit) => hit.label).join("\n- ")}`);
+  }
+  if (diagnosis.failure_reasons?.length) {
+    lines.push(`失败原因：\n- ${diagnosis.failure_reasons.join("\n- ")}`);
+  }
+  if (diagnosis.recommended_fix) lines.push(`建议：${diagnosis.recommended_fix}`);
   return lines.join("\n");
 }
 
@@ -773,6 +815,11 @@ function renderArtifacts(paths) {
     ["世界模型", paths?.world_model],
     ["世界设定参考", paths?.lorebook],
     ["已选参考片段", paths?.selected_references],
+    ["作品 skill", paths?.work_skill],
+    ["人物走向选项", paths?.arc_options],
+    ["已选人物走向", paths?.selected_arc],
+    ["复活诊断", paths?.revival_diagnosis],
+    ["盲看挑战", paths?.blind_challenge],
     ["最新提纲草稿", paths?.latest_skeleton],
     ["最新章节目标", paths?.latest_chapter_brief],
     ["最新章节评测", paths?.latest_chapter_evaluation],
@@ -835,8 +882,42 @@ function renderReferences(references) {
     .join("");
 }
 
-function renderArcList(arcs) {
+function renderArcList(run) {
   elements.arcList.innerHTML = "";
+  const directorOptions = run.arc_options?.options || [];
+  if (directorOptions.length) {
+    const selectedId = run.selected_arc?.selected_option_id;
+    const canSelect = run.status === "awaiting_arc_selection";
+    elements.arcList.innerHTML = directorOptions
+      .map((arc) => {
+        const isSelected = selectedId === arc.id;
+        const buttonHtml = canSelect
+          ? `<button type="button" class="utility-button arc-select-button" data-arc-id="${escapeHtml(arc.id)}">选择</button>`
+          : isSelected
+            ? `<span class="status-pill">已选择</span>`
+            : "";
+        return `
+          <div class="chapter-item ${isSelected ? "is-selected" : ""}">
+            <strong>${escapeHtml(arc.title)} · ${escapeHtml(arc.id)}</strong>
+            <div class="chapter-meta">
+              <span>${escapeHtml((arc.character_focus || []).join("、") || "人物未指定")}</span>
+              <span>${escapeHtml((arc.risk_flags || []).join("；") || "无风险标记")}</span>
+            </div>
+            <span>${escapeHtml(arc.emotional_direction || "-")}</span>
+            ${
+              arc.consequences?.length
+                ? `<span>${escapeHtml(arc.consequences.join("；"))}</span>`
+                : ""
+            }
+            ${buttonHtml}
+          </div>
+        `;
+      })
+      .join("");
+    return;
+  }
+
+  const arcs = run.arc_outlines || [];
   if (!arcs?.length) {
     elements.arcList.innerHTML = '<div class="chapter-item"><strong>当前没有故事走向规划</strong></div>';
     return;
@@ -855,6 +936,43 @@ function renderArcList(arcs) {
       `
     )
     .join("");
+}
+
+function renderBlindChallenge(run) {
+  if (!elements.blindChallenge) return;
+  const challenge = run.blind_challenge;
+  if (!challenge) {
+    elements.blindChallenge.innerHTML = '<div class="thread-item"><strong>生成章节后出现盲看片段</strong></div>';
+    return;
+  }
+  const ratings = challenge.ratings || {};
+  const ratedText = challenge.rated_at ? `<span>已评分：${escapeHtml(challenge.rated_at)}</span>` : "";
+  elements.blindChallenge.innerHTML = `
+    <div class="thread-item">
+      <strong>${escapeHtml(challenge.excerpt_char_count || 0)} 字盲看片段</strong>
+      <span>${escapeHtml((challenge.excerpt_text || "").slice(0, 220))}${(challenge.excerpt_text || "").length > 220 ? "..." : ""}</span>
+      ${ratedText}
+      <div class="field-grid">
+        <label class="field">
+          <span>声口</span>
+          <input name="voice_match_score" type="number" min="1" max="5" value="${escapeHtml(ratings.voice_match_score || "")}" />
+        </label>
+        <label class="field">
+          <span>节奏</span>
+          <input name="rhythm_match_score" type="number" min="1" max="5" value="${escapeHtml(ratings.rhythm_match_score || "")}" />
+        </label>
+        <label class="field">
+          <span>人物</span>
+          <input name="character_voice_score" type="number" min="1" max="5" value="${escapeHtml(ratings.character_voice_score || "")}" />
+        </label>
+      </div>
+      <label class="field">
+        <span>备注</span>
+        <textarea name="blind_notes" rows="2">${escapeHtml(ratings.notes || challenge.notes || "")}</textarea>
+      </label>
+      <button type="button" class="utility-button" id="blind-rating-submit">保存盲测评分</button>
+    </div>
+  `;
 }
 
 function renderThreads(threads) {
@@ -1093,6 +1211,7 @@ function renderRun(run) {
   elements.modelSummary.textContent = formatModelSummary(run.request);
   elements.styleSummary.textContent = formatStyleSummary(run.style_profile);
   elements.storySummary.textContent = formatStorySummary(run.story_state);
+  elements.workSkillSummary.textContent = formatWorkSkillSummary(run.work_skill);
   elements.worldSummary.textContent = formatWorldSummary(run.world_model);
   elements.lorebookSummary.textContent = formatLorebookSummary(run.lorebook);
   elements.goalSummary.textContent = run.latest_chapter_goal || "-";
@@ -1100,6 +1219,7 @@ function renderRun(run) {
   elements.evaluationSummary.textContent = formatEvaluationSummary(run.latest_chapter_evaluation);
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
+  elements.revivalDiagnosisSummary.textContent = formatRevivalDiagnosis(run.revival_diagnosis);
   renderSourcePanel(run);
   renderOutputPanel(run);
 
@@ -1107,7 +1227,8 @@ function renderRun(run) {
   renderCandidatePaths(elements.skeletonCandidateList, run.latest_skeleton_candidate_paths, "暂无提纲草稿");
   renderCandidatePaths(elements.draftCandidateList, run.latest_draft_candidate_paths, "暂无续写候选");
   renderReferences(run.selected_references);
-  renderArcList(run.arc_outlines);
+  renderArcList(run);
+  renderBlindChallenge(run);
   renderThreads(run.unresolved_threads);
   renderChapterList(run.chapter_summaries);
   renderLogs(run.log_messages || []);
@@ -1172,11 +1293,46 @@ async function loadRun(runId) {
   state.activeRunId = runId;
   renderRun(run);
   renderRunList(state.runCache);
-  if (run.status === "queued" || run.status === "running") {
+  if (isLiveRunStatus(run.status)) {
     startPolling(runId);
   } else {
     stopPolling();
   }
+}
+
+async function selectArcOption(optionId) {
+  if (!state.activeRunId || !optionId) return;
+  setFormStatus("正在提交人物走向...");
+  const payload = await fetchJson(`/api/revival/runs/${encodeURIComponent(state.activeRunId)}/arc-selection`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ selected_option_id: optionId }),
+  });
+  setFormStatus("人物走向已选择，开始生成章节。");
+  await refreshRuns();
+  await loadRun(payload.id);
+  startPolling(payload.id);
+}
+
+async function submitBlindChallengeRating() {
+  if (!state.activeRunId || !elements.blindChallenge) return;
+  const numberValue = (name) => {
+    const value = elements.blindChallenge.querySelector(`[name="${name}"]`)?.value;
+    return value ? Number(value) : null;
+  };
+  const notes = elements.blindChallenge.querySelector('[name="blind_notes"]')?.value || "";
+  await fetchJson(`/api/revival/runs/${encodeURIComponent(state.activeRunId)}/blind-challenge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      voice_match_score: numberValue("voice_match_score"),
+      rhythm_match_score: numberValue("rhythm_match_score"),
+      character_voice_score: numberValue("character_voice_score"),
+      notes,
+    }),
+  });
+  setFormStatus("盲测评分已保存。");
+  await loadRun(state.activeRunId);
 }
 
 function stopPolling() {
@@ -1193,7 +1349,7 @@ function startPolling(runId) {
       const run = await fetchJson(`/api/runs/${runId}`);
       renderRun(run);
       await refreshRuns();
-      if (run.status !== "queued" && run.status !== "running") {
+      if (!isLiveRunStatus(run.status)) {
         stopPolling();
       }
     } catch (error) {
@@ -1208,6 +1364,33 @@ elements.fileInput.addEventListener("change", () => {
   elements.selectedFileName.textContent = file ? file.name : "选择一个 `.txt` 文件";
 });
 
+if (elements.arcList) {
+  elements.arcList.addEventListener("click", async (event) => {
+    const button = event.target.closest(".arc-select-button");
+    if (!button) return;
+    button.disabled = true;
+    try {
+      await selectArcOption(button.dataset.arcId);
+    } catch (error) {
+      setFormStatus(`选择失败：${error.message}`, "tone-error");
+      button.disabled = false;
+    }
+  });
+}
+
+if (elements.blindChallenge) {
+  elements.blindChallenge.addEventListener("click", async (event) => {
+    if (event.target.id !== "blind-rating-submit") return;
+    event.target.disabled = true;
+    try {
+      await submitBlindChallengeRating();
+    } catch (error) {
+      setFormStatus(`保存评分失败：${error.message}`, "tone-error");
+      event.target.disabled = false;
+    }
+  });
+}
+
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = collectRunFormData();
@@ -1215,11 +1398,11 @@ elements.form.addEventListener("submit", async (event) => {
   setFormStatus("正在创建任务...");
 
   try {
-    const payload = await fetchJson("/api/runs", {
+    const payload = await fetchJson("/api/revival/runs", {
       method: "POST",
       body: formData,
     });
-    setFormStatus("任务已创建，开始轮询。");
+    setFormStatus("分析任务已创建，生成 3 条人物走向后会等待选择。");
     await refreshRuns();
     await loadRun(payload.id);
   } catch (error) {

@@ -891,8 +891,18 @@
   color: var(--warning);
 }
 
+#run-status.status-analyzing,
+#run-status.status-awaiting_arc_selection,
+#run-status.status-generating {
+  color: var(--warning);
+}
+
 #run-status.status-completed {
   color: var(--success);
+}
+
+#run-status.status-completed_with_warnings {
+  color: var(--warning);
 }
 
 #run-status.status-failed {
@@ -999,6 +1009,24 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  font-size: var(--text-xs);
+}
+
+.chapter-item.is-selected {
+  border-color: var(--success);
+}
+
+.arc-select-button {
+  width: fit-content;
+}
+
+.status-pill {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--success);
   font-size: var(--text-xs);
 }
 

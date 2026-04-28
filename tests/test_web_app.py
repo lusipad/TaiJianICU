@@ -262,6 +262,8 @@ def test_web_health_and_index() -> None:
     assert "世界设定" in studio.text
     assert "AI 生成的续写章节" in studio.text
     assert "拼接预览" in studio.text
+    assert "导演人物走向" in studio.text
+    assert "盲看 1000 字" in studio.text
     assert "第一次用？先免费试看，再决定要不要真跑" in studio.text
     assert "按当前配置试跑样例" in studio.text
     assert "使用自己的 Key，或者直接用本地版本" in studio.text
