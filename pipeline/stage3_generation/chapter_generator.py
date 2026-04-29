@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from config.settings import AppSettings, render_prompt
 from core.models.chapter_brief import ChapterBrief
@@ -46,6 +47,19 @@ class ChapterGenerator:
             f"- {entry.title}: {entry.content}" for entry in matched_entries
         )
 
+    @staticmethod
+    def strip_output_shell(text: str) -> str:
+        cleaned = text.strip()
+        cleaned = re.sub(r"^```(?:\w+)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+        cleaned = re.sub(
+            r"^以下(?:为|是).{0,20}(?:正文|续写|草稿|润色稿|修订稿)[：:]\s*",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(r"^(?:-{3,}|={3,})\s*", "", cleaned)
+        return cleaned.strip()
+
     async def generate(
         self,
         *,
@@ -72,7 +86,7 @@ class ChapterGenerator:
             max_tokens=self.settings.models.chapter_max_tokens,
             operation="stage3_generate_draft",
         )
-        return draft.text
+        return self.strip_output_shell(draft.text)
 
     async def polish(
         self,
@@ -98,7 +112,7 @@ class ChapterGenerator:
             max_tokens=self.settings.models.chapter_max_tokens,
             operation="stage3_polish_draft",
         )
-        return polished.text
+        return self.strip_output_shell(polished.text)
 
     async def revise(
         self,
@@ -128,4 +142,4 @@ class ChapterGenerator:
             max_tokens=self.settings.models.chapter_max_tokens,
             operation="stage3_revise_draft",
         )
-        return revised.text
+        return self.strip_output_shell(revised.text)
