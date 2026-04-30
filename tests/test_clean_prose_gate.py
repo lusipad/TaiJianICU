@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from core.models.revival import StyleMetrics
 from pipeline.revival import CleanProseGate
 
 
@@ -67,3 +68,35 @@ def test_clean_prose_gate_can_enforce_minimum_length() -> None:
 
     assert result.passed is False
     assert result.hits[-1].code == "too_short"
+
+
+def test_clean_prose_gate_detects_modern_abstract_words() -> None:
+    result = CleanProseGate().check("黛玉忽觉自己没有安全感，又想索取情绪价值。")
+
+    assert result.passed is False
+    assert {hit.code for hit in result.hits} >= {"modern_word"}
+
+
+def test_clean_prose_gate_detects_script_mix() -> None:
+    result = CleanProseGate().check("这人走到門前，說了一句。")
+
+    assert result.passed is False
+    assert "script_mixed" in {hit.code for hit in result.hits}
+
+
+def test_clean_prose_gate_detects_style_metric_drift() -> None:
+    baseline = StyleMetrics(
+        chinese_char_count=2000,
+        avg_sentence_length=8,
+        dialogue_ratio=0.2,
+        function_word_density={"的": 0.01},
+    )
+    text = "他站在门前想着那些极其复杂而又漫长的心理压力与关系变化。" * 8
+
+    result = CleanProseGate(style_metrics=baseline).check(text)
+
+    assert result.passed is False
+    assert {
+        "avg_sentence_length_drift",
+        "modern_word",
+    } <= {hit.code for hit in result.hits}

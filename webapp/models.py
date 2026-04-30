@@ -5,7 +5,14 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, computed_field
 
-from core.models.revival import BlindChallenge, DirectorArcOptions, RevivalDiagnosis, SelectedArc, WorkSkill
+from core.models.revival import (
+    BlindChallenge,
+    BlindChallengeRating,
+    DirectorArcOptions,
+    RevivalDiagnosis,
+    SelectedArc,
+    WorkSkill,
+)
 from core.models.story_state import StoryThread
 
 
@@ -97,6 +104,7 @@ class WebRunArtifactPaths(BaseModel):
     world_model: str | None = None
     lorebook: str | None = None
     selected_references: str | None = None
+    revival_workspace: str | None = None
     work_skill: str | None = None
     arc_options: str | None = None
     selected_arc: str | None = None
@@ -121,6 +129,41 @@ class WebChapterSummary(BaseModel):
     elapsed_seconds: float = 0.0
 
 
+class WebBlindChallengeExcerpt(BaseModel):
+    excerpt_id: str
+    text: str
+    excerpt_char_count: int
+
+
+class WebBlindChallenge(BaseModel):
+    excerpt_char_count: int = 0
+    source_label_hidden: bool = True
+    excerpts: list[WebBlindChallengeExcerpt] = Field(default_factory=list)
+    ratings: BlindChallengeRating | None = None
+    rated_at: datetime | None = None
+    notes: str = ""
+
+    @classmethod
+    def from_internal(cls, challenge: BlindChallenge | None) -> "WebBlindChallenge | None":
+        if challenge is None:
+            return None
+        return cls(
+            excerpt_char_count=challenge.excerpt_char_count,
+            source_label_hidden=True,
+            excerpts=[
+                WebBlindChallengeExcerpt(
+                    excerpt_id=item.excerpt_id,
+                    text=item.text,
+                    excerpt_char_count=item.excerpt_char_count,
+                )
+                for item in challenge.excerpts
+            ],
+            ratings=challenge.ratings,
+            rated_at=challenge.rated_at,
+            notes=challenge.notes,
+        )
+
+
 class WebRunDetail(WebRunSummary):
     log_messages: list[str] = Field(default_factory=list)
     input_path: str | None = None
@@ -136,7 +179,7 @@ class WebRunDetail(WebRunSummary):
     arc_options_digest: str | None = None
     selected_arc: SelectedArc | None = None
     revival_diagnosis: RevivalDiagnosis | None = None
-    blind_challenge: BlindChallenge | None = None
+    blind_challenge: WebBlindChallenge | None = None
     selected_references: list[dict] = Field(default_factory=list)
     arc_outlines: list[dict] = Field(default_factory=list)
     latest_chapter_brief: dict | None = None

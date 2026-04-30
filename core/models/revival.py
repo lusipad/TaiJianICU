@@ -24,6 +24,39 @@ class CharacterVoiceRule(_StrictModel):
     taboo_moves: list[str] = Field(default_factory=list)
 
 
+class RevivalChapter(_StrictModel):
+    chapter_number: int | None = Field(default=None, ge=1)
+    title: str = ""
+    text: str
+    start_char: int = Field(ge=0)
+    end_char: int = Field(ge=0)
+
+
+class StyleMetrics(_StrictModel):
+    chinese_char_count: int = Field(default=0, ge=0)
+    avg_sentence_length: float = Field(default=0.0, ge=0.0)
+    dialogue_ratio: float = Field(default=0.0, ge=0.0, le=1.0)
+    function_word_density: dict[str, float] = Field(default_factory=dict)
+
+
+class RevivalStyleBible(_StrictModel):
+    schema_version: str = "1.0"
+    generated_at: datetime
+    work_title: str | None = None
+    narrative_patterns: list[str] = Field(default_factory=list)
+    style_metrics: StyleMetrics = Field(default_factory=StyleMetrics)
+    forbidden_words: list[str] = Field(default_factory=list)
+    character_voice_cards: list[CharacterVoiceRule] = Field(default_factory=list)
+
+
+class RevivalWorkspaceArtifacts(_StrictModel):
+    schema_version: str = "1.0"
+    source_digest: str
+    chapters: list[RevivalChapter] = Field(default_factory=list)
+    style_bible: RevivalStyleBible
+    forbidden_words: list[str] = Field(default_factory=list)
+
+
 class WorkSkill(_StrictModel):
     schema_version: str = "1.0"
     source_digest: str
@@ -99,10 +132,19 @@ class BlindChallengeRating(_StrictModel):
     notes: str = ""
 
 
+class BlindChallengeExcerpt(_StrictModel):
+    excerpt_id: str
+    text: str
+    excerpt_char_count: int = Field(ge=0)
+    source_note: str = ""
+
+
 class BlindChallenge(_StrictModel):
     excerpt_text: str
     excerpt_char_count: int = Field(ge=0)
     source_label_hidden: bool = True
+    excerpts: list[BlindChallengeExcerpt] = Field(default_factory=list)
+    generated_excerpt_id: str | None = None
     ratings: BlindChallengeRating | None = None
     rated_at: datetime | None = None
     notes: str = ""

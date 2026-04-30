@@ -15,7 +15,7 @@ from core.models.chapter_brief import ChapterBrief, ExpansionBudget
 from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
-from core.models.revival import DirectorArcOptions, SelectedArc
+from core.models.revival import DirectorArcOptions, RevivalWorkspaceArtifacts, SelectedArc
 from core.models.skeleton import ChapterSkeleton
 from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
@@ -40,6 +40,7 @@ from pipeline.revival import (
     CleanProseGate,
     RevivalArcPlanner,
     RevivalDiagnosisBuilder,
+    RevivalWorkspaceBuilder,
     WorkSkillBuilder,
 )
 
@@ -80,6 +81,7 @@ class RevivalAnalysisResult(BaseModel):
     input_path: str
     stage1_snapshot_path: str
     world_model_path: str
+    revival_workspace_path: str | None = None
     work_skill_path: str
     arc_options_path: str
     index_result: IndexingResult
@@ -147,6 +149,7 @@ class TaiJianOrchestrator:
         self.chapter_generator = ChapterGenerator(self.settings, self.llm_service)
         self.quality_checker = QualityChecker(self.settings, self.llm_service)
         self.work_skill_builder = WorkSkillBuilder()
+        self.revival_workspace_builder = RevivalWorkspaceBuilder()
         self.revival_arc_planner = RevivalArcPlanner()
         self.clean_prose_gate = CleanProseGate(min_chinese_chars=1000)
         self.revival_diagnosis_builder = RevivalDiagnosisBuilder()
@@ -166,6 +169,41 @@ class TaiJianOrchestrator:
             raise ValueError(
                 f"文本太短，无法提取作品声纹。至少需要 {_REVIVAL_MIN_CHINESE_CHARS} 个中文字符。"
             )
+
+    def _clean_prose_gate_for_workspace(
+        self,
+        revival_workspace: RevivalWorkspaceArtifacts | None,
+    ) -> CleanProseGate:
+        if not isinstance(revival_workspace, RevivalWorkspaceArtifacts):
+            return self.clean_prose_gate
+        return CleanProseGate(
+            min_chinese_chars=1000,
+            forbidden_words=revival_workspace.style_bible.forbidden_words,
+            style_metrics=revival_workspace.style_bible.style_metrics,
+        )
+
+    def _load_or_build_revival_workspace(
+        self,
+        *,
+        session_name: str,
+        input_path: Path,
+        work_title: str | None = None,
+    ) -> RevivalWorkspaceArtifacts:
+        workspace_path = self.session_store.revival_workspace_path(session_name)
+        revival_workspace = self.session_store.load_model(
+            workspace_path,
+            RevivalWorkspaceArtifacts,
+        )
+        if isinstance(revival_workspace, RevivalWorkspaceArtifacts):
+            return revival_workspace
+        source_bytes = input_path.read_bytes()
+        revival_workspace = self.revival_workspace_builder.build(
+            input_path.read_text(encoding="utf-8"),
+            source_digest=hashlib.sha256(source_bytes).hexdigest(),
+            work_title=work_title or input_path.stem,
+        )
+        self.session_store.save_model(workspace_path, revival_workspace)
+        return revival_workspace
 
     def _default_session_name(self, input_path: Path) -> str:
         return input_path.stem
@@ -705,6 +743,12 @@ class TaiJianOrchestrator:
             progress_callback=progress_callback,
         )
         source_digest = hashlib.sha256(input_path.read_bytes()).hexdigest()
+        revival_workspace = self._load_or_build_revival_workspace(
+            session_name=session_name,
+            input_path=input_path,
+            work_title=context.snapshot.story_state.title or input_path.stem,
+        )
+        revival_workspace_path = self.session_store.revival_workspace_path(session_name)
         work_skill = self.work_skill_builder.build(
             snapshot=context.snapshot,
             world_model=context.world_model,
@@ -727,6 +771,7 @@ class TaiJianOrchestrator:
             input_path=str(input_path),
             stage1_snapshot_path=context.snapshot_path,
             world_model_path=str(context.world_model_path),
+            revival_workspace_path=str(revival_workspace_path),
             work_skill_path=str(work_skill_path),
             arc_options_path=str(arc_options_path),
             index_result=context.index_result,
@@ -827,6 +872,12 @@ class TaiJianOrchestrator:
         snapshot = context.snapshot
         world_model = context.world_model
         world_model_path = context.world_model_path
+        revival_workspace = self._load_or_build_revival_workspace(
+            session_name=session_name,
+            input_path=input_path,
+            work_title=snapshot.story_state.title or input_path.stem,
+        )
+        clean_prose_gate = self._clean_prose_gate_for_workspace(revival_workspace)
         lorebook = context.lorebook
         selected_references = context.selected_references
         arc_outline = context.arc_outline
@@ -938,7 +989,7 @@ class TaiJianOrchestrator:
             draft_text=draft_text,
             style_samples=style_samples,
         )
-        gate_result = self.clean_prose_gate.check(final_text)
+        gate_result = clean_prose_gate.check(final_text)
         clean_retry_count = 0
         while (
             not gate_result.passed
@@ -959,7 +1010,7 @@ class TaiJianOrchestrator:
                 draft_text=final_text,
                 style_samples=style_samples,
             )
-            gate_result = self.clean_prose_gate.check(final_text)
+            gate_result = clean_prose_gate.check(final_text)
 
         diagnosis = self.revival_diagnosis_builder.build(
             gate_result=gate_result,
@@ -1000,7 +1051,10 @@ class TaiJianOrchestrator:
             chapter_goal=chapter_goal,
         )
         self.session_store.save_model(world_model_path, world_model)
-        blind_challenge = self.blind_challenge_builder.build(final_text)
+        blind_challenge = self.blind_challenge_builder.build(
+            final_text,
+            source_chapters=revival_workspace.chapters,
+        )
         self.session_store.save_model(
             self.session_store.blind_challenge_path(session_name),
             blind_challenge,

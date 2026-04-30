@@ -13,7 +13,13 @@ from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation, EvaluationScore
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
-from core.models.revival import BlindChallenge, DirectorArcOption, DirectorArcOptions, WorkSkill
+from core.models.revival import (
+    BlindChallenge,
+    BlindChallengeExcerpt,
+    DirectorArcOption,
+    DirectorArcOptions,
+    WorkSkill,
+)
 from core.models.story_state import StoryWorldState
 from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
@@ -235,6 +241,10 @@ def test_web_run_manager_populates_revival_analysis_artifacts(tmp_path: Path) ->
     (session_dir / "world_model.json").write_text(WorldModel(summary="世界扩张").model_dump_json(indent=2), encoding="utf-8")
     (session_dir / "lorebook.json").write_text(LorebookBundle().model_dump_json(indent=2), encoding="utf-8")
     (session_dir / "selected_references.json").write_text('{"profiles":[]}', encoding="utf-8")
+    (session_dir / "revival_workspace.json").write_text(
+        '{"schema_version":"1.0","source_digest":"abc123","chapters":[],"style_bible":{"generated_at":"2026-01-01T00:00:00Z"},"forbidden_words":[]}',
+        encoding="utf-8",
+    )
     (session_dir / "work_skill.json").write_text(
         WorkSkill(source_digest="abc123", generated_at=now, voice_rules=["沉稳"]).model_dump_json(indent=2),
         encoding="utf-8",
@@ -285,6 +295,7 @@ def test_web_run_manager_populates_revival_analysis_artifacts(tmp_path: Path) ->
     assert len(detail.arc_options.options) == 3
     assert detail.artifact_paths.work_skill and detail.artifact_paths.work_skill.endswith("work_skill.json")
     assert detail.artifact_paths.arc_options and detail.artifact_paths.arc_options.endswith("arc_options.json")
+    assert detail.artifact_paths.revival_workspace and detail.artifact_paths.revival_workspace.endswith("revival_workspace.json")
 
 
 def test_web_run_manager_selects_revival_arc(tmp_path: Path) -> None:
@@ -426,7 +437,25 @@ def test_web_run_manager_saves_blind_challenge_rating(tmp_path: Path) -> None:
     session_dir.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc)
     (session_dir / "blind_challenge.json").write_text(
-        BlindChallenge(excerpt_text="沈照站在雨里。", excerpt_char_count=7).model_dump_json(indent=2),
+        BlindChallenge(
+            excerpt_text="沈照站在雨里。",
+            excerpt_char_count=7,
+            excerpts=[
+                BlindChallengeExcerpt(
+                    excerpt_id="A",
+                    text="沈照站在雨里。",
+                    excerpt_char_count=7,
+                    source_note="generated",
+                ),
+                BlindChallengeExcerpt(
+                    excerpt_id="B",
+                    text="原文片段。",
+                    excerpt_char_count=4,
+                    source_note="chapter_1",
+                ),
+            ],
+            generated_excerpt_id="A",
+        ).model_dump_json(indent=2),
         encoding="utf-8",
     )
     manager._runs["run-1"] = WebRunDetail(
@@ -454,6 +483,11 @@ def test_web_run_manager_saves_blind_challenge_rating(tmp_path: Path) -> None:
     assert detail.blind_challenge is not None
     assert detail.blind_challenge.ratings is not None
     assert detail.blind_challenge.ratings.voice_match_score == 5
+    assert detail.blind_challenge.excerpts[0].excerpt_id == "A"
+    payload = detail.blind_challenge.model_dump(mode="json")
+    assert "generated_excerpt_id" not in payload
+    assert "excerpt_text" not in payload
+    assert all("source_note" not in item for item in payload["excerpts"])
     assert "blind_challenge.json" in (detail.artifact_paths.blind_challenge or "")
 
 

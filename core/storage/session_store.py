@@ -108,6 +108,9 @@ class SessionStore:
     def work_skill_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "work_skill.json"
 
+    def revival_workspace_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "revival_workspace.json"
+
     def arc_options_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "arc_options.json"
 

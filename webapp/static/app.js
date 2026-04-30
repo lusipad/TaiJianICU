@@ -952,11 +952,24 @@ function renderBlindChallenge(run) {
   }
   const ratings = challenge.ratings || {};
   const ratedText = challenge.rated_at ? `<span>已评分：${escapeHtml(challenge.rated_at)}</span>` : "";
+  const excerpts = Array.isArray(challenge.excerpts) ? challenge.excerpts : [];
+  const excerptItems = excerpts.length
+    ? excerpts
+        .map(
+          (item) => `
+            <div class="thread-item">
+              <strong>片段 ${escapeHtml(item.excerpt_id || "")}</strong>
+              <span>${escapeHtml((item.text || "").slice(0, 360))}${(item.text || "").length > 360 ? "..." : ""}</span>
+            </div>
+          `
+        )
+        .join("")
+    : '<div class="thread-item"><span>暂无可展示片段</span></div>';
   elements.blindChallenge.innerHTML = `
     <div class="thread-item">
-      <strong>${escapeHtml(challenge.excerpt_char_count || 0)} 字盲看片段</strong>
-      <span>${escapeHtml((challenge.excerpt_text || "").slice(0, 220))}${(challenge.excerpt_text || "").length > 220 ? "..." : ""}</span>
+      <strong>${escapeHtml(challenge.excerpt_char_count || 0)} 字盲看挑战</strong>
       ${ratedText}
+      ${excerptItems}
       <div class="field-grid">
         <label class="field">
           <span>声口</span>

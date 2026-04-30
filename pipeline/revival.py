@@ -10,12 +10,17 @@ from core.models.arc_outline import ArcOutline
 from core.models.lorebook import LorebookBundle
 from core.models.revival import (
     BlindChallenge,
+    BlindChallengeExcerpt,
     CharacterVoiceRule,
     CleanProseGateResult,
     CleanProseHit,
     DirectorArcOption,
     DirectorArcOptions,
     RevivalDiagnosis,
+    RevivalChapter,
+    RevivalStyleBible,
+    RevivalWorkspaceArtifacts,
+    StyleMetrics,
     WorkSkill,
     WorkSkillEvidenceRef,
 )
@@ -24,6 +29,27 @@ from core.models.world_model import WorldModel
 
 
 _CHINESE_CHAR_RE = re.compile(r"[\u4e00-\u9fff]")
+_SENTENCE_RE = re.compile(r"[^。！？!?；;\n]+[。！？!?；;]?")
+_CHAPTER_HEADING_RE = re.compile(
+    r"^\s*第([一二三四五六七八九十百千万〇零两\d]+)回(?:[ \t　]+([^\r\n]*)|[ \t　]*$)",
+    re.M,
+)
+
+MODERN_FORBIDDEN_WORDS = [
+    "心理压力",
+    "关系变化",
+    "信息反转",
+    "情绪价值",
+    "创伤",
+    "压迫感",
+    "安全感",
+    "自我认同",
+    "边界感",
+    "原生家庭",
+]
+
+_SIMPLIFIED_MARKERS = set("这为来个门们说时过后")
+_TRADITIONAL_MARKERS = set("這為來個門們說時過後")
 
 
 @dataclass(frozen=True)
@@ -33,9 +59,210 @@ class ForbiddenPattern:
     pattern: re.Pattern[str]
 
 
+def _chinese_char_count(text: str) -> int:
+    return len(_CHINESE_CHAR_RE.findall(text))
+
+
+def _take_chinese_chars(text: str, target_chars: int) -> tuple[str, int]:
+    target_chars = max(1, target_chars)
+    excerpt_chars: list[str] = []
+    chinese_count = 0
+    for char in text:
+        excerpt_chars.append(char)
+        if _CHINESE_CHAR_RE.match(char):
+            chinese_count += 1
+        if chinese_count >= target_chars:
+            break
+    return "".join(excerpt_chars).strip(), chinese_count
+
+
+def _chinese_numeral_to_int(value: str) -> int | None:
+    if value.isdigit():
+        return int(value)
+    digits = {
+        "零": 0,
+        "〇": 0,
+        "一": 1,
+        "二": 2,
+        "两": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+    }
+    units = {"十": 10, "百": 100, "千": 1000, "万": 10000}
+    total = 0
+    section = 0
+    number = 0
+    for char in value:
+        if char in digits:
+            number = digits[char]
+        elif char in units:
+            unit = units[char]
+            if unit == 10000:
+                section = (section + number) * unit
+                total += section
+                section = 0
+            else:
+                section += (number or 1) * unit
+            number = 0
+        else:
+            return None
+    return total + section + number
+
+
+class ChapterSplitter:
+    def split(self, source_text: str) -> list[RevivalChapter]:
+        matches = list(_CHAPTER_HEADING_RE.finditer(source_text))
+        if not matches:
+            return [
+                RevivalChapter(
+                    chapter_number=1,
+                    title="全文",
+                    text=source_text.strip(),
+                    start_char=0,
+                    end_char=len(source_text),
+                )
+            ]
+
+        chapters: list[RevivalChapter] = []
+        for index, match in enumerate(matches):
+            next_start = matches[index + 1].start() if index + 1 < len(matches) else len(source_text)
+            body = source_text[match.end() : next_start].strip()
+            heading_title = (match.group(2) or "").strip()
+            chapters.append(
+                RevivalChapter(
+                    chapter_number=_chinese_numeral_to_int(match.group(1)),
+                    title=heading_title,
+                    text=body,
+                    start_char=match.start(),
+                    end_char=next_start,
+                )
+            )
+        return self._dedupe_adjacent_headings(chapters)
+
+    @staticmethod
+    def _dedupe_adjacent_headings(chapters: list[RevivalChapter]) -> list[RevivalChapter]:
+        deduped: list[RevivalChapter] = []
+        for chapter in chapters:
+            previous = deduped[-1] if deduped else None
+            if (
+                previous is not None
+                and previous.chapter_number == chapter.chapter_number
+                and previous.title == chapter.title
+            ):
+                deduped[-1] = chapter
+                continue
+            deduped.append(chapter)
+        return deduped
+
+
+class StyleBibleBuilder:
+    def build(
+        self,
+        source_text: str,
+        *,
+        work_title: str | None = None,
+        character_names: list[str] | None = None,
+    ) -> RevivalStyleBible:
+        metrics = self.measure(source_text)
+        patterns = [
+            item
+            for item in ["且说", "却说", "话说", "谁知", "原来", "一面", "不觉", "说着"]
+            if item in source_text
+        ]
+        names = character_names or self._infer_character_names(source_text)
+        return RevivalStyleBible(
+            generated_at=datetime.now(timezone.utc),
+            work_title=work_title,
+            narrative_patterns=patterns,
+            style_metrics=metrics,
+            forbidden_words=MODERN_FORBIDDEN_WORDS,
+            character_voice_cards=[
+                CharacterVoiceRule(character_name=name, voice_summary="待人工校准")
+                for name in names
+            ],
+        )
+
+    def measure(self, text: str) -> StyleMetrics:
+        chinese_count = _chinese_char_count(text)
+        sentences = [
+            sentence
+            for sentence in _SENTENCE_RE.findall(text)
+            if _chinese_char_count(sentence) > 0
+        ]
+        avg_sentence_length = (
+            sum(_chinese_char_count(sentence) for sentence in sentences) / len(sentences)
+            if sentences
+            else 0.0
+        )
+        dialogue_chars = sum(
+            _chinese_char_count(match.group(0))
+            for match in re.finditer(r"[“「『][^”」』]{1,400}[”」』]", text)
+        )
+        density = {
+            word: (text.count(word) / chinese_count if chinese_count else 0.0)
+            for word in ["的", "了", "着", "这", "是"]
+        }
+        return StyleMetrics(
+            chinese_char_count=chinese_count,
+            avg_sentence_length=round(avg_sentence_length, 2),
+            dialogue_ratio=round(dialogue_chars / chinese_count, 4) if chinese_count else 0.0,
+            function_word_density=density,
+        )
+
+    @staticmethod
+    def _infer_character_names(source_text: str) -> list[str]:
+        known_names = ["宝玉", "黛玉", "宝钗", "袭人", "王夫人", "凤姐", "迎春", "香菱"]
+        return [name for name in known_names if name in source_text]
+
+
+class RevivalWorkspaceBuilder:
+    def __init__(
+        self,
+        chapter_splitter: ChapterSplitter | None = None,
+        style_bible_builder: StyleBibleBuilder | None = None,
+    ):
+        self.chapter_splitter = chapter_splitter or ChapterSplitter()
+        self.style_bible_builder = style_bible_builder or StyleBibleBuilder()
+
+    def build(
+        self,
+        source_text: str,
+        *,
+        source_digest: str | None = None,
+        work_title: str | None = None,
+        character_names: list[str] | None = None,
+    ) -> RevivalWorkspaceArtifacts:
+        digest = source_digest or hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+        chapters = self.chapter_splitter.split(source_text)
+        style_bible = self.style_bible_builder.build(
+            source_text,
+            work_title=work_title,
+            character_names=character_names,
+        )
+        return RevivalWorkspaceArtifacts(
+            source_digest=digest,
+            chapters=chapters,
+            style_bible=style_bible,
+            forbidden_words=style_bible.forbidden_words,
+        )
+
+
 class CleanProseGate:
-    def __init__(self, min_chinese_chars: int = 0):
+    def __init__(
+        self,
+        min_chinese_chars: int = 0,
+        *,
+        forbidden_words: list[str] | None = None,
+        style_metrics: StyleMetrics | None = None,
+    ):
         self.min_chinese_chars = max(0, min_chinese_chars)
+        self.forbidden_words = forbidden_words or MODERN_FORBIDDEN_WORDS
+        self.style_metrics = style_metrics
         self._patterns = [
             ForbiddenPattern("rewrite_note", "改写说明", re.compile(r"改写说明")),
             ForbiddenPattern("creation_note", "创作说明", re.compile(r"创作说明")),
@@ -61,7 +288,16 @@ class CleanProseGate:
             for item in self._patterns
             for match in item.pattern.finditer(text)
         ]
-        chinese_char_count = len(_CHINESE_CHAR_RE.findall(text))
+        hits.extend(self._forbidden_word_hits(text))
+        chinese_char_count = _chinese_char_count(text)
+        if self._has_simplified_traditional_mix(text):
+            hits.append(
+                CleanProseHit(
+                    code="script_mixed",
+                    label="繁简混杂",
+                    excerpt=self._first_chars(text, 40),
+                )
+            )
         if self.min_chinese_chars and chinese_char_count < self.min_chinese_chars:
             hits.append(
                 CleanProseHit(
@@ -70,6 +306,8 @@ class CleanProseGate:
                     excerpt=f"{chinese_char_count}/{self.min_chinese_chars}",
                 )
             )
+        if self.style_metrics and chinese_char_count >= 80:
+            hits.extend(self._metric_hits(text))
         return CleanProseGateResult(
             status="fail" if hits else "pass",
             chinese_char_count=chinese_char_count,
@@ -81,6 +319,69 @@ class CleanProseGate:
         excerpt_start = max(0, start - 20)
         excerpt_end = min(len(text), end + 20)
         return text[excerpt_start:excerpt_end].replace("\n", "\\n")
+
+    def _forbidden_word_hits(self, text: str) -> list[CleanProseHit]:
+        hits: list[CleanProseHit] = []
+        for word in self.forbidden_words:
+            if not word or word not in text:
+                continue
+            index = text.index(word)
+            hits.append(
+                CleanProseHit(
+                    code="modern_word",
+                    label=f"现代抽象词：{word}",
+                    excerpt=self._excerpt(text, index, index + len(word)),
+                )
+            )
+        return hits
+
+    def _metric_hits(self, text: str) -> list[CleanProseHit]:
+        current = StyleBibleBuilder().measure(text)
+        expected = self.style_metrics
+        if expected is None:
+            return []
+        hits: list[CleanProseHit] = []
+        if expected.avg_sentence_length > 0:
+            ratio = current.avg_sentence_length / expected.avg_sentence_length
+            if ratio > 2.5 or ratio < 0.35:
+                hits.append(
+                    CleanProseHit(
+                        code="avg_sentence_length_drift",
+                        label="平均句长偏离原文",
+                        excerpt=(
+                            f"{current.avg_sentence_length:.2f}/"
+                            f"{expected.avg_sentence_length:.2f}"
+                        ),
+                    )
+                )
+        if abs(current.dialogue_ratio - expected.dialogue_ratio) > 0.35:
+            hits.append(
+                CleanProseHit(
+                    code="dialogue_ratio_drift",
+                    label="对白比例偏离原文",
+                    excerpt=f"{current.dialogue_ratio:.4f}/{expected.dialogue_ratio:.4f}",
+                )
+            )
+        for word, expected_density in expected.function_word_density.items():
+            current_density = current.function_word_density.get(word, 0.0)
+            if abs(current_density - expected_density) > max(0.06, expected_density * 4):
+                hits.append(
+                    CleanProseHit(
+                        code="function_word_density_drift",
+                        label=f"虚词密度偏离：{word}",
+                        excerpt=f"{current_density:.4f}/{expected_density:.4f}",
+                    )
+                )
+                break
+        return hits
+
+    @staticmethod
+    def _has_simplified_traditional_mix(text: str) -> bool:
+        return bool(_SIMPLIFIED_MARKERS & set(text)) and bool(_TRADITIONAL_MARKERS & set(text))
+
+    @staticmethod
+    def _first_chars(text: str, count: int) -> str:
+        return text[:count].replace("\n", "\\n")
 
 
 def digest_payload(payload: object) -> str:
@@ -239,19 +540,137 @@ class RevivalDiagnosisBuilder:
 
 
 class BlindChallengeBuilder:
-    def build(self, chapter_text: str, target_chars: int = 1000) -> BlindChallenge:
-        target_chars = max(1, target_chars)
-        excerpt_chars: list[str] = []
-        chinese_count = 0
-        for char in chapter_text:
-            excerpt_chars.append(char)
-            if _CHINESE_CHAR_RE.match(char):
-                chinese_count += 1
-            if chinese_count >= target_chars:
-                break
-        excerpt = "".join(excerpt_chars).strip()
+    def build(
+        self,
+        chapter_text: str,
+        target_chars: int = 1000,
+        *,
+        source_text: str | None = None,
+        source_chapters: list[RevivalChapter] | None = None,
+        canon_excerpt_count: int = 3,
+    ) -> BlindChallenge:
+        excerpt, chinese_count = _take_chinese_chars(chapter_text, target_chars)
+        generated = BlindChallengeExcerpt(
+            excerpt_id="generated",
+            text=excerpt,
+            excerpt_char_count=chinese_count,
+            source_note="generated",
+        )
+        canon_excerpts = self._canon_excerpts(
+            target_chars=target_chars,
+            source_text=source_text,
+            source_chapters=source_chapters,
+            canon_excerpt_count=canon_excerpt_count,
+        )
+        labeled_excerpts = self._shuffle_and_label([generated, *canon_excerpts], excerpt)
+        generated_excerpt_id = next(
+            (item.excerpt_id for item in labeled_excerpts if item.source_note == "generated"),
+            None,
+        )
         return BlindChallenge(
             excerpt_text=excerpt,
             excerpt_char_count=chinese_count,
             source_label_hidden=True,
+            excerpts=[
+                item.model_copy(update={"source_note": ""}) for item in labeled_excerpts
+            ],
+            generated_excerpt_id=generated_excerpt_id,
         )
+
+    def _canon_excerpts(
+        self,
+        *,
+        target_chars: int,
+        source_text: str | None,
+        source_chapters: list[RevivalChapter] | None,
+        canon_excerpt_count: int,
+    ) -> list[BlindChallengeExcerpt]:
+        sources: list[tuple[str, str]] = []
+        if source_chapters:
+            for chapter in source_chapters:
+                if _chinese_char_count(chapter.text) >= max(20, target_chars // 2):
+                    note = (
+                        f"chapter_{chapter.chapter_number}"
+                        if chapter.chapter_number is not None
+                        else "chapter"
+                    )
+                    sources.append((note, chapter.text))
+        elif source_text:
+            sources.append(("source", source_text))
+
+        excerpts: list[BlindChallengeExcerpt] = []
+        for index, (note, text) in enumerate(sources):
+            if len(excerpts) >= canon_excerpt_count:
+                break
+            excerpt, count = _take_chinese_chars(text.strip(), target_chars)
+            if count == 0:
+                continue
+            excerpts.append(
+                BlindChallengeExcerpt(
+                    excerpt_id=f"canon_{index + 1}",
+                    text=excerpt,
+                    excerpt_char_count=count,
+                    source_note=note,
+                )
+            )
+
+        if len(excerpts) < canon_excerpt_count and source_text:
+            excerpts.extend(
+                self._fallback_windows(
+                    source_text,
+                    target_chars=target_chars,
+                    start_index=len(excerpts),
+                    needed=canon_excerpt_count - len(excerpts),
+                )
+            )
+        return excerpts[:canon_excerpt_count]
+
+    def _fallback_windows(
+        self,
+        source_text: str,
+        *,
+        target_chars: int,
+        start_index: int,
+        needed: int,
+    ) -> list[BlindChallengeExcerpt]:
+        clean_text = source_text.strip()
+        if not clean_text:
+            return []
+        windows: list[BlindChallengeExcerpt] = []
+        starts = [
+            0,
+            max(0, len(clean_text) // 2),
+            max(0, len(clean_text) - target_chars * 2),
+        ]
+        for offset in starts:
+            if len(windows) >= needed:
+                break
+            excerpt, count = _take_chinese_chars(clean_text[offset:], target_chars)
+            if count == 0:
+                continue
+            number = start_index + len(windows) + 1
+            windows.append(
+                BlindChallengeExcerpt(
+                    excerpt_id=f"canon_{number}",
+                    text=excerpt,
+                    excerpt_char_count=count,
+                    source_note=f"source_window_{number}",
+                )
+            )
+        return windows
+
+    @staticmethod
+    def _shuffle_and_label(
+        excerpts: list[BlindChallengeExcerpt],
+        seed_text: str,
+    ) -> list[BlindChallengeExcerpt]:
+        seed = hashlib.sha256(seed_text.encode("utf-8")).hexdigest()
+        ordered = sorted(
+            excerpts,
+            key=lambda item: hashlib.sha256(f"{seed}:{item.excerpt_id}".encode("utf-8")).hexdigest(),
+        )
+        labels = ["A", "B", "C", "D", "E", "F"]
+        return [
+            item.model_copy(update={"excerpt_id": labels[index]})
+            for index, item in enumerate(ordered)
+        ]

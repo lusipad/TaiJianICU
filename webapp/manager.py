@@ -38,6 +38,7 @@ from webapp.models import (
     WebExampleSummary,
     WebBenchmarkDetail,
     WebBenchmarkSummary,
+    WebBlindChallenge,
     WebChapterSummary,
     WebPublicShowcase,
     WebArcSelectionRequest,
@@ -940,7 +941,7 @@ class WebRunManager:
             arc_options_digest=self._arc_options_digest(arc_options) if arc_options else None,
             selected_arc=selected_arc,
             revival_diagnosis=revival_diagnosis,
-            blind_challenge=blind_challenge,
+            blind_challenge=WebBlindChallenge.from_internal(blind_challenge),
             selected_references=[
                 item.model_dump(mode="json")
                 for item in (selected_references_bundle.profiles if selected_references_bundle else [])
@@ -965,6 +966,11 @@ class WebRunManager:
                 selected_references=(
                     str(session_dir / "selected_references.json")
                     if (session_dir / "selected_references.json").exists()
+                    else None
+                ),
+                revival_workspace=(
+                    str(session_dir / "revival_workspace.json")
+                    if (session_dir / "revival_workspace.json").exists()
                     else None
                 ),
                 work_skill=str(session_dir / "work_skill.json") if (session_dir / "work_skill.json").exists() else None,
@@ -1039,6 +1045,11 @@ class WebRunManager:
                 selected_references=(
                     str(session_dir / "selected_references.json")
                     if (session_dir / "selected_references.json").exists()
+                    else None
+                ),
+                revival_workspace=(
+                    str(session_dir / "revival_workspace.json")
+                    if (session_dir / "revival_workspace.json").exists()
                     else None
                 ),
                 work_skill=str(session_dir / "work_skill.json") if (session_dir / "work_skill.json").exists() else None,
@@ -1148,7 +1159,7 @@ class WebRunManager:
         challenge_path.write_text(updated_challenge.model_dump_json(indent=2), encoding="utf-8")
         updated = current.model_copy(
             update={
-                "blind_challenge": updated_challenge,
+                "blind_challenge": WebBlindChallenge.from_internal(updated_challenge),
                 "artifact_paths": current.artifact_paths.model_copy(
                     update={"blind_challenge": str(challenge_path)}
                 ),

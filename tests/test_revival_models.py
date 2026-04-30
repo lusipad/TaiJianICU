@@ -7,9 +7,14 @@ from pydantic import ValidationError
 
 from core.models.revival import (
     BlindChallenge,
+    BlindChallengeExcerpt,
     DirectorArcOption,
     DirectorArcOptions,
+    RevivalChapter,
+    RevivalStyleBible,
+    RevivalWorkspaceArtifacts,
     SelectedArc,
+    StyleMetrics,
     WorkSkill,
 )
 
@@ -37,11 +42,36 @@ def test_revival_artifacts_validate_expected_shape() -> None:
         arc_options_digest="digest",
     )
     challenge = BlindChallenge(excerpt_text="沈照站在雨里。", excerpt_char_count=7)
+    chapter = RevivalChapter(
+        chapter_number=80,
+        title="旧案重启",
+        text="沈照站在雨里。",
+        start_char=0,
+        end_char=7,
+    )
+    style_bible = RevivalStyleBible(
+        generated_at=now,
+        style_metrics=StyleMetrics(
+            chinese_char_count=7,
+            avg_sentence_length=7,
+            dialogue_ratio=0,
+            function_word_density={"的": 0.0},
+        ),
+        forbidden_words=["安全感"],
+    )
+    artifacts = RevivalWorkspaceArtifacts(
+        source_digest="abc123",
+        chapters=[chapter],
+        style_bible=style_bible,
+        forbidden_words=style_bible.forbidden_words,
+    )
 
     assert work_skill.schema_version == "1.0"
     assert len(options.options) == 3
     assert selected.user_note == ""
     assert challenge.source_label_hidden is True
+    assert artifacts.chapters[0].chapter_number == 80
+    assert artifacts.style_bible.forbidden_words == ["安全感"]
 
 
 def test_director_arc_options_require_exactly_three_options() -> None:
@@ -63,4 +93,15 @@ def test_revival_models_reject_unknown_fields() -> None:
             source_digest="abc123",
             generated_at=datetime.now(timezone.utc),
             unexpected="should fail",
+        )
+
+
+def test_blind_challenge_excerpt_rejects_unknown_fields() -> None:
+    with pytest.raises(ValidationError):
+        BlindChallengeExcerpt(
+            excerpt_id="A",
+            text="沈照站在雨里。",
+            excerpt_char_count=7,
+            source_note="",
+            answer="generated",
         )

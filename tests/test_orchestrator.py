@@ -2,12 +2,13 @@ from datetime import datetime, timezone
 
 from config.settings import AppSettings, RuntimeTuning
 from core.models.chapter_brief import ChapterBrief
-from core.models.revival import DirectorArcOption
+from core.models.revival import DirectorArcOption, RevivalStyleBible, RevivalWorkspaceArtifacts, StyleMetrics
 from core.models.story_state import StoryThread
 from core.llm.litellm_client import LLMUsageSummary
 from core.storage.session_store import SessionStore
 from intervention import InterventionConfig
 from orchestrator import ChapterRunResult, PipelineRunResult, TaiJianOrchestrator
+from pipeline.revival import CleanProseGate
 from pipeline.stage1_extraction.novel_indexer import IndexingResult
 
 
@@ -41,6 +42,30 @@ def test_revival_analysis_rejects_too_short_source(tmp_path) -> None:
         assert "文本太短，无法提取作品声纹" in str(exc)
     else:
         raise AssertionError("short revival source should fail")
+
+
+def test_clean_prose_gate_for_workspace_uses_style_bible() -> None:
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    orchestrator.clean_prose_gate = CleanProseGate(min_chinese_chars=1000)
+    metrics = StyleMetrics(
+        chinese_char_count=2000,
+        avg_sentence_length=12,
+        dialogue_ratio=0.3,
+        function_word_density={"的": 0.01},
+    )
+    workspace = RevivalWorkspaceArtifacts(
+        source_digest="abc123",
+        style_bible=RevivalStyleBible(
+            generated_at=datetime.now(timezone.utc),
+            style_metrics=metrics,
+            forbidden_words=["安全感"],
+        ),
+    )
+
+    gate = orchestrator._clean_prose_gate_for_workspace(workspace)
+
+    assert gate.forbidden_words == ["安全感"]
+    assert gate.style_metrics == metrics
 
 
 def test_build_session_manifest_preserves_existing_resume_details(tmp_path) -> None:
