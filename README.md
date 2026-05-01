@@ -140,6 +140,12 @@ taijianicu benchmark --dataset doupo --source-file data\input\doupo_50.txt --pre
 taijianicu benchmark --dataset custom --source-url https://example.com/novel.txt --prefix-chapters 50 --target-chapter 51
 ```
 
+对已生成的连续章节做多章基线评估：
+
+```powershell
+taijianicu benchmark-multi --dataset hongloumeng --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 81 --chapter-count 4 --candidate-dir data\output\hongloumeng-front80-gpt55-81-20260429-064255
+```
+
 启动 Web 工作台：
 
 ```powershell
@@ -253,6 +259,7 @@ TAIJIAN_WEB_ALLOWED_ORIGINS=https://<your-space>.hf.space
 
 - 当前内置公开可复现数据集是 `sanguo`，会自动下载 GitHub 上的《三国演义》文本，取前 50 回续写第 51 回，并用真实第 51 回做评测。
 - 评测输出包含单候选分项打分、pairwise 胜负、成本统计，以及系统版 / baseline / 真实参考章节的落盘路径。
+- 多章基线评估可读取 `chapter_N.md` 连续输出目录，用真实后续章节做 holdout，并报告逐章分数、整体均分与漂移趋势。
 - 长篇文本的阶段 1 已改为“双通道抽取”：风格从全局样本提取，当前剧情状态从最近章节单独刷新，避免续写时被早期剧情拖偏。
 
 ## 已知取舍
