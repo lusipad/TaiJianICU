@@ -77,6 +77,23 @@ def test_clean_prose_gate_detects_modern_abstract_words() -> None:
     assert {hit.code for hit in result.hits} >= {"modern_word"}
 
 
+def test_clean_prose_gate_detects_chapter_meta_analysis() -> None:
+    text = (
+        "本章推进宝玉的精神崩塌，并揭示家族体面背后的压迫结构。"
+        "这一安排象征着人物命运的核心伏笔。"
+    )
+
+    result = CleanProseGate().check(text)
+
+    assert result.passed is False
+    assert {
+        "chapter_meta",
+        "theme_explanation",
+        "analysis_tone",
+        "modern_word",
+    } <= {hit.code for hit in result.hits}
+
+
 def test_clean_prose_gate_detects_script_mix() -> None:
     result = CleanProseGate().check("这人走到門前，說了一句。")
 

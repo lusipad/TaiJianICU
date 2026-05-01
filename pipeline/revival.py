@@ -51,6 +51,13 @@ MODERN_FORBIDDEN_WORDS = [
     "自我认同",
     "边界感",
     "原生家庭",
+    "精神崩塌",
+    "压迫机制",
+    "家庭暴力",
+    "权力结构",
+    "核心伏笔",
+    "主线推进",
+    "人物弧光",
 ]
 
 _SIMPLIFIED_MARKERS = set("这为来个门们说时过后")
@@ -281,6 +288,9 @@ class CleanProseGate:
             ForbiddenPattern("summary_heading", "总结标题", re.compile(r"^\s*总结\s*[:：]", re.M)),
             ForbiddenPattern("explanation_heading", "说明标题", re.compile(r"^\s*说明\s*[:：]", re.M)),
             ForbiddenPattern("markdown_fence", "Markdown 代码块", re.compile(r"```")),
+            ForbiddenPattern("chapter_meta", "章节元叙述", re.compile(r"(?:本章|这一章|上文|下文).{0,16}(?:推进|照应|主题|伏笔|剧情)")),
+            ForbiddenPattern("theme_explanation", "主题阐释句", re.compile(r"(?:体现|说明|揭示|象征着).{0,24}(?:主题|命运|压迫|结构|伏笔|弧光)")),
+            ForbiddenPattern("analysis_tone", "分析腔", re.compile(r"(?:人物命运|精神崩塌|压迫机制|权力结构|主线推进|人物弧光)")),
         ]
 
     def check(self, text: str) -> CleanProseGateResult:
