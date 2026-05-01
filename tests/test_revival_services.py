@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from config.settings import AppSettings
 from core.models.arc_outline import ArcOutline
 from core.models.lorebook import LorebookBundle, LorebookEntry
 from core.models.story_state import CharacterCard, StoryThread, StoryWorldState
 from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
+from core.models.revival import BlindJudgeDecision
 from pipeline.revival import (
     BlindChallengeBuilder,
+    BlindJudge,
     ChapterSplitter,
     CleanProseGate,
     RevivalArcPlanner,
@@ -16,6 +19,16 @@ from pipeline.revival import (
     WorkSkillBuilder,
     digest_payload,
 )
+
+
+class _FakeBlindJudgeLLM:
+    def __init__(self, decision: BlindJudgeDecision):
+        self.decision = decision
+        self.messages = []
+
+    async def complete_structured(self, **kwargs):
+        self.messages = kwargs["messages"]
+        return self.decision
 
 
 def _snapshot() -> ExtractionSnapshot:
@@ -199,3 +212,80 @@ def test_blind_challenge_builder_mixes_generated_and_canon_excerpts() -> None:
     assert {item.excerpt_id for item in challenge.excerpts} == {"A", "B", "C", "D"}
     assert challenge.generated_excerpt_id in {"A", "B", "C", "D"}
     assert all(item.source_note == "" for item in challenge.excerpts)
+
+
+def test_blind_judge_marks_caught_generated_as_failure() -> None:
+    challenge = BlindChallengeBuilder().build(
+        "生成正文。" * 20,
+        target_chars=20,
+        source_text="原文片段。" * 80,
+    )
+    decision = BlindJudgeDecision(
+        suspected_excerpt_id=challenge.generated_excerpt_id or "",
+        confidence=0.9,
+        reason="句法太现代",
+        unlike_sentences=["生成正文"],
+        rewrite_guidance=["减少现代短句"],
+    )
+
+    round_result = BlindJudge.evaluate_decision(
+        challenge=challenge,
+        decision=decision,
+        round_number=1,
+        confidence_threshold=0.6,
+    )
+    report = BlindJudge.report(rounds=[round_result], confidence_threshold=0.6)
+
+    assert round_result.passed is False
+    assert "句法太现代" in round_result.failure_reasons
+    assert report.status == "fail"
+
+
+def test_blind_judge_passes_low_confidence_identification() -> None:
+    challenge = BlindChallengeBuilder().build(
+        "生成正文。" * 20,
+        target_chars=20,
+        source_text="原文片段。" * 80,
+    )
+    decision = BlindJudgeDecision(
+        suspected_excerpt_id=challenge.generated_excerpt_id or "",
+        confidence=0.3,
+    )
+
+    round_result = BlindJudge.evaluate_decision(
+        challenge=challenge,
+        decision=decision,
+        round_number=1,
+        confidence_threshold=0.6,
+    )
+
+    assert round_result.passed is True
+    assert round_result.failure_reasons == []
+
+
+async def test_blind_judge_calls_llm_with_redacted_excerpts() -> None:
+    challenge = BlindChallengeBuilder().build(
+        "生成正文。" * 20,
+        target_chars=20,
+        source_text="原文片段。" * 80,
+    )
+    fake_llm = _FakeBlindJudgeLLM(
+        BlindJudgeDecision(
+            suspected_excerpt_id=challenge.generated_excerpt_id or "",
+            confidence=0.95,
+        )
+    )
+    judge = BlindJudge(AppSettings(), fake_llm)  # type: ignore[arg-type]
+    style_bible = StyleBibleBuilder().build("且说宝玉病后初起。", work_title="红楼梦")
+
+    result = await judge.judge(
+        challenge=challenge,
+        style_bible=style_bible,
+        round_number=1,
+    )
+
+    assert result.passed is False
+    assert fake_llm.messages
+    prompt = fake_llm.messages[0]["content"]
+    assert "source_note" not in prompt
+    assert "generated_excerpt_id" not in prompt

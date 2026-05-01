@@ -6,11 +6,16 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from config.settings import AppSettings, render_prompt
+from core.llm.litellm_client import LiteLLMService
 from core.models.arc_outline import ArcOutline
 from core.models.lorebook import LorebookBundle
 from core.models.revival import (
     BlindChallenge,
     BlindChallengeExcerpt,
+    BlindJudgeDecision,
+    BlindJudgeReport,
+    BlindJudgeRound,
     CharacterVoiceRule,
     CleanProseGateResult,
     CleanProseHit,
@@ -674,3 +679,110 @@ class BlindChallengeBuilder:
             item.model_copy(update={"excerpt_id": labels[index]})
             for index, item in enumerate(ordered)
         ]
+
+
+class BlindJudge:
+    def __init__(
+        self,
+        settings: AppSettings,
+        llm_service: LiteLLMService,
+    ):
+        self.settings = settings
+        self.llm_service = llm_service
+
+    async def judge(
+        self,
+        *,
+        challenge: BlindChallenge,
+        style_bible: RevivalStyleBible,
+        round_number: int = 1,
+    ) -> BlindJudgeRound:
+        if not challenge.generated_excerpt_id or not challenge.excerpts:
+            decision = BlindJudgeDecision(
+                suspected_excerpt_id="",
+                confidence=0.0,
+                reason="盲测挑战缺少可判别片段。",
+            )
+            return BlindJudgeRound(
+                round_number=round_number,
+                generated_excerpt_id=challenge.generated_excerpt_id,
+                decision=decision,
+                passed=True,
+            )
+
+        prompt = render_prompt(
+            "revival/blind_judge.txt",
+            style_bible=style_bible.model_dump(mode="json"),
+            excerpts=[
+                {
+                    "excerpt_id": item.excerpt_id,
+                    "text": item.text,
+                    "excerpt_char_count": item.excerpt_char_count,
+                }
+                for item in challenge.excerpts
+            ],
+        )
+        decision = await self.llm_service.complete_structured(
+            model=self.settings.models.quality_model,
+            messages=[{"role": "user", "content": prompt}],
+            response_model=BlindJudgeDecision,
+            temperature=0.1,
+            max_tokens=1200,
+            operation="revival_blind_judge",
+        )
+        assert isinstance(decision, BlindJudgeDecision)
+        return self.evaluate_decision(
+            challenge=challenge,
+            decision=decision,
+            round_number=round_number,
+            confidence_threshold=self.settings.tuning.blind_judge_confidence_threshold,
+        )
+
+    @staticmethod
+    def evaluate_decision(
+        *,
+        challenge: BlindChallenge,
+        decision: BlindJudgeDecision,
+        round_number: int,
+        confidence_threshold: float,
+    ) -> BlindJudgeRound:
+        generated_id = challenge.generated_excerpt_id
+        caught_generated = (
+            bool(generated_id)
+            and decision.suspected_excerpt_id == generated_id
+            and decision.confidence >= confidence_threshold
+        )
+        failure_reasons: list[str] = []
+        if caught_generated:
+            failure_reasons.append(
+                f"盲测判别器以 {decision.confidence:.2f} 置信度识别出生成片段 {generated_id}。"
+            )
+            if decision.reason:
+                failure_reasons.append(decision.reason)
+            failure_reasons.extend(decision.unlike_sentences[:3])
+            failure_reasons.extend(decision.rewrite_guidance[:3])
+        return BlindJudgeRound(
+            round_number=round_number,
+            generated_excerpt_id=generated_id,
+            decision=decision,
+            passed=not caught_generated,
+            failure_reasons=failure_reasons,
+        )
+
+    @staticmethod
+    def report(
+        *,
+        rounds: list[BlindJudgeRound],
+        confidence_threshold: float,
+    ) -> BlindJudgeReport:
+        if not rounds:
+            return BlindJudgeReport(
+                status="skipped",
+                confidence_threshold=confidence_threshold,
+                rounds=[],
+            )
+        return BlindJudgeReport(
+            status="pass" if rounds[-1].passed else "fail",
+            confidence_threshold=confidence_threshold,
+            rounds=rounds,
+        )

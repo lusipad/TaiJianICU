@@ -30,3 +30,5 @@ def test_session_store_revival_artifact_paths(tmp_path: Path) -> None:
     assert store.selected_arc_path("demo") == tmp_path / "demo" / "selected_arc.json"
     assert store.revival_diagnosis_path("demo") == tmp_path / "demo" / "revival_diagnosis.json"
     assert store.blind_challenge_path("demo") == tmp_path / "demo" / "blind_challenge.json"
+    assert store.blind_judge_report_path("demo") == tmp_path / "demo" / "blind_judge_report.json"
+    assert store.chapter_revival_candidate_path("demo", 2) == tmp_path / "demo" / "chapter_2_revival_candidate.md"

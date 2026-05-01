@@ -148,3 +148,29 @@ class BlindChallenge(_StrictModel):
     ratings: BlindChallengeRating | None = None
     rated_at: datetime | None = None
     notes: str = ""
+
+
+class BlindJudgeDecision(_StrictModel):
+    suspected_excerpt_id: str
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    reason: str = ""
+    unlike_sentences: list[str] = Field(default_factory=list)
+    rewrite_guidance: list[str] = Field(default_factory=list)
+
+
+class BlindJudgeRound(_StrictModel):
+    round_number: int = Field(ge=1)
+    generated_excerpt_id: str | None = None
+    decision: BlindJudgeDecision
+    passed: bool
+    failure_reasons: list[str] = Field(default_factory=list)
+
+
+class BlindJudgeReport(_StrictModel):
+    status: Literal["pass", "fail", "skipped"]
+    confidence_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
+    rounds: list[BlindJudgeRound] = Field(default_factory=list)
+
+    @property
+    def passed(self) -> bool:
+        return self.status == "pass"

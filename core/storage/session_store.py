@@ -78,6 +78,9 @@ class SessionStore:
     def chapter_draft_path(self, session_name: str, chapter_number: int) -> Path:
         return self.session_dir(session_name) / f"chapter_{chapter_number}_draft.md"
 
+    def chapter_revival_candidate_path(self, session_name: str, chapter_number: int) -> Path:
+        return self.session_dir(session_name) / f"chapter_{chapter_number}_revival_candidate.md"
+
     def chapter_draft_candidate_path(
         self,
         session_name: str,
@@ -122,6 +125,9 @@ class SessionStore:
 
     def blind_challenge_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "blind_challenge.json"
+
+    def blind_judge_report_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "blind_judge_report.json"
 
     def chapter_brief_path(self, session_name: str, chapter_number: int) -> Path:
         return self.session_dir(session_name) / f"chapter_{chapter_number}_brief.json"

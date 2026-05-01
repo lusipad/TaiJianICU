@@ -37,6 +37,7 @@ from pipeline.stage3_generation.quality_checker import QualityChecker, QualityRe
 from pipeline.stage3_generation.style_sampler import StyleSampler
 from pipeline.revival import (
     BlindChallengeBuilder,
+    BlindJudge,
     CleanProseGate,
     RevivalArcPlanner,
     RevivalDiagnosisBuilder,
@@ -154,6 +155,7 @@ class TaiJianOrchestrator:
         self.clean_prose_gate = CleanProseGate(min_chinese_chars=1000)
         self.revival_diagnosis_builder = RevivalDiagnosisBuilder()
         self.blind_challenge_builder = BlindChallengeBuilder()
+        self.blind_judge = BlindJudge(self.settings, self.llm_service)
         self.intervention = InterventionManager(self.session_store)
 
     @staticmethod
@@ -932,7 +934,10 @@ class TaiJianOrchestrator:
         )
 
         skeleton_path = self.session_store.chapter_skeleton_path(session_name, chapter_number)
-        draft_path = self.session_store.chapter_draft_path(session_name, chapter_number)
+        revival_candidate_path = self.session_store.chapter_revival_candidate_path(
+            session_name,
+            chapter_number,
+        )
         output_path = self.settings.output_dir / session_name / f"chapter_{chapter_number}.md"
         chapter_result = ChapterRunResult(
             chapter_number=chapter_number,
@@ -1011,6 +1016,7 @@ class TaiJianOrchestrator:
                 style_samples=style_samples,
             )
             gate_result = clean_prose_gate.check(final_text)
+        self.session_store.save_text(revival_candidate_path, final_text)
 
         diagnosis = self.revival_diagnosis_builder.build(
             gate_result=gate_result,
@@ -1022,16 +1028,116 @@ class TaiJianOrchestrator:
             diagnosis,
         )
         chapter_result.quality_report = quality_report
-        if not gate_result.passed:
-            chapter_result.status = "failed_clean_prose"
+
+        def finish_failed_chapter(status: str) -> PipelineRunResult:
+            chapter_result.status = status
+            chapter_result.quality_report = quality_report
             chapter_result.usage_summary = self.llm_service.usage_summary(chapter_usage_mark)
-            chapter_result.elapsed_seconds = (datetime.now(timezone.utc) - chapter_started_at).total_seconds()
+            chapter_result.elapsed_seconds = (
+                datetime.now(timezone.utc) - chapter_started_at
+            ).total_seconds()
             result.chapters.append(chapter_result)
             result.status = "failed"
             result.total_usage = self.llm_service.usage_summary(overall_usage_mark)
             result.finished_at = datetime.now(timezone.utc)
-            self.session_store.save_model(self.session_store.run_manifest_path(session_name), result)
+            session_manifest = self._build_session_manifest(session_name, result)
+            self.session_store.save_model(
+                self.session_store.run_manifest_path(session_name),
+                session_manifest,
+            )
             return result
+
+        if not gate_result.passed:
+            return finish_failed_chapter("failed_clean_prose")
+
+        self._emit(progress_callback, f"章节{chapter_number}：盲测判别")
+        blind_judge_rounds = []
+        blind_challenge = self.blind_challenge_builder.build(
+            final_text,
+            source_chapters=revival_workspace.chapters,
+        )
+        for blind_round_number in range(1, self.settings.tuning.blind_judge_retry_limit + 2):
+            blind_round = await self.blind_judge.judge(
+                challenge=blind_challenge,
+                style_bible=revival_workspace.style_bible,
+                round_number=blind_round_number,
+            )
+            blind_judge_rounds.append(blind_round)
+            if blind_round.passed:
+                break
+            if blind_round_number > self.settings.tuning.blind_judge_retry_limit:
+                break
+            final_text = await self.chapter_generator.revise(
+                draft_text=final_text,
+                style_profile=snapshot.style_profile,
+                issues=blind_round.failure_reasons or ["盲测判别器识别出生成片段，请进一步贴近原作声纹。"],
+                skeleton=skeleton,
+                world_model=world_model,
+                chapter_brief=chapter_brief,
+                lorebook_context=lorebook_context,
+            )
+            quality_report = await self.quality_checker.evaluate(
+                skeleton=skeleton,
+                draft_text=final_text,
+                style_samples=style_samples,
+            )
+            gate_result = clean_prose_gate.check(final_text)
+            clean_retry_count_after_blind = 0
+            while (
+                not gate_result.passed
+                and clean_retry_count_after_blind < self.settings.tuning.quality_retry_limit
+            ):
+                clean_retry_count += 1
+                clean_retry_count_after_blind += 1
+                final_text = await self.chapter_generator.revise(
+                    draft_text=final_text,
+                    style_profile=snapshot.style_profile,
+                    issues=[hit.label for hit in gate_result.hits],
+                    skeleton=skeleton,
+                    world_model=world_model,
+                    chapter_brief=chapter_brief,
+                    lorebook_context=lorebook_context,
+                )
+                quality_report = await self.quality_checker.evaluate(
+                    skeleton=skeleton,
+                    draft_text=final_text,
+                    style_samples=style_samples,
+                )
+                gate_result = clean_prose_gate.check(final_text)
+            self.session_store.save_text(revival_candidate_path, final_text)
+            if not gate_result.passed:
+                break
+            blind_challenge = self.blind_challenge_builder.build(
+                final_text,
+                source_chapters=revival_workspace.chapters,
+            )
+
+        blind_judge_report = self.blind_judge.report(
+            rounds=blind_judge_rounds,
+            confidence_threshold=self.settings.tuning.blind_judge_confidence_threshold,
+        )
+        self.session_store.save_model(
+            self.session_store.blind_challenge_path(session_name),
+            blind_challenge,
+        )
+        self.session_store.save_model(
+            self.session_store.blind_judge_report_path(session_name),
+            blind_judge_report,
+        )
+        diagnosis = self.revival_diagnosis_builder.build(
+            gate_result=gate_result,
+            quality_score=quality_report.score,
+            retry_count=clean_retry_count,
+        )
+        self.session_store.save_model(
+            self.session_store.revival_diagnosis_path(session_name),
+            diagnosis,
+        )
+        chapter_result.quality_report = quality_report
+        if not gate_result.passed:
+            return finish_failed_chapter("failed_clean_prose")
+        if not blind_judge_report.passed:
+            return finish_failed_chapter("failed_blind_judge")
 
         self._emit(progress_callback, f"章节{chapter_number}：写回会话")
         self.session_store.save_text(output_path, final_text)
@@ -1051,15 +1157,6 @@ class TaiJianOrchestrator:
             chapter_goal=chapter_goal,
         )
         self.session_store.save_model(world_model_path, world_model)
-        blind_challenge = self.blind_challenge_builder.build(
-            final_text,
-            source_chapters=revival_workspace.chapters,
-        )
-        self.session_store.save_model(
-            self.session_store.blind_challenge_path(session_name),
-            blind_challenge,
-        )
-
         chapter_result.output_path = str(output_path)
         chapter_result.chapter_evaluation = self.reflection_updater.evaluate_chapter(
             chapter_number=chapter_number,

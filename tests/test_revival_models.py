@@ -8,6 +8,9 @@ from pydantic import ValidationError
 from core.models.revival import (
     BlindChallenge,
     BlindChallengeExcerpt,
+    BlindJudgeDecision,
+    BlindJudgeReport,
+    BlindJudgeRound,
     DirectorArcOption,
     DirectorArcOptions,
     RevivalChapter,
@@ -42,6 +45,18 @@ def test_revival_artifacts_validate_expected_shape() -> None:
         arc_options_digest="digest",
     )
     challenge = BlindChallenge(excerpt_text="沈照站在雨里。", excerpt_char_count=7)
+    decision = BlindJudgeDecision(suspected_excerpt_id="A", confidence=0.8)
+    judge_report = BlindJudgeReport(
+        status="fail",
+        rounds=[
+            BlindJudgeRound(
+                round_number=1,
+                generated_excerpt_id="A",
+                decision=decision,
+                passed=False,
+            )
+        ],
+    )
     chapter = RevivalChapter(
         chapter_number=80,
         title="旧案重启",
@@ -70,6 +85,7 @@ def test_revival_artifacts_validate_expected_shape() -> None:
     assert len(options.options) == 3
     assert selected.user_note == ""
     assert challenge.source_label_hidden is True
+    assert judge_report.rounds[0].decision.suspected_excerpt_id == "A"
     assert artifacts.chapters[0].chapter_number == 80
     assert artifacts.style_bible.forbidden_words == ["安全感"]
 

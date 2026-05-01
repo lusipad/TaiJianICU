@@ -1,14 +1,34 @@
 from datetime import datetime, timezone
 
 from config.settings import AppSettings, RuntimeTuning
-from core.models.chapter_brief import ChapterBrief
-from core.models.revival import DirectorArcOption, RevivalStyleBible, RevivalWorkspaceArtifacts, StyleMetrics
-from core.models.story_state import StoryThread
+from core.models.arc_outline import ArcOutline
+from core.models.chapter_brief import ChapterBrief, ExpansionBudget
+from core.models.lorebook import LorebookBundle
+from core.models.revival import (
+    BlindChallenge,
+    BlindChallengeExcerpt,
+    BlindJudgeDecision,
+    BlindJudgeReport,
+    BlindJudgeRound,
+    DirectorArcOption,
+    DirectorArcOptions,
+    RevivalChapter,
+    RevivalStyleBible,
+    RevivalWorkspaceArtifacts,
+    SelectedArc,
+    StyleMetrics,
+)
+from core.models.skeleton import ChapterSkeleton, SceneNode
+from core.models.story_state import StoryThread, StoryWorldState
+from core.models.style_profile import ExtractionSnapshot, StyleProfile
+from core.models.world_model import WorldModel
 from core.llm.litellm_client import LLMUsageSummary
 from core.storage.session_store import SessionStore
 from intervention import InterventionConfig
-from orchestrator import ChapterRunResult, PipelineRunResult, TaiJianOrchestrator
-from pipeline.revival import CleanProseGate
+from orchestrator import ChapterRunResult, PipelineRunResult, PreparedStoryContext, TaiJianOrchestrator
+from pipeline.revival import CleanProseGate, CleanProseGateResult, RevivalDiagnosisBuilder
+from pipeline.stage2_plot.consistency_checker import ConsistencyReport
+from pipeline.stage3_generation.quality_checker import QualityReport
 from pipeline.stage1_extraction.novel_indexer import IndexingResult
 
 
@@ -30,6 +50,133 @@ def build_usage(*, calls: int, total_tokens: int, total_cost_usd: float) -> LLMU
             }
         },
     )
+
+
+class _FakeUsageService:
+    def usage_mark(self) -> int:
+        return 0
+
+    def usage_summary(
+        self,
+        start_index: int = 0,
+        end_index: int | None = None,
+    ) -> LLMUsageSummary:
+        return LLMUsageSummary()
+
+
+class _FakeChapterAllocator:
+    def allocate(self, **kwargs) -> ChapterBrief:
+        return ChapterBrief(
+            chapter_number=kwargs["chapter_number"],
+            chapter_goal="让旧事浮出水面",
+        )
+
+
+class _FakeIntervention:
+    def load_or_create(self, session_name: str, chapter_number: int) -> InterventionConfig:
+        return InterventionConfig()
+
+
+class _FakeLorebookManager:
+    def match(self, *, lorebook: LorebookBundle, query_text: str) -> LorebookBundle:
+        return lorebook
+
+
+class _FakeStyleSampler:
+    async def sample(self, *args, **kwargs) -> list[str]:
+        return []
+
+
+class _FakeChapterGenerator:
+    def __init__(self) -> None:
+        self.revise_calls = []
+
+    async def revise(self, **kwargs) -> str:
+        self.revise_calls.append(kwargs)
+        return "改后正文。"
+
+
+class _FakeQualityChecker:
+    def __init__(self) -> None:
+        self.evaluated_texts: list[str] = []
+
+    async def evaluate(self, **kwargs) -> QualityReport:
+        self.evaluated_texts.append(kwargs["draft_text"])
+        return QualityReport(score=0.9, verdict="pass")
+
+
+class _TrackingCleanGate:
+    def __init__(self) -> None:
+        self.checked_texts: list[str] = []
+
+    def check(self, text: str) -> CleanProseGateResult:
+        self.checked_texts.append(text)
+        return CleanProseGateResult(status="pass", chinese_char_count=1000)
+
+
+class _TrackingBlindChallengeBuilder:
+    def __init__(self) -> None:
+        self.texts: list[str] = []
+
+    def build(
+        self,
+        chapter_text: str,
+        *,
+        source_chapters: list[RevivalChapter] | None = None,
+    ) -> BlindChallenge:
+        self.texts.append(chapter_text)
+        excerpts = [
+            BlindChallengeExcerpt(
+                excerpt_id=label,
+                text=f"{label}:{chapter_text}",
+                excerpt_char_count=1000,
+            )
+            for label in ("A", "B", "C", "D")
+        ]
+        return BlindChallenge(
+            excerpt_text=chapter_text,
+            excerpt_char_count=1000,
+            excerpts=excerpts,
+            generated_excerpt_id="A",
+        )
+
+
+class _FailingBlindJudge:
+    def __init__(self) -> None:
+        self.round_numbers: list[int] = []
+
+    async def judge(
+        self,
+        *,
+        challenge: BlindChallenge,
+        style_bible: RevivalStyleBible,
+        round_number: int,
+    ) -> BlindJudgeRound:
+        self.round_numbers.append(round_number)
+        decision = BlindJudgeDecision(
+            suspected_excerpt_id=challenge.generated_excerpt_id or "",
+            confidence=0.95,
+            reason="句法太现代",
+        )
+        return BlindJudgeRound(
+            round_number=round_number,
+            generated_excerpt_id=challenge.generated_excerpt_id,
+            decision=decision,
+            passed=False,
+            failure_reasons=["句法太现代"],
+        )
+
+    def report(
+        self,
+        *,
+        rounds: list[BlindJudgeRound],
+        confidence_threshold: float,
+    ) -> BlindJudgeReport:
+        return BlindJudgeReport(
+            status="fail",
+            confidence_threshold=confidence_threshold,
+            rounds=rounds,
+        )
 
 
 def test_revival_analysis_rejects_too_short_source(tmp_path) -> None:
@@ -195,13 +342,177 @@ def test_apply_selected_arc_to_chapter_brief() -> None:
     assert merged.must_not_break == ["黑玉不能完整出现", "不能直接揭底"]
 
 
+async def test_revival_generation_rewrites_and_persists_blind_judge_failure(tmp_path) -> None:
+    settings = AppSettings(
+        output_dir=tmp_path / "output",
+        sessions_dir=tmp_path / "sessions",
+        tuning=RuntimeTuning(blind_judge_retry_limit=1),
+    )
+    store = SessionStore(settings.sessions_dir)
+    input_path = tmp_path / "source.txt"
+    input_path.write_text("第八十回 旧事\n" + "原文片段。" * 400, encoding="utf-8")
+    now = datetime.now(timezone.utc)
+    style_bible = RevivalStyleBible(
+        generated_at=now,
+        style_metrics=StyleMetrics(chinese_char_count=2000),
+    )
+    workspace = RevivalWorkspaceArtifacts(
+        source_digest="abc123",
+        chapters=[
+            RevivalChapter(
+                chapter_number=80,
+                title="旧事",
+                text="原文片段。" * 400,
+                start_char=0,
+                end_char=2000,
+            )
+        ],
+        style_bible=style_bible,
+    )
+    selected_option = DirectorArcOption(
+        id="arc_a",
+        title="旧事浮现",
+        must_happen=["旧事浮出水面"],
+    )
+    store.save_model(
+        store.arc_options_path("demo"),
+        DirectorArcOptions(
+            generated_at=now,
+            options=[
+                selected_option,
+                DirectorArcOption(id="arc_b", title="旁支压近"),
+                DirectorArcOption(id="arc_c", title="暗线回扣"),
+            ],
+        ),
+    )
+    store.save_model(
+        store.selected_arc_path("demo"),
+        SelectedArc(
+            selected_option_id="arc_a",
+            selected_at=now,
+            arc_options_digest="digest",
+        ),
+    )
+    previous_result = PipelineRunResult(
+        session_name="demo",
+        input_path=str(input_path),
+        stage1_snapshot_path="stage1_snapshot.json",
+        index_result=IndexingResult(source_path=str(input_path), chunk_count=1, character_count=1000),
+        chapters=[
+            ChapterRunResult(
+                chapter_number=1,
+                skeleton_path="chapter_1_skeleton.json",
+                status="completed",
+            )
+        ],
+    )
+    store.save_model(store.run_manifest_path("demo"), previous_result)
+
+    snapshot = ExtractionSnapshot(
+        style_profile=StyleProfile(),
+        story_state=StoryWorldState(title="红楼梦"),
+    )
+    context = PreparedStoryContext(
+        index_result=IndexingResult(source_path=str(input_path), chunk_count=1, character_count=1000),
+        snapshot=snapshot,
+        snapshot_path=str(store.stage1_snapshot_path("demo")),
+        stage1_usage=LLMUsageSummary(),
+        world_model=WorldModel(),
+        world_model_path=store.world_model_path("demo"),
+        lorebook=LorebookBundle(),
+        selected_references=[],
+        arc_outline=ArcOutline(
+            arc_id="arc_0002_0002",
+            arc_theme="旧事浮现",
+            arc_goal="让旧事浮出水面",
+            chapters_span=[2, 2],
+        ),
+        expansion_budget=ExpansionBudget(),
+    )
+    skeleton = ChapterSkeleton(
+        chapter_number=2,
+        chapter_theme="旧事浮现",
+        scenes=[
+            SceneNode(
+                scene_type="interior",
+                participants=["宝玉"],
+                scene_purpose="让旧事浮出水面",
+            )
+        ],
+    )
+    clean_gate = _TrackingCleanGate()
+    challenge_builder = _TrackingBlindChallengeBuilder()
+    blind_judge = _FailingBlindJudge()
+    chapter_generator = _FakeChapterGenerator()
+    quality_checker = _FakeQualityChecker()
+
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    orchestrator.settings = settings
+    orchestrator.session_store = store
+    orchestrator.llm_service = _FakeUsageService()
+    orchestrator.chapter_allocator = _FakeChapterAllocator()
+    orchestrator.intervention = _FakeIntervention()
+    orchestrator.lorebook_manager = _FakeLorebookManager()
+    orchestrator.style_sampler = _FakeStyleSampler()
+    orchestrator.chapter_generator = chapter_generator
+    orchestrator.quality_checker = quality_checker
+    orchestrator.revival_diagnosis_builder = RevivalDiagnosisBuilder()
+    orchestrator.blind_challenge_builder = challenge_builder
+    orchestrator.blind_judge = blind_judge
+
+    async def prepare_story_context(**kwargs) -> PreparedStoryContext:
+        return context
+
+    async def prepare_skeleton(**kwargs):
+        return skeleton, ConsistencyReport(passed=True)
+
+    async def prepare_draft(**kwargs):
+        draft_path = store.chapter_draft_path("demo", 2)
+        store.save_text(draft_path, "草稿正文。")
+        return "草稿正文。", draft_path
+
+    async def finalize_output(**kwargs):
+        return "初稿正文。", QualityReport(score=0.9, verdict="pass")
+
+    orchestrator._prepare_story_context = prepare_story_context
+    orchestrator._load_or_build_revival_workspace = lambda **kwargs: workspace
+    orchestrator._clean_prose_gate_for_workspace = lambda workspace: clean_gate
+    orchestrator._prepare_skeleton = prepare_skeleton
+    orchestrator._prepare_draft = prepare_draft
+    orchestrator._finalize_output = finalize_output
+
+    result = await orchestrator.run_revival_generation(
+        input_path=input_path,
+        session_name="demo",
+        start_chapter=2,
+    )
+
+    assert result.status == "failed"
+    assert result.chapters[0].status == "failed_blind_judge"
+    assert [call["issues"] for call in chapter_generator.revise_calls] == [["句法太现代"]]
+    assert clean_gate.checked_texts == ["初稿正文。", "改后正文。"]
+    assert challenge_builder.texts == ["初稿正文。", "改后正文。"]
+    assert blind_judge.round_numbers == [1, 2]
+    assert quality_checker.evaluated_texts == ["改后正文。"]
+    assert store.chapter_revival_candidate_path("demo", 2).read_text(encoding="utf-8") == "改后正文。"
+    assert store.blind_judge_report_path("demo").exists()
+    manifest = store.load_model(store.run_manifest_path("demo"), PipelineRunResult)
+    assert isinstance(manifest, PipelineRunResult)
+    assert [chapter.chapter_number for chapter in manifest.chapters] == [1, 2]
+    assert [chapter.status for chapter in manifest.chapters] == ["completed", "failed_blind_judge"]
+
+
 def test_settings_candidate_counts_can_be_overridden() -> None:
     settings = AppSettings(
         tuning=RuntimeTuning(
             skeleton_candidate_count=2,
             draft_candidate_count=3,
+            blind_judge_retry_limit=2,
+            blind_judge_confidence_threshold=0.7,
         )
     )
 
     assert settings.tuning.skeleton_candidate_count == 2
     assert settings.tuning.draft_candidate_count == 3
+    assert settings.tuning.blind_judge_retry_limit == 2
+    assert settings.tuning.blind_judge_confidence_threshold == 0.7

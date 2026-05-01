@@ -42,6 +42,8 @@ class RuntimeTuning(BaseModel):
     chunk_top_k: int = 5
     quality_threshold: float = 0.65
     quality_retry_limit: int = 1
+    blind_judge_retry_limit: int = 1
+    blind_judge_confidence_threshold: float = 0.6
     skeleton_candidate_count: int = 1
     draft_candidate_count: int = 1
     llm_request_timeout_seconds: float = 180.0
@@ -190,6 +192,18 @@ def get_settings() -> AppSettings:
         os.getenv(
             "TAIJIAN_DRAFT_CANDIDATES",
             str(settings.tuning.draft_candidate_count),
+        )
+    )
+    settings.tuning.blind_judge_retry_limit = int(
+        os.getenv(
+            "TAIJIAN_BLIND_JUDGE_RETRIES",
+            str(settings.tuning.blind_judge_retry_limit),
+        )
+    )
+    settings.tuning.blind_judge_confidence_threshold = float(
+        os.getenv(
+            "TAIJIAN_BLIND_JUDGE_CONFIDENCE_THRESHOLD",
+            str(settings.tuning.blind_judge_confidence_threshold),
         )
     )
     settings.ensure_directories()
