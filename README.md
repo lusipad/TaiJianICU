@@ -13,6 +13,7 @@
 - 阶段 1：原著切块、LightRAG 建索引、风格画像与故事状态抽取
 - 阶段 2：LangGraph 多 Agent 情节博弈，输出 `ChapterSkeleton`
 - 阶段 3：按骨架生成章节正文，做一次轻量润色，并运行质量检查
+- 阶段 3：写回前会用源文本章节尺度做 source-voice gate，低于章节长度基线、现代元叙述或声口指标明显偏离时触发改写
 - V2 执行层已接入 `WorldModel`、`ArcOutline`、`ChapterBrief` 与 `Lorebook` 命中结果，不再只把它们落盘而不参与主链路
 - V2 参考层已接入默认 `ReferenceProfile`，只作用于规划层抽象约束，不直接要求正文模仿
 - 每章结束后会生成 `ChapterEvaluation`，为后续 rerank / reflection / 工作台展示提供结构化评估
@@ -145,6 +146,20 @@ taijianicu benchmark --dataset custom --source-url https://example.com/novel.txt
 ```powershell
 taijianicu benchmark-multi --dataset hongloumeng --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 81 --chapter-count 4 --candidate-dir data\output\hongloumeng-front80-gpt55-81-20260429-064255
 ```
+
+复用已有红楼前 80 回索引续写 81-120 回：
+
+```powershell
+taijianicu run --input data\input\hongloumeng_front80_pg24264.txt --chapters 40 --session-name hongloumeng-front80-full40-reuse-20260501 --planning-mode strict --new-character-budget 0 --new-location-budget 0 --new-faction-budget 0 --start-chapter 81 --use-existing-index
+```
+
+完成后评估 40 章整体基线：
+
+```powershell
+taijianicu benchmark-multi --dataset hongloumeng-full40-reuse --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 81 --chapter-count 40 --candidate-dir data\output\hongloumeng-front80-full40-reuse-20260501
+```
+
+这轮本地实测已生成 `chapter_81.md` 到 `chapter_120.md` 共 40 章；报告落在 `data\benchmarks\hongloumeng-full40-reuse\cases\80_to_81_40ch\multi_report\`。当前结论是：复用索引能支撑端到端 40 章生成，但旧流程整体分 `0.4693`，主要缺口是短章、对白比例不足和章回声口指标不稳，因此后续生成链路已加入 source-voice gate，让这些问题在写回前进入改写循环。
 
 启动 Web 工作台：
 

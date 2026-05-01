@@ -42,6 +42,7 @@ from pipeline.revival import (
     RevivalArcPlanner,
     RevivalDiagnosisBuilder,
     RevivalWorkspaceBuilder,
+    SourceVoiceGate,
     WorkSkillBuilder,
 )
 
@@ -102,6 +103,7 @@ class PreparedStoryContext:
     index_result: IndexingResult
     snapshot: ExtractionSnapshot
     snapshot_path: str
+    source_text: str
     stage1_usage: LLMUsageSummary
     world_model: WorldModel
     world_model_path: Path
@@ -183,6 +185,11 @@ class TaiJianOrchestrator:
             forbidden_words=revival_workspace.style_bible.forbidden_words,
             style_metrics=revival_workspace.style_bible.style_metrics,
         )
+
+    def _source_voice_gate(self, source_text: str | None) -> SourceVoiceGate | None:
+        if not source_text:
+            return None
+        return SourceVoiceGate.from_source_text(source_text)
 
     def _load_or_build_revival_workspace(
         self,
@@ -473,6 +480,7 @@ class TaiJianOrchestrator:
             use_existing_index=use_existing_index,
             refresh_snapshot=refresh_snapshot,
         )
+        source_text = self.indexer.load_text(input_path)
         stage1_usage = self.llm_service.usage_summary(overall_usage_mark)
         world_model_path = self.session_store.world_model_path(session_name)
         previous_world_model = self.session_store.load_model(world_model_path, WorldModel)
@@ -529,6 +537,7 @@ class TaiJianOrchestrator:
             index_result=index_result,
             snapshot=snapshot,
             snapshot_path=snapshot_path,
+            source_text=source_text,
             stage1_usage=stage1_usage,
             world_model=world_model,
             world_model_path=world_model_path,
@@ -677,6 +686,7 @@ class TaiJianOrchestrator:
         snapshot: ExtractionSnapshot,
         draft_text: str,
         style_samples: list[str],
+        source_text: str | None = None,
     ) -> tuple[str, QualityReport]:
         final_text = await self.chapter_generator.polish(
             draft_text=draft_text,
@@ -710,6 +720,31 @@ class TaiJianOrchestrator:
                 draft_text=final_text,
                 style_samples=style_samples,
             )
+        source_voice_gate = self._source_voice_gate(source_text)
+        if source_voice_gate is None:
+            return final_text, quality_report
+        gate_result = source_voice_gate.check(final_text)
+        source_retry_count = 0
+        while (
+            not gate_result.passed
+            and source_retry_count < self.settings.tuning.quality_retry_limit
+        ):
+            source_retry_count += 1
+            final_text = await self.chapter_generator.revise(
+                draft_text=final_text,
+                style_profile=snapshot.style_profile,
+                issues=[hit.label for hit in gate_result.hits],
+                skeleton=skeleton,
+                world_model=world_model,
+                chapter_brief=chapter_brief,
+                lorebook_context=lorebook_context,
+            )
+            quality_report = await self.quality_checker.evaluate(
+                skeleton=skeleton,
+                draft_text=final_text,
+                style_samples=style_samples,
+            )
+            gate_result = source_voice_gate.check(final_text)
         return final_text, quality_report
 
     async def prepare_revival_analysis(
@@ -993,6 +1028,7 @@ class TaiJianOrchestrator:
             snapshot=snapshot,
             draft_text=draft_text,
             style_samples=style_samples,
+            source_text=context.source_text,
         )
         gate_result = clean_prose_gate.check(final_text)
         clean_retry_count = 0
@@ -1372,6 +1408,7 @@ class TaiJianOrchestrator:
                 snapshot=snapshot,
                 draft_text=draft_text,
                 style_samples=style_samples,
+                source_text=context.source_text,
             )
 
             self._emit(progress_callback, f"章节{chapter_number}：写回会话")

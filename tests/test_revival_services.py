@@ -15,6 +15,7 @@ from pipeline.revival import (
     RevivalArcPlanner,
     RevivalDiagnosisBuilder,
     RevivalWorkspaceBuilder,
+    SourceVoiceGate,
     StyleBibleBuilder,
     WorkSkillBuilder,
     digest_payload,
@@ -181,6 +182,22 @@ def test_style_bible_builder_measures_voice_surface() -> None:
     assert style_bible.style_metrics.avg_sentence_length > 0
     assert style_bible.style_metrics.dialogue_ratio > 0
     assert [card.character_name for card in style_bible.character_voice_cards] == ["宝玉", "黛玉"]
+
+
+def test_source_voice_gate_flags_short_modern_candidate_against_chapter_baseline() -> None:
+    source = "\n\n".join(
+        [
+            f"第{number}回 旧事\n话说宝玉进来，笑道：“你且听我说。”"
+            + "众人一面说笑，一面看那阶前花影。" * 80
+            for number in ("一", "二", "三")
+        ]
+    )
+    gate = SourceVoiceGate.from_source_text(source)
+
+    result = gate.check("本章推进宝玉的人物弧光。众人沉默。")
+
+    assert not result.passed
+    assert {"source_baseline_too_short", "chapter_meta"} <= {hit.code for hit in result.hits}
 
 
 def test_revival_workspace_builder_creates_serializable_artifacts() -> None:

@@ -5,6 +5,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from statistics import median
 
 from config.settings import AppSettings, render_prompt
 from core.llm.litellm_client import LiteLLMService
@@ -397,6 +398,61 @@ class CleanProseGate:
     @staticmethod
     def _first_chars(text: str, count: int) -> str:
         return text[:count].replace("\n", "\\n")
+
+
+class SourceVoiceGate:
+    def __init__(
+        self,
+        *,
+        min_chinese_chars: int,
+        style_metrics: StyleMetrics,
+        forbidden_words: list[str] | None = None,
+    ):
+        self.min_chinese_chars = max(0, min_chinese_chars)
+        self.clean_gate = CleanProseGate(
+            min_chinese_chars=self.min_chinese_chars,
+            forbidden_words=forbidden_words,
+            style_metrics=style_metrics,
+        )
+
+    @classmethod
+    def from_source_text(cls, source_text: str) -> SourceVoiceGate:
+        chapters = [
+            chapter.text
+            for chapter in ChapterSplitter().split(source_text)
+            if _chinese_char_count(chapter.text) >= 200
+        ]
+        if not chapters:
+            return cls(
+                min_chinese_chars=0,
+                style_metrics=StyleBibleBuilder().measure(source_text),
+            )
+        chapter_lengths = [_chinese_char_count(text) for text in chapters]
+        min_chinese_chars = int(median(chapter_lengths) * 0.7)
+        return cls(
+            min_chinese_chars=min_chinese_chars,
+            style_metrics=StyleBibleBuilder().measure("\n".join(chapters)),
+        )
+
+    def check(self, text: str) -> CleanProseGateResult:
+        result = self.clean_gate.check(text)
+        hits = [
+            hit.model_copy(
+                update={
+                    "code": "source_baseline_too_short",
+                    "label": "低于源文本章节长度基线",
+                }
+            )
+            if hit.code == "too_short"
+            else hit
+            for hit in result.hits
+        ]
+        return result.model_copy(
+            update={
+                "status": "fail" if hits else "pass",
+                "hits": hits,
+            }
+        )
 
 
 def digest_payload(payload: object) -> str:
