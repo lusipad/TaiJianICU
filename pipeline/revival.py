@@ -401,6 +401,18 @@ class CleanProseGate:
 
 
 class SourceVoiceGate:
+    _EXPLANATORY_PHRASES = [
+        "像是",
+        "说不清",
+        "说不清道不明",
+        "一步一步变成现实",
+        "这现实",
+        "命运",
+        "象征",
+        "主题",
+        "结构",
+    ]
+
     def __init__(
         self,
         *,
@@ -447,6 +459,16 @@ class SourceVoiceGate:
             else hit
             for hit in result.hits
         ]
+        explanatory_count = sum(text.count(phrase) for phrase in self._EXPLANATORY_PHRASES)
+        chinese_count = _chinese_char_count(text)
+        if chinese_count and explanatory_count / chinese_count > 0.004:
+            hits.append(
+                CleanProseHit(
+                    code="explanatory_prose_drift",
+                    label="解释性抒情腔偏离源文本",
+                    excerpt=f"{explanatory_count}/{chinese_count}",
+                )
+            )
         return result.model_copy(
             update={
                 "status": "fail" if hits else "pass",

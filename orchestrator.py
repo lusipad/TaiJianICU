@@ -999,6 +999,7 @@ class TaiJianOrchestrator:
             session_name,
             skeleton,
             snapshot.style_profile,
+            source_text=context.source_text,
         )
 
         self._emit(progress_callback, f"章节{chapter_number}：生成草稿")
@@ -1371,6 +1372,7 @@ class TaiJianOrchestrator:
                 session_name,
                 skeleton,
                 snapshot.style_profile,
+                source_text=context.source_text,
             )
 
             self._emit(progress_callback, f"章节{chapter_number}：生成草稿")

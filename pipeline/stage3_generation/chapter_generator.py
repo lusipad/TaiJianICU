@@ -60,6 +60,35 @@ class ChapterGenerator:
         cleaned = re.sub(r"^(?:-{3,}|={3,})\s*", "", cleaned)
         return cleaned.strip()
 
+    @staticmethod
+    def sanitize_generation_payload(value):
+        if isinstance(value, dict):
+            return {
+                key: ChapterGenerator.sanitize_generation_payload(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [ChapterGenerator.sanitize_generation_payload(item) for item in value]
+        if not isinstance(value, str):
+            return value
+        cleaned = value
+        replacements = {
+            "宿命之问": "疑问",
+            "宿命": "命数",
+            "象征意义": "影子里的话头",
+            "象征": "影子",
+            "主题升华": "场面收束",
+            "主题": "话头",
+            "结构性风险": "场面旁逸",
+            "结构风险": "场面旁逸",
+            "现实苦难": "眼前苦楚",
+            "活生生的注脚": "眼前一事",
+            "无声在场": "远远看见",
+        }
+        for source, target in replacements.items():
+            cleaned = cleaned.replace(source, target)
+        return cleaned
+
     async def generate(
         self,
         *,
@@ -74,9 +103,15 @@ class ChapterGenerator:
             "generation/chapter_draft.txt",
             style_profile=style_profile.model_dump(mode="json"),
             style_samples=style_samples,
-            chapter_skeleton=skeleton.model_dump(mode="json"),
+            chapter_skeleton=self.sanitize_generation_payload(
+                skeleton.model_dump(mode="json")
+            ),
             world_model=self._world_context_text(world_model),
-            chapter_brief=chapter_brief.model_dump(mode="json") if chapter_brief else {},
+            chapter_brief=(
+                self.sanitize_generation_payload(chapter_brief.model_dump(mode="json"))
+                if chapter_brief
+                else {}
+            ),
             lorebook_context=self._lorebook_context_text(lorebook_context),
         )
         draft = await self.llm_service.complete_text(
@@ -101,7 +136,11 @@ class ChapterGenerator:
             "generation/style_polish.txt",
             style_profile=style_profile.model_dump(mode="json"),
             world_model=self._world_context_text(world_model),
-            chapter_brief=chapter_brief.model_dump(mode="json") if chapter_brief else {},
+            chapter_brief=(
+                self.sanitize_generation_payload(chapter_brief.model_dump(mode="json"))
+                if chapter_brief
+                else {}
+            ),
             lorebook_context=self._lorebook_context_text(lorebook_context),
             draft_text=draft_text,
         )
@@ -130,9 +169,11 @@ class ChapterGenerator:
             f"[问题]\n{json.dumps(issues, ensure_ascii=False, indent=2)}\n\n"
             f"[风格画像]\n{style_profile.model_dump_json(indent=2)}\n\n"
             f"[世界约束]\n{self._world_context_text(world_model)}\n\n"
-            f"[章节 brief]\n{chapter_brief.model_dump_json(indent=2) if chapter_brief else '无'}\n\n"
+            "[章节 brief]\n"
+            f"{json.dumps(self.sanitize_generation_payload(chapter_brief.model_dump(mode='json')), ensure_ascii=False, indent=2) if chapter_brief else '无'}\n\n"
             f"[Lorebook 命中]\n{self._lorebook_context_text(lorebook_context)}\n\n"
-            f"[章节骨架]\n{skeleton.model_dump_json(indent=2)}\n\n"
+            "[章节骨架]\n"
+            f"{json.dumps(self.sanitize_generation_payload(skeleton.model_dump(mode='json')), ensure_ascii=False, indent=2)}\n\n"
             f"[待修订正文]\n{draft_text}"
         )
         revised = await self.llm_service.complete_text(

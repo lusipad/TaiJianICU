@@ -13,7 +13,8 @@
 - 阶段 1：原著切块、LightRAG 建索引、风格画像与故事状态抽取
 - 阶段 2：LangGraph 多 Agent 情节博弈，输出 `ChapterSkeleton`
 - 阶段 3：按骨架生成章节正文，做一次轻量润色，并运行质量检查
-- 阶段 3：写回前会用源文本章节尺度做 source-voice gate，低于章节长度基线、现代元叙述或声口指标明显偏离时触发改写
+- 阶段 3：写回前会用源文本章节尺度做 source-voice gate，低于章节长度基线、现代元叙述、解释性抒情腔或声口指标明显偏离时触发改写
+- 阶段 3：few-shot 风格样本优先从输入源文本切章抽取，避免后续生成章节回灌到同一 session 后污染风格采样
 - V2 执行层已接入 `WorldModel`、`ArcOutline`、`ChapterBrief` 与 `Lorebook` 命中结果，不再只把它们落盘而不参与主链路
 - V2 参考层已接入默认 `ReferenceProfile`，只作用于规划层抽象约束，不直接要求正文模仿
 - 每章结束后会生成 `ChapterEvaluation`，为后续 rerank / reflection / 工作台展示提供结构化评估

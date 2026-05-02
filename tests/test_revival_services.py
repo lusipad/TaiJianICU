@@ -200,6 +200,27 @@ def test_source_voice_gate_flags_short_modern_candidate_against_chapter_baseline
     assert {"source_baseline_too_short", "chapter_meta"} <= {hit.code for hit in result.hits}
 
 
+def test_source_voice_gate_flags_explanatory_prose_drift() -> None:
+    source = "\n\n".join(
+        [
+            f"第{number}回 旧事\n话说宝玉进来，笑道：“你且听我说。”"
+            + "众人一面说笑，一面看那阶前花影。" * 120
+            for number in ("一", "二", "三")
+        ]
+    )
+    candidate = (
+        "话说宝玉站在芙蓉花下，像是听见远处有人低语，像是那些字句活了过来。"
+        "他心中有一种说不清道不明的滋味，又像是看见命运正在一步一步变成现实。"
+        "这现实不是晴雯一个人的现实，而是园中女儿共同的现实。"
+    ) * 20
+    gate = SourceVoiceGate.from_source_text(source)
+
+    result = gate.check(candidate)
+
+    assert not result.passed
+    assert "explanatory_prose_drift" in {hit.code for hit in result.hits}
+
+
 def test_revival_workspace_builder_creates_serializable_artifacts() -> None:
     text = "第八十回 旧事\n且说宝玉病后初起。\n第八十一回 新章\n话说黛玉低头不语。"
 
