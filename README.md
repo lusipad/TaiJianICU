@@ -1,31 +1,25 @@
 # TaiJianICU
 
-基于 `DESIGN.md` 落地的首版 DeepSeek 优先 MVP。目标是把原著索引、情节辩论、骨架生成、正文生成串成一个可运行的命令行流水线。
+TaiJianICU 是一个中文长篇续写实验系统。当前主线是“作者复活引擎”：不只生成后续剧情，而是用原文声口、章节节奏、人物状态、质量门和盲测闭环，评估续写到底像不像原作者。
 
-设计文档：
+这个仓库还在快速实验阶段。README 只放安装、运行和当前可信边界；实现细节和验证记录放在 `docs/` 与路线图里。
 
-- `DESIGN.md`：V1 / MVP 设计
-- `DESIGN_V2.md`：V2 整体设计
-- `ROADMAP_V2.md`：V2 实施路线图
+## 文档导览
 
-## 当前实现
+- `docs/author-revival-engine-design.md`：作者复活引擎设计方案，解释为什么要从“剧情完整度”转向“作者相似度”。
+- `ROADMAP_REVIVAL.md`：当前主线和下一步验证路线。
+- `docs/revival-validation-status.md`：当前实现、红楼验证命令、质量门行为和已知缺口。
+- `DESIGN.md`：V1 / MVP 设计。
+- `DESIGN_V2.md`：V2 整体设计。
+- `ROADMAP_V2.md`：V2 实施路线图，已降级为辅助参考。
 
-- 阶段 1：原著切块、LightRAG 建索引、风格画像与故事状态抽取
-- 阶段 2：LangGraph 多 Agent 情节博弈，输出 `ChapterSkeleton`
-- 阶段 3：按骨架生成章节正文，做一次轻量润色，并运行质量检查
-- 阶段 3：写回前会用源文本章节尺度做 source-voice gate，低于章节长度基线、现代元叙述、解释性抒情腔或声口指标明显偏离时触发改写
-- 阶段 3：few-shot 风格样本优先从输入源文本切章抽取，避免后续生成章节回灌到同一 session 后污染风格采样
-- V2 执行层已接入 `WorldModel`、`ArcOutline`、`ChapterBrief` 与 `Lorebook` 命中结果，不再只把它们落盘而不参与主链路
-- V2 参考层已接入默认 `ReferenceProfile`，只作用于规划层抽象约束，不直接要求正文模仿
-- 每章结束后会生成 `ChapterEvaluation`，为后续 rerank / reflection / 工作台展示提供结构化评估
-- 执行层支持 skeleton / draft 多候选生成与 rerank，可通过 CLI / Web 配置候选数
-- 章节完成后会增量刷新 `WorldModel`，并把候选骨架 / 候选正文落盘到会话目录
-- 基准：内置“系统 vs 单模型 baseline vs 真实后续”对照实验
-- Web：上传 `.txt`、提交任务、轮询进度、查看摘要/产物路径/历史任务
-- Web：侧边栏可直接查看 Benchmark Lab 对照报告、胜负结论、分项摘要和落盘路径
-- Web：新建任务时可直接配置 `style/plot/draft/quality/LightRAG` 模型路由，支持“下拉候选 + 自定义输入”
-- CLI：`taijianicu run` / `taijianicu benchmark` / `taijianicu web` / `taijianicu inspect` / `taijianicu intervene`；兼容旧命令 `taijian`
-- 会话：保存阶段 1 快照、每章骨架、草稿、输出正文、伏笔状态
+## 当前状态
+
+- CLI 和 Web 工作台都可以运行续写、查看会话产物和跑基准。
+- 当前默认模型路由收敛到 DeepSeek，embedding 默认用本地哈希兜底。
+- 红楼前 80 回到第 120 回的长链路已经跑通过一次，但旧流程暴露出短章、对白比例不足和后段声口漂移。
+- 最新修复后，第 120 回单章回归通过 source-voice gate：`4305/4257` 中文字符，manifest 顶层与单章状态均为 `completed`。
+- 当前测试基线：`.\.venv\Scripts\python -m pytest` 为 `127 passed, 3 warnings`。
 
 ## 运行环境
 
@@ -148,19 +142,7 @@ taijianicu benchmark --dataset custom --source-url https://example.com/novel.txt
 taijianicu benchmark-multi --dataset hongloumeng --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 81 --chapter-count 4 --candidate-dir data\output\hongloumeng-front80-gpt55-81-20260429-064255
 ```
 
-复用已有红楼前 80 回索引续写 81-120 回：
-
-```powershell
-taijianicu run --input data\input\hongloumeng_front80_pg24264.txt --chapters 40 --session-name hongloumeng-front80-full40-reuse-20260501 --planning-mode strict --new-character-budget 0 --new-location-budget 0 --new-faction-budget 0 --start-chapter 81 --use-existing-index
-```
-
-完成后评估 40 章整体基线：
-
-```powershell
-taijianicu benchmark-multi --dataset hongloumeng-full40-reuse --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 81 --chapter-count 40 --candidate-dir data\output\hongloumeng-front80-full40-reuse-20260501
-```
-
-这轮本地实测已生成 `chapter_81.md` 到 `chapter_120.md` 共 40 章；报告落在 `data\benchmarks\hongloumeng-full40-reuse\cases\80_to_81_40ch\multi_report\`。当前结论是：复用索引能支撑端到端 40 章生成，但旧流程整体分 `0.4693`，主要缺口是短章、对白比例不足和章回声口指标不稳，因此后续生成链路已加入 source-voice gate，让这些问题在写回前进入改写循环。
+红楼长链路验证、复用索引命令和第 120 回回归记录见 [docs/revival-validation-status.md](docs/revival-validation-status.md)。
 
 启动 Web 工作台：
 
@@ -252,7 +234,7 @@ TAIJIAN_WEB_ALLOWED_ORIGINS=https://<your-space>.hf.space
 - `data/benchmarks/<dataset>/cases/<prefix>_to_<target>/report/benchmark_report.json`
 - `data/benchmarks/<dataset>/cases/<prefix>_to_<target>/report/benchmark_report.md`
 
-`run_manifest.json` 表示当前会话的累计清单。即使后续用 `--resume` 跳过已有章节，也会保留之前的质检结果、章节成本和阶段 1 成本汇总。
+`run_manifest.json` 表示当前会话的累计清单。即使后续用 `--resume` 跳过已有章节，也会保留之前的质检结果、章节成本和阶段 1 成本汇总。若合并后的任一章节为 `completed_with_warnings` 或失败，顶层 `status` 也会同步反映，避免长章验证时只看顶层状态误判。
 
 ## 测试
 
@@ -269,7 +251,8 @@ TAIJIAN_WEB_ALLOWED_ORIGINS=https://<your-space>.hf.space
 - Web 首页、健康检查、上传接口与历史任务接口已通过自动化测试
 - 已跑通 `taijianicu benchmark --dataset sanguo --prefix-chapters 50 --target-chapter 51`
 - 对照结果：系统版胜过单模型 baseline，pairwise `winner=system`，`confidence=0.85`
-- 该轮基准总成本约 `0.04183 USD`，总 tokens `212110`
+- 红楼第 120 回 source-voice 回归已通过；完整记录见 [docs/revival-validation-status.md](docs/revival-validation-status.md)
+- 当前测试基线：`127 passed, 3 warnings`
 
 ## 基准说明
 
