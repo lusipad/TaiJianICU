@@ -20,6 +20,12 @@ def test_strip_output_shell_removes_markdown_fence() -> None:
     assert ChapterGenerator.strip_output_shell(text) == "话说风过竹梢。"
 
 
+def test_strip_output_shell_normalizes_minor_script_markers() -> None:
+    text = "話說宝玉这日来至门前，说了几句话，过后仍不放心。"
+
+    assert ChapterGenerator.strip_output_shell(text).startswith("话说宝玉")
+
+
 def test_sanitize_generation_payload_removes_planning_analysis_tone() -> None:
     payload = {
         "chapter_theme": "芙蓉花影中的宿命之问",
@@ -34,3 +40,13 @@ def test_sanitize_generation_payload_removes_planning_analysis_tone() -> None:
     assert "结构性风险" not in str(sanitized)
     assert "主题升华" not in str(sanitized)
     assert "保留场面动作" in str(sanitized)
+
+
+def test_revision_issue_guidance_expands_source_voice_failures() -> None:
+    guidance = ChapterGenerator._revision_issue_guidance(
+        ["繁简混杂：話說迎春", "低于源文本章节长度基线：3054/4257"]
+    )
+
+    assert "至少 4257 个中文字符" in guidance
+    assert "低于该长度仍视为失败" in guidance
+    assert "统一字形" in guidance

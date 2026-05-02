@@ -13,6 +13,37 @@ from core.models.world_model import WorldModel
 
 
 class ChapterGenerator:
+    _SIMPLIFIED_TO_TRADITIONAL = str.maketrans(
+        {
+            "这": "這",
+            "为": "為",
+            "来": "來",
+            "个": "個",
+            "门": "門",
+            "们": "們",
+            "说": "說",
+            "时": "時",
+            "过": "過",
+            "后": "後",
+            "话": "話",
+        }
+    )
+    _TRADITIONAL_TO_SIMPLIFIED = str.maketrans(
+        {
+            "這": "这",
+            "為": "为",
+            "來": "来",
+            "個": "个",
+            "門": "门",
+            "們": "们",
+            "說": "说",
+            "時": "时",
+            "過": "过",
+            "後": "后",
+            "話": "话",
+        }
+    )
+
     def __init__(self, settings: AppSettings, llm_service: LiteLLMService):
         self.settings = settings
         self.llm_service = llm_service
@@ -58,7 +89,19 @@ class ChapterGenerator:
             cleaned,
         )
         cleaned = re.sub(r"^(?:-{3,}|={3,})\s*", "", cleaned)
-        return cleaned.strip()
+        return ChapterGenerator.normalize_guardrail_script_markers(cleaned.strip())
+
+    @classmethod
+    def normalize_guardrail_script_markers(cls, text: str) -> str:
+        simplified_count = sum(text.count(char) for char in "这为来个门们说时过后话")
+        traditional_count = sum(text.count(char) for char in "這為來個門們說時過後話")
+        if simplified_count == 0 or traditional_count == 0:
+            return text
+        if simplified_count > traditional_count:
+            return text.translate(cls._TRADITIONAL_TO_SIMPLIFIED)
+        if traditional_count > simplified_count:
+            return text.translate(cls._SIMPLIFIED_TO_TRADITIONAL)
+        return text
 
     @staticmethod
     def sanitize_generation_payload(value):
@@ -160,14 +203,18 @@ class ChapterGenerator:
         style_profile: StyleProfile,
         issues: list[str],
         skeleton: ChapterSkeleton,
+        style_samples: list[str] | None = None,
         world_model: WorldModel | None = None,
         chapter_brief: ChapterBrief | None = None,
         lorebook_context: LorebookBundle | None = None,
     ) -> str:
+        issue_guidance = self._revision_issue_guidance(issues)
         prompt = (
             "请基于以下问题修订正文，保持剧情事实与章节骨架一致，不要输出说明。\n\n"
             f"[问题]\n{json.dumps(issues, ensure_ascii=False, indent=2)}\n\n"
+            f"[修订动作]\n{issue_guidance}\n\n"
             f"[风格画像]\n{style_profile.model_dump_json(indent=2)}\n\n"
+            f"[参考原著片段]\n{json.dumps(style_samples or [], ensure_ascii=False, indent=2)}\n\n"
             f"[世界约束]\n{self._world_context_text(world_model)}\n\n"
             "[章节 brief]\n"
             f"{json.dumps(self.sanitize_generation_payload(chapter_brief.model_dump(mode='json')), ensure_ascii=False, indent=2) if chapter_brief else '无'}\n\n"
@@ -184,3 +231,28 @@ class ChapterGenerator:
             operation="stage3_revise_draft",
         )
         return self.strip_output_shell(revised.text)
+
+    @staticmethod
+    def _revision_issue_guidance(issues: list[str]) -> str:
+        guidance = [
+            "- 只输出修订后的正文，不要解释你做了什么。",
+            "- 修订必须落在场面、对白、动作、旧物、景物和转场上，不要写成提纲或评论。",
+        ]
+        joined = "\n".join(issues)
+        if "低于源文本章节长度基线" in joined:
+            match = re.search(r"(\d+)\s*/\s*(\d+)", joined)
+            target = f"至少 {match.group(2)} 个中文字符" if match else "达到原作章节常规篇幅"
+            guidance.append(
+                f"- 正文短于源文本章节基线：必须补足到{target}，低于该长度仍视为失败；"
+                "不要只替换词句，也不要靠开篇回顾凑字；应补足当前场面的"
+                "人物进退、旁人传话、屋舍器物、对话回合和章回转场。"
+            )
+        if "繁简混杂" in joined:
+            guidance.append(
+                "- 统一字形：按待修订正文中的主导字形通篇统一，不要只在“话说/原来”等套语里混入另一套字形。"
+            )
+        if "解释性抒情腔" in joined:
+            guidance.append(
+                "- 删除“像是、命运、象征、主题、结构”等解释句，改成可见的动作、称谓、物件和景物。"
+            )
+        return "\n".join(guidance)

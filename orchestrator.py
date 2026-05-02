@@ -191,6 +191,16 @@ class TaiJianOrchestrator:
             return None
         return SourceVoiceGate.from_source_text(source_text)
 
+    @staticmethod
+    def _gate_revision_issues(gate_result: CleanProseGateResult) -> list[str]:
+        issues: list[str] = []
+        for hit in gate_result.hits:
+            if hit.excerpt:
+                issues.append(f"{hit.label}：{hit.excerpt}")
+            else:
+                issues.append(hit.label)
+        return issues
+
     def _load_or_build_revival_workspace(
         self,
         *,
@@ -285,6 +295,11 @@ class TaiJianOrchestrator:
         merged_chapters = [
             merged_by_chapter[number] for number in sorted(merged_by_chapter.keys())
         ]
+        merged_status = current_result.status
+        if any(chapter.status.startswith("failed") for chapter in merged_chapters):
+            merged_status = "failed"
+        elif any(chapter.status == "completed_with_warnings" for chapter in merged_chapters):
+            merged_status = "completed_with_warnings"
         stage1_usage = current_result.stage1_usage
         if (
             stage1_usage.calls == 0
@@ -302,6 +317,7 @@ class TaiJianOrchestrator:
                 "index_result": index_result,
                 "stage1_usage": stage1_usage,
                 "chapters": merged_chapters,
+                "status": merged_status,
                 "total_usage": self._merge_usage_summaries(
                     stage1_usage,
                     *[chapter.usage_summary for chapter in merged_chapters],
@@ -711,6 +727,7 @@ class TaiJianOrchestrator:
                 style_profile=snapshot.style_profile,
                 issues=quality_report.issues or ["角色一致性与节奏需要提升"],
                 skeleton=skeleton,
+                style_samples=style_samples,
                 world_model=world_model,
                 chapter_brief=chapter_brief,
                 lorebook_context=lorebook_context,
@@ -725,16 +742,20 @@ class TaiJianOrchestrator:
             return final_text, quality_report
         gate_result = source_voice_gate.check(final_text)
         source_retry_count = 0
+        source_retry_limit = self.settings.tuning.quality_retry_limit
+        if source_retry_limit > 0:
+            source_retry_limit = max(source_retry_limit, 3)
         while (
             not gate_result.passed
-            and source_retry_count < self.settings.tuning.quality_retry_limit
+            and source_retry_count < source_retry_limit
         ):
             source_retry_count += 1
             final_text = await self.chapter_generator.revise(
                 draft_text=final_text,
                 style_profile=snapshot.style_profile,
-                issues=[hit.label for hit in gate_result.hits],
+                issues=self._gate_revision_issues(gate_result),
                 skeleton=skeleton,
+                style_samples=style_samples,
                 world_model=world_model,
                 chapter_brief=chapter_brief,
                 lorebook_context=lorebook_context,
@@ -745,6 +766,18 @@ class TaiJianOrchestrator:
                 style_samples=style_samples,
             )
             gate_result = source_voice_gate.check(final_text)
+        if not gate_result.passed:
+            gate_issues = [hit.label for hit in gate_result.hits]
+            quality_report = quality_report.model_copy(
+                update={
+                    "verdict": "revise",
+                    "score": min(
+                        quality_report.score,
+                        max(0.0, self.settings.tuning.quality_threshold - 0.01),
+                    ),
+                    "issues": [*quality_report.issues, *gate_issues],
+                }
+            )
         return final_text, quality_report
 
     async def prepare_revival_analysis(

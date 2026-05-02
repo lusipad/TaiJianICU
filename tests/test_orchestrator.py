@@ -104,6 +104,28 @@ class _FakeFinalizeChapterGenerator:
         return "话说宝玉进来，笑道：“你且听我说。”众人一面说笑，一面看那阶前花影。" * 80
 
 
+class _StillWeakFinalizeChapterGenerator:
+    async def polish(self, **kwargs) -> str:
+        return "本章推进宝玉的人物弧光。众人沉默。"
+
+    async def revise(self, **kwargs) -> str:
+        return "话说宝玉仍在花下沉默。"
+
+
+class _EventuallyStrongFinalizeChapterGenerator:
+    def __init__(self) -> None:
+        self.revise_calls: list[dict] = []
+
+    async def polish(self, **kwargs) -> str:
+        return "本章推进宝玉的人物弧光。众人沉默。"
+
+    async def revise(self, **kwargs) -> str:
+        self.revise_calls.append(kwargs)
+        if len(self.revise_calls) < 3:
+            return "话说宝玉仍在花下沉默。"
+        return "话说宝玉进来，笑道：“你且听我说。”众人一面说笑，一面看那阶前花影。" * 80
+
+
 class _FakeQualityChecker:
     def __init__(self) -> None:
         self.evaluated_texts: list[str] = []
@@ -293,6 +315,56 @@ def test_build_session_manifest_preserves_existing_resume_details(tmp_path) -> N
     assert merged.chapters[0].chapter_goal == "旧目标"
 
 
+def test_build_session_manifest_reflects_merged_chapter_warnings(tmp_path) -> None:
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    orchestrator.session_store = SessionStore(tmp_path)
+    previous_result = PipelineRunResult(
+        session_name="demo",
+        input_path="data/input/sample_novel.txt",
+        stage1_snapshot_path="stage1_snapshot.json",
+        index_result=IndexingResult(
+            source_path="data/input/sample_novel.txt",
+            chunk_count=2,
+            character_count=1234,
+        ),
+        chapters=[
+            ChapterRunResult(
+                chapter_number=1,
+                skeleton_path="chapter_1_skeleton.json",
+                status="completed",
+            )
+        ],
+        status="completed",
+    )
+    orchestrator.session_store.save_model(
+        orchestrator.session_store.run_manifest_path("demo"),
+        previous_result,
+    )
+
+    current_result = PipelineRunResult(
+        session_name="demo",
+        input_path="data/input/sample_novel.txt",
+        stage1_snapshot_path="stage1_snapshot.json",
+        index_result=IndexingResult(
+            source_path="data/input/sample_novel.txt",
+            chunk_count=0,
+            character_count=1234,
+        ),
+        chapters=[
+            ChapterRunResult(
+                chapter_number=2,
+                skeleton_path="chapter_2_skeleton.json",
+                status="completed_with_warnings",
+            )
+        ],
+        status="completed",
+    )
+
+    merged = orchestrator._build_session_manifest("demo", current_result)
+
+    assert merged.status == "completed_with_warnings"
+
+
 def test_apply_chapter_brief_overrides_and_build_goal() -> None:
     orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
     chapter_brief = ChapterBrief(
@@ -409,6 +481,118 @@ async def test_finalize_output_revises_source_voice_gate_failures(tmp_path) -> N
         "本章推进宝玉的人物弧光。众人沉默。",
         final_text,
     ]
+
+
+async def test_finalize_output_marks_unfixed_source_voice_failures(tmp_path) -> None:
+    settings = AppSettings(
+        output_dir=tmp_path / "output",
+        sessions_dir=tmp_path / "sessions",
+        tuning=RuntimeTuning(quality_retry_limit=1, quality_threshold=0.65),
+    )
+    source = "\n\n".join(
+        [
+            f"第{number}回 旧事\n话说宝玉进来，笑道：“你且听我说。”"
+            + "众人一面说笑，一面看那阶前花影。" * 80
+            for number in ("一", "二", "三")
+        ]
+    )
+    skeleton = ChapterSkeleton(
+        chapter_number=4,
+        chapter_theme="旧事",
+        scenes=[
+            SceneNode(
+                scene_type="interior",
+                participants=["宝玉"],
+                scene_purpose="旧事重提",
+            )
+        ],
+    )
+    quality_checker = _FakeQualityChecker()
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    orchestrator.settings = settings
+    orchestrator.chapter_generator = _StillWeakFinalizeChapterGenerator()
+    orchestrator.quality_checker = quality_checker
+    orchestrator._source_voice_gate = TaiJianOrchestrator._source_voice_gate.__get__(
+        orchestrator,
+        TaiJianOrchestrator,
+    )
+
+    final_text, quality_report = await orchestrator._finalize_output(
+        session_name="demo",
+        chapter_number=4,
+        skeleton=skeleton,
+        world_model=WorldModel(),
+        chapter_brief=ChapterBrief(chapter_number=4, chapter_goal="旧事重提"),
+        lorebook_context=LorebookBundle(),
+        snapshot=ExtractionSnapshot(
+            style_profile=StyleProfile(),
+            story_state=StoryWorldState(title="红楼梦"),
+        ),
+        draft_text="草稿正文。",
+        style_samples=[],
+        source_text=source,
+    )
+
+    assert final_text == "话说宝玉仍在花下沉默。"
+    assert quality_report.verdict == "revise"
+    assert "低于源文本章节长度基线" in quality_report.issues
+
+
+async def test_finalize_output_allows_extra_source_voice_retries(tmp_path) -> None:
+    settings = AppSettings(
+        output_dir=tmp_path / "output",
+        sessions_dir=tmp_path / "sessions",
+        tuning=RuntimeTuning(quality_retry_limit=1, quality_threshold=0.65),
+    )
+    source = "\n\n".join(
+        [
+            f"第{number}回 旧事\n话说宝玉进来，笑道：“你且听我说。”"
+            + "众人一面说笑，一面看那阶前花影。" * 80
+            for number in ("一", "二", "三")
+        ]
+    )
+    skeleton = ChapterSkeleton(
+        chapter_number=4,
+        chapter_theme="旧事",
+        scenes=[
+            SceneNode(
+                scene_type="interior",
+                participants=["宝玉"],
+                scene_purpose="旧事重提",
+            )
+        ],
+    )
+    quality_checker = _FakeQualityChecker()
+    chapter_generator = _EventuallyStrongFinalizeChapterGenerator()
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    orchestrator.settings = settings
+    orchestrator.chapter_generator = chapter_generator
+    orchestrator.quality_checker = quality_checker
+    orchestrator._source_voice_gate = TaiJianOrchestrator._source_voice_gate.__get__(
+        orchestrator,
+        TaiJianOrchestrator,
+    )
+
+    final_text, quality_report = await orchestrator._finalize_output(
+        session_name="demo",
+        chapter_number=4,
+        skeleton=skeleton,
+        world_model=WorldModel(),
+        chapter_brief=ChapterBrief(chapter_number=4, chapter_goal="旧事重提"),
+        lorebook_context=LorebookBundle(),
+        snapshot=ExtractionSnapshot(
+            style_profile=StyleProfile(),
+            story_state=StoryWorldState(title="红楼梦"),
+        ),
+        draft_text="草稿正文。",
+        style_samples=[],
+        source_text=source,
+    )
+
+    assert "本章推进" not in final_text
+    assert quality_report.verdict == "pass"
+    assert len(chapter_generator.revise_calls) == 3
+    assert "低于源文本章节长度基线" in chapter_generator.revise_calls[1]["issues"][0]
 
 
 async def test_revival_generation_rewrites_and_persists_blind_judge_failure(tmp_path) -> None:
