@@ -669,6 +669,7 @@ async def test_finalize_output_marks_repeated_recent_opening(tmp_path) -> None:
     assert final_text.startswith("话说宝玉自那日听得迎春")
     assert quality_report.verdict == "revise"
     assert "近章开头重复" in quality_report.issues[-1]
+    assert len(chapter_generator.revise_calls) == 3
     assert chapter_generator.revise_calls[0]["issues"] == [
         "近章开头重复：与第3章开头高度一致"
     ]

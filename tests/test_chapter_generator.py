@@ -44,9 +44,24 @@ def test_sanitize_generation_payload_removes_planning_analysis_tone() -> None:
 
 def test_revision_issue_guidance_expands_source_voice_failures() -> None:
     guidance = ChapterGenerator._revision_issue_guidance(
-        ["繁简混杂：話說迎春", "低于源文本章节长度基线：3054/4257"]
+        [
+            "繁简混杂：話說迎春",
+            "低于源文本章节长度基线：3054/4257",
+            "对白比例偏离原文：0.5120/0.1200",
+        ]
     )
 
     assert "至少 4257 个中文字符" in guidance
     assert "低于该长度仍视为失败" in guidance
     assert "统一字形" in guidance
+    assert "对白比例高于原文" in guidance
+
+
+def test_revision_issue_guidance_rewrites_repeated_opening() -> None:
+    guidance = ChapterGenerator._revision_issue_guidance(
+        ["近章开头重复：与第115章开头高度一致"]
+    )
+
+    assert "重写当前正文开头前两段" in guidance
+    assert "不得保留待修订正文开头的起句" in guidance
+    assert "同一病后出门" in guidance

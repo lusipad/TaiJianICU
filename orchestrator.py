@@ -817,9 +817,12 @@ class TaiJianOrchestrator:
             final_text=final_text,
         )
         repetition_retry_count = 0
+        repetition_retry_limit = self.settings.tuning.quality_retry_limit
+        if repetition_retry_limit > 0:
+            repetition_retry_limit = max(repetition_retry_limit, 3)
         while (
             repetition_issues
-            and repetition_retry_count < self.settings.tuning.quality_retry_limit
+            and repetition_retry_count < repetition_retry_limit
         ):
             repetition_retry_count += 1
             final_text = await self.chapter_generator.revise(

@@ -247,6 +247,31 @@ class ChapterGenerator:
                 "不要只替换词句，也不要靠开篇回顾凑字；应补足当前场面的"
                 "人物进退、旁人传话、屋舍器物、对话回合和章回转场。"
             )
+        if "近章开头重复" in joined:
+            guidance.append(
+                "- 近章开头重复：必须重写当前正文开头前两段，换入场人物、地点、物件或转场焦点；"
+                "不得保留待修订正文开头的起句、句序、同一串事件回顾，尤其不要仍以同一病后出门、"
+                "同一丫鬟叮嘱、同一园中行路作为开篇。"
+            )
+        if "对白比例偏离原文" in joined:
+            match = re.search(r"对白比例偏离原文：\s*([0-9.]+)\s*/\s*([0-9.]+)", joined)
+            if match:
+                current = float(match.group(1))
+                expected = float(match.group(2))
+                if current > expected:
+                    guidance.append(
+                        "- 对白比例高于原文：删减连续对白和直白问答，改为叙事、动作、神色、旁人传话、"
+                        "器物细节和场面调度穿插推进。"
+                    )
+                else:
+                    guidance.append(
+                        "- 对白比例低于原文：补足人物之间的短句往来、称谓试探和含蓄应答，"
+                        "不要只用旁白概括人物心事。"
+                    )
+            else:
+                guidance.append(
+                    "- 对白比例偏离原文：按原作声口重新平衡对白与叙事，避免连续长段旁白或连续直白问答。"
+                )
         if "繁简混杂" in joined:
             guidance.append(
                 "- 统一字形：按待修订正文中的主导字形通篇统一，不要只在“话说/原来”等套语里混入另一套字形。"
