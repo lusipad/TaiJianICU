@@ -18,8 +18,8 @@ TaiJianICU 是一个中文长篇续写实验系统。当前主线是“作者复
 - CLI 和 Web 工作台都可以运行续写、查看会话产物和跑基准。
 - 当前默认模型路由收敛到 DeepSeek，embedding 默认用本地哈希兜底。
 - 红楼前 80 回到第 120 回的长链路已经跑通过一次，但旧流程暴露出短章、对白比例不足和后段声口漂移。
-- 最新修复后，第 120 回单章回归通过 source-voice gate：`4305/4257` 中文字符，manifest 顶层与单章状态均为 `completed`。
-- 当前测试基线：`.\.venv\Scripts\python -m pytest` 为 `127 passed, 3 warnings`。
+- 最新修复后，第 120 回单章回归通过 source-voice gate；连续后段 smoke 仍暴露出近章开头重复和 118-120 告警，详见验证状态文档。
+- 当前全量 `pytest` 通过。
 
 ## 运行环境
 
@@ -252,7 +252,7 @@ TAIJIAN_WEB_ALLOWED_ORIGINS=https://<your-space>.hf.space
 - 已跑通 `taijianicu benchmark --dataset sanguo --prefix-chapters 50 --target-chapter 51`
 - 对照结果：系统版胜过单模型 baseline，pairwise `winner=system`，`confidence=0.85`
 - 红楼第 120 回 source-voice 回归已通过；完整记录见 [docs/revival-validation-status.md](docs/revival-validation-status.md)
-- 当前测试基线：`127 passed, 3 warnings`
+- 当前全量 `pytest` 通过
 
 ## 基准说明
 

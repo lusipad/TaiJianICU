@@ -126,6 +126,26 @@ class _EventuallyStrongFinalizeChapterGenerator:
         return "话说宝玉进来，笑道：“你且听我说。”众人一面说笑，一面看那阶前花影。" * 80
 
 
+class _RepeatedOpeningFinalizeChapterGenerator:
+    def __init__(self) -> None:
+        self.revise_calls: list[dict] = []
+
+    async def polish(self, **kwargs) -> str:
+        opening = (
+            "话说宝玉自那日听得迎春在孙家受苦，又见宝钗搬出园去，心中便如刀搅一般。"
+            "只是这几日贾政拘他在书房读书，又兼王夫人时常查问功课。"
+        )
+        return opening * 4
+
+    async def revise(self, **kwargs) -> str:
+        self.revise_calls.append(kwargs)
+        opening = (
+            "话说宝玉自那日听得迎春在孙家受苦，又见宝钗搬出园去，心中便如刀搅一般。"
+            "只是这几日贾政拘他在书房读书，又兼王夫人时常查问功课。"
+        )
+        return opening * 4
+
+
 class _FakeQualityChecker:
     def __init__(self) -> None:
         self.evaluated_texts: list[str] = []
@@ -593,6 +613,65 @@ async def test_finalize_output_allows_extra_source_voice_retries(tmp_path) -> No
     assert quality_report.verdict == "pass"
     assert len(chapter_generator.revise_calls) == 3
     assert "低于源文本章节长度基线" in chapter_generator.revise_calls[1]["issues"][0]
+
+
+async def test_finalize_output_marks_repeated_recent_opening(tmp_path) -> None:
+    settings = AppSettings(
+        output_dir=tmp_path / "output",
+        sessions_dir=tmp_path / "sessions",
+        tuning=RuntimeTuning(quality_retry_limit=1, quality_threshold=0.65),
+    )
+    session_dir = settings.output_dir / "demo"
+    session_dir.mkdir(parents=True)
+    previous_text = (
+        "话说宝玉自那日听得迎春在孙家受苦，又见宝钗搬出园去，心中便如刀搅一般。"
+        "只是这几日贾政拘他在书房读书，又兼王夫人时常查问功课。"
+    )
+    (session_dir / "chapter_3.md").write_text(previous_text, encoding="utf-8")
+    skeleton = ChapterSkeleton(
+        chapter_number=4,
+        chapter_theme="旧事",
+        scenes=[
+            SceneNode(
+                scene_type="interior",
+                participants=["宝玉"],
+                scene_purpose="旧事重提",
+            )
+        ],
+    )
+    quality_checker = _FakeQualityChecker()
+    chapter_generator = _RepeatedOpeningFinalizeChapterGenerator()
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    orchestrator.settings = settings
+    orchestrator.chapter_generator = chapter_generator
+    orchestrator.quality_checker = quality_checker
+    orchestrator._source_voice_gate = TaiJianOrchestrator._source_voice_gate.__get__(
+        orchestrator,
+        TaiJianOrchestrator,
+    )
+
+    final_text, quality_report = await orchestrator._finalize_output(
+        session_name="demo",
+        chapter_number=4,
+        skeleton=skeleton,
+        world_model=WorldModel(),
+        chapter_brief=ChapterBrief(chapter_number=4, chapter_goal="旧事重提"),
+        lorebook_context=LorebookBundle(),
+        snapshot=ExtractionSnapshot(
+            style_profile=StyleProfile(),
+            story_state=StoryWorldState(title="红楼梦"),
+        ),
+        draft_text="草稿正文。",
+        style_samples=[],
+        source_text=None,
+    )
+
+    assert final_text.startswith("话说宝玉自那日听得迎春")
+    assert quality_report.verdict == "revise"
+    assert "近章开头重复" in quality_report.issues[-1]
+    assert chapter_generator.revise_calls[0]["issues"] == [
+        "近章开头重复：与第3章开头高度一致"
+    ]
 
 
 async def test_revival_generation_rewrites_and_persists_blind_judge_failure(tmp_path) -> None:

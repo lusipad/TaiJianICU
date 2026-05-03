@@ -201,6 +201,51 @@ class TaiJianOrchestrator:
                 issues.append(hit.label)
         return issues
 
+    @staticmethod
+    def _opening_fingerprint(text: str, *, limit: int = 80) -> str:
+        lines = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        chinese_chars = [
+            char
+            for char in "\n".join(lines)
+            if "\u4e00" <= char <= "\u9fff"
+        ]
+        return "".join(chinese_chars[:limit])
+
+    @staticmethod
+    def _common_prefix_length(left: str, right: str) -> int:
+        length = 0
+        for left_char, right_char in zip(left, right):
+            if left_char != right_char:
+                break
+            length += 1
+        return length
+
+    def _recent_repetition_issues(
+        self,
+        *,
+        session_name: str,
+        chapter_number: int,
+        final_text: str,
+        lookback: int = 3,
+    ) -> list[str]:
+        current_opening = self._opening_fingerprint(final_text)
+        if len(current_opening) < 40:
+            return []
+        for previous_number in range(max(1, chapter_number - lookback), chapter_number):
+            previous_path = self.settings.output_dir / session_name / f"chapter_{previous_number}.md"
+            if not previous_path.exists():
+                continue
+            previous_opening = self._opening_fingerprint(
+                previous_path.read_text(encoding="utf-8", errors="ignore")
+            )
+            if self._common_prefix_length(current_opening, previous_opening) >= 40:
+                return [f"近章开头重复：与第{previous_number}章开头高度一致"]
+        return []
+
     def _load_or_build_revival_workspace(
         self,
         *,
@@ -738,22 +783,49 @@ class TaiJianOrchestrator:
                 style_samples=style_samples,
             )
         source_voice_gate = self._source_voice_gate(source_text)
-        if source_voice_gate is None:
-            return final_text, quality_report
-        gate_result = source_voice_gate.check(final_text)
-        source_retry_count = 0
-        source_retry_limit = self.settings.tuning.quality_retry_limit
-        if source_retry_limit > 0:
-            source_retry_limit = max(source_retry_limit, 3)
+        gate_result = None
+        if source_voice_gate is not None:
+            gate_result = source_voice_gate.check(final_text)
+            source_retry_count = 0
+            source_retry_limit = self.settings.tuning.quality_retry_limit
+            if source_retry_limit > 0:
+                source_retry_limit = max(source_retry_limit, 3)
+            while (
+                not gate_result.passed
+                and source_retry_count < source_retry_limit
+            ):
+                source_retry_count += 1
+                final_text = await self.chapter_generator.revise(
+                    draft_text=final_text,
+                    style_profile=snapshot.style_profile,
+                    issues=self._gate_revision_issues(gate_result),
+                    skeleton=skeleton,
+                    style_samples=style_samples,
+                    world_model=world_model,
+                    chapter_brief=chapter_brief,
+                    lorebook_context=lorebook_context,
+                )
+                quality_report = await self.quality_checker.evaluate(
+                    skeleton=skeleton,
+                    draft_text=final_text,
+                    style_samples=style_samples,
+                )
+                gate_result = source_voice_gate.check(final_text)
+        repetition_issues = self._recent_repetition_issues(
+            session_name=session_name,
+            chapter_number=chapter_number,
+            final_text=final_text,
+        )
+        repetition_retry_count = 0
         while (
-            not gate_result.passed
-            and source_retry_count < source_retry_limit
+            repetition_issues
+            and repetition_retry_count < self.settings.tuning.quality_retry_limit
         ):
-            source_retry_count += 1
+            repetition_retry_count += 1
             final_text = await self.chapter_generator.revise(
                 draft_text=final_text,
                 style_profile=snapshot.style_profile,
-                issues=self._gate_revision_issues(gate_result),
+                issues=repetition_issues,
                 skeleton=skeleton,
                 style_samples=style_samples,
                 world_model=world_model,
@@ -765,9 +837,18 @@ class TaiJianOrchestrator:
                 draft_text=final_text,
                 style_samples=style_samples,
             )
-            gate_result = source_voice_gate.check(final_text)
-        if not gate_result.passed:
-            gate_issues = [hit.label for hit in gate_result.hits]
+            if source_voice_gate is not None:
+                gate_result = source_voice_gate.check(final_text)
+            repetition_issues = self._recent_repetition_issues(
+                session_name=session_name,
+                chapter_number=chapter_number,
+                final_text=final_text,
+            )
+        final_issues: list[str] = []
+        if gate_result is not None and not gate_result.passed:
+            final_issues.extend(hit.label for hit in gate_result.hits)
+        final_issues.extend(repetition_issues)
+        if final_issues:
             quality_report = quality_report.model_copy(
                 update={
                     "verdict": "revise",
@@ -775,7 +856,7 @@ class TaiJianOrchestrator:
                         quality_report.score,
                         max(0.0, self.settings.tuning.quality_threshold - 0.01),
                     ),
-                    "issues": [*quality_report.issues, *gate_issues],
+                    "issues": [*quality_report.issues, *final_issues],
                 }
             )
         return final_text, quality_report

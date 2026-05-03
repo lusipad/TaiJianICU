@@ -30,6 +30,7 @@
 8. 第 81 回单章重写流程。
 9. Source-voice gate：用源文本章节长度、繁简一致性、解释性抒情腔和声口统计拦截写回。
 10. 第 120 回末段回归：复用前 80 回索引，验证短章会进入修订循环，最终达到 `4305/4257` 中文字符并通过 gate。
+11. 近章重复护栏：连续章节若复用相同开头或转场，写回前进入修订/告警。
 
 ## 4. 旧 V2 的处理
 
@@ -76,6 +77,7 @@
 
 当前可复现验证：
 
-- `.\.venv\Scripts\python -m pytest`：`127 passed, 3 warnings`。
+- `.\.venv\Scripts\python -m pytest`：`128 passed, 3 warnings`。
 - 第 120 回验证 session：`hongloumeng-front80-verify120-stylefix-20260502`。
 - 第 120 回输出：`data\output\hongloumeng-front80-verify120-stylefix-20260502\chapter_120.md`，`SourceVoiceGate passed=True`。
+- 第 115-120 回连续 smoke：`hongloumeng-front80-verify115-120-continuous-20260503`，第 118-120 回仍为 `completed_with_warnings`，暴露出短章、对白比例和近章开头重复问题。

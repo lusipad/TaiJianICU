@@ -24,6 +24,7 @@
 - `SourceVoiceGate` 从输入源文本切章计算章节长度基线和风格统计，写回前拦截短章、解释性抒情腔和明显声口偏移。
 - 对“低于源文本章节长度基线”这类问题，修订提示会带具体 `当前/目标` 字符数，并允许最多 3 轮定向扩写。
 - 扩写要求优先补当前场面的进退、对白、旧物、景物和转场，不靠开篇回顾或总结凑字。
+- 写回前会检查最近章节开头，若新章与近章前几十个中文字符高度一致，会进入修订；修订后仍重复则保持 `revise`。
 - 合并 `run_manifest.json` 时，如果任一章节为 `completed_with_warnings` 或失败，顶层 `status` 会同步反映。
 
 ## 红楼 81-120 回验证
@@ -62,16 +63,35 @@ taijianicu run --input data\input\hongloumeng_front80_pg24264.txt --chapters 1 -
 
 这轮之前暴露过一个状态问题：正文过短时，单章可能已经是 `completed_with_warnings`，但合并后的 manifest 顶层仍显示 `completed`。现在已修正。
 
+## 115-120 连续 smoke
+
+复现方式：克隆 `hongloumeng-front80-verify120-stylefix-20260502` 的 session 与索引为 `hongloumeng-front80-verify115-120-continuous-20260503`，覆盖跑第 115-120 回。
+
+```powershell
+taijianicu run --input data\input\hongloumeng_front80_pg24264.txt --chapters 6 --session-name hongloumeng-front80-verify115-120-continuous-20260503 --planning-mode strict --new-character-budget 0 --new-location-budget 0 --new-faction-budget 0 --start-chapter 115 --use-existing-index --resume --overwrite
+```
+
+结果：
+
+- `run_manifest.status=completed_with_warnings`。
+- 第 115-117 回：`completed`，source-voice gate 通过。
+- 第 118 回：`completed_with_warnings`，`3480/4257`，低于源文本章节长度基线。
+- 第 119 回：`completed_with_warnings`，`3725/4257`，低于源文本章节长度基线。
+- 第 120 回：`completed_with_warnings`，`3617/4257`，同时出现长度不足、对白比例偏离和解释性抒情腔偏离。
+- 静态复查显示第 117-120 回存在近章开头重复；新写回护栏会将这类重复进入修订/告警。
+
+结论：第 120 回单章过门不代表后段连续稳定。后续重点应放在连续章节的计划去重、开头转场多样性和后段对白密度。
+
 ## 当前测试基线
 
 ```powershell
 .\.venv\Scripts\python -m pytest
 ```
 
-当前结果：`127 passed, 3 warnings`。
+当前结果：`128 passed, 3 warnings`。
 
 ## 已知缺口
 
-- 第 120 回单章已经过 gate，但这不等于 81-120 连续后段已经稳定。
-- 下一步应重跑 `111-120` 或 `115-120`，验证连续上下文累积后是否再次出现文风漂移。
+- 第 120 回单章已经过 gate，但 `115-120` 连续 smoke 证明后段仍不稳定。
+- 下一步应重跑 `115-120`，验证新增近章重复护栏是否能把重复开头修掉；再扩大到 `111-120`。
 - 盲测判别仍是最终目标；source-voice gate 只能拦明显机械问题，不能替代熟读者盲评。
