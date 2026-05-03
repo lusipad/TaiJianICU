@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 .deepeval/
 .playwright-cli/
+.omx/
 .env
 *.pyc
 *.pyo
