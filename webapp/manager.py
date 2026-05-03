@@ -428,14 +428,24 @@ class WebRunManager:
         return f"{trimmed}…"
 
     def get_public_showcase(self) -> WebPublicShowcase | None:
-        example = self._get_builtin_example("sample_novel")
+        example = self._get_builtin_example("hongloumeng_120")
         sample_path = self.settings.input_dir / example.input_filename
-        output_path = self.settings.output_dir / "sample_novel-demo" / "chapter_1.md"
-        evaluation_path = self.settings.sessions_dir / "sample_novel-demo" / "chapter_1_evaluation.json"
-        brief_path = self.settings.sessions_dir / "sample_novel-demo" / "chapter_1_brief.json"
         showcase = example.showcase
         if showcase is None:
             return None
+        showcase_session_name = showcase.artifact_session_name or example.preview_session_name or ""
+        chapter_number = showcase.chapter_number
+        output_path = self.settings.output_dir / showcase_session_name / f"chapter_{chapter_number}.md"
+        evaluation_path = (
+            self.settings.sessions_dir
+            / showcase_session_name
+            / f"chapter_{chapter_number}_evaluation.json"
+        )
+        brief_path = (
+            self.settings.sessions_dir
+            / showcase_session_name
+            / f"chapter_{chapter_number}_brief.json"
+        )
 
         source_text = self._example_text(example.id)
         if output_path.exists():
@@ -449,7 +459,7 @@ class WebRunManager:
 
         return WebPublicShowcase(
             title=showcase.title,
-            source_label=f"{source_stem} · 原著断点",
+            source_label=showcase.source_label or f"{source_stem} · 原著断点",
             source_excerpt=self._excerpt_text(source_text, take="tail", max_blocks=4, max_chars=620),
             output_label=showcase.output_label,
             output_excerpt=self._excerpt_text(output_text, take="head", max_blocks=6, max_chars=920),
@@ -550,8 +560,9 @@ class WebRunManager:
 
     @staticmethod
     def _example_goal_hint(example_id: str) -> str | None:
-        if example_id == "sample_novel":
-            return "先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。"
+        example = BUILT_IN_EXAMPLES.get(example_id)
+        if example is not None:
+            return example.recommended_goal_hint
         return None
 
     def _settings_for_request(

@@ -84,13 +84,13 @@ def test_web_run_manager_decodes_gbk_upload(tmp_path: Path) -> None:
     manager = WebRunManager(settings)
 
     input_path, suggested_name = manager.save_uploaded_text(
-        "斗破苍穹.txt",
-        "第一章 陨落的天才".encode("gbk"),
+        "旧城夜雨.txt",
+        "第一章 雨夜追魂".encode("gbk"),
     )
 
     assert suggested_name == "novel"
     assert input_path.exists()
-    assert "第一章 陨落的天才" in input_path.read_text(encoding="utf-8")
+    assert "第一章 雨夜追魂" in input_path.read_text(encoding="utf-8")
 
 
 def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
@@ -681,54 +681,56 @@ def test_web_run_manager_builds_public_showcase_from_builtin_fallback(tmp_path: 
     showcase = manager.get_public_showcase()
 
     assert showcase is not None
-    assert showcase.title == "原创悬疑样例 · 公开可展示"
-    assert "AI 续写片段" in showcase.output_label
+    assert showcase.title == "红楼梦第120回 · source-voice 回归"
+    assert showcase.source_label == "红楼梦前80回断点 · 公版原文片段"
+    assert "红楼梦第120回" in showcase.output_label
+    assert "话说宝玉" in showcase.output_excerpt
 
 
-def test_web_run_manager_builds_public_showcase_from_original_sample(tmp_path: Path) -> None:
+def test_web_run_manager_builds_public_showcase_from_red_chamber_sample(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
     manager = WebRunManager(settings)
 
-    sample_path = settings.input_dir / "sample_novel.txt"
+    sample_path = settings.input_dir / "hongloumeng_public_excerpt.txt"
     sample_path.parent.mkdir(parents=True, exist_ok=True)
     sample_path.write_text(
-        "第一章 雨夜追魂\n\n沈照站在义庄门口。\n\n门外雷声炸响。\n\n铺门已经被人一脚踹开。",
+        "第八十回末段\n\n迎春方哭哭啼啼的在王夫人房中诉委曲。\n\n终不知端的，且听下回分解。",
         encoding="utf-8",
     )
-    output_dir = settings.output_dir / "sample_novel-demo"
+    output_dir = settings.output_dir / "hongloumeng-showcase"
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "chapter_1.md").write_text(
-        "## 第一章\n\n雨停了。\n\n沈照反手闩上门。\n\n他们终于在旧货栈碰头。",
+    (output_dir / "chapter_120.md").write_text(
+        "## 第一百二十回\n\n话说宝玉自晴雯去后，终日恍恍惚惚。\n\n园中草木皆带衰败之色。",
         encoding="utf-8",
     )
-    session_dir = settings.sessions_dir / "sample_novel-demo"
+    session_dir = settings.sessions_dir / "hongloumeng-showcase"
     session_dir.mkdir(parents=True, exist_ok=True)
-    (session_dir / "chapter_1_evaluation.json").write_text(
+    (session_dir / "chapter_120_evaluation.json").write_text(
         ChapterEvaluation(
-            chapter_number=1,
+            chapter_number=120,
             score=EvaluationScore(
                 continuity_score=0.9,
-                character_score=0.84,
+                character_score=0.48,
                 world_consistency_score=0.9,
-                novelty_score=0.95,
+                novelty_score=0.8,
                 arc_progress_score=0.95,
             ),
             summary="推进稳定。",
         ).model_dump_json(indent=2),
         encoding="utf-8",
     )
-    (session_dir / "chapter_1_brief.json").write_text(
-        ChapterBrief(chapter_number=1, chapter_goal="先推进冲突").model_dump_json(indent=2),
+    (session_dir / "chapter_120_brief.json").write_text(
+        ChapterBrief(chapter_number=120, chapter_goal="承接迎春归宁受苦").model_dump_json(indent=2),
         encoding="utf-8",
     )
 
     showcase = manager.get_public_showcase()
 
     assert showcase is not None
-    assert showcase.title == "原创悬疑样例 · 公开可展示"
-    assert "原著断点" in showcase.source_label
-    assert "AI 续写片段" in showcase.output_label
-    assert showcase.chapter_goal == "先推进冲突"
+    assert showcase.title == "红楼梦第120回 · source-voice 回归"
+    assert showcase.source_label == "红楼梦前80回断点 · 公版原文片段"
+    assert "红楼梦第120回" in showcase.output_label
+    assert showcase.chapter_goal == "承接迎春归宁受苦"
     assert showcase.evaluation_summary == "推进稳定。"
     assert showcase.continuity_score == 0.9
 

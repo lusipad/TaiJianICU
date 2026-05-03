@@ -14,15 +14,15 @@ def build_world_model() -> WorldModel:
             CanonFact(
                 id="fact-001",
                 category="canon",
-                statement="修炼不能无代价越级突破",
+                statement="旧案线索不能无代价公开",
             )
         ],
         main_characters=[
             CharacterArc(character_name="主角"),
             CharacterArc(character_name="同伴"),
         ],
-        world_tensions=["家族内斗", "外部窥视"],
-        open_mysteries=["神秘老师的身份"],
+        world_tensions=["旧城内斗", "外部窥视"],
+        open_mysteries=["无名线人的身份"],
         expansion_slots=[
             ExpansionSlot(
                 slot_id="slot-001",
@@ -38,10 +38,10 @@ def test_lorebook_manager_builds_entries_and_hits() -> None:
     bundle = manager.build(
         world_model=build_world_model(),
         memory_snapshot=MemorySnapshot(
-            lore_candidates=["第一章 陨落的天才", "第五十章 帮？"],
+            lore_candidates=["第一章 雨夜追魂", "第五十章 帮？"],
         ),
     )
-    matched = manager.match(lorebook=bundle, query_text="本章要处理修炼不能无代价越级突破的问题")
+    matched = manager.match(lorebook=bundle, query_text="本章要处理旧案线索不能无代价公开的问题")
 
     assert bundle.entries
     assert any(entry.hard_constraint for entry in bundle.entries)

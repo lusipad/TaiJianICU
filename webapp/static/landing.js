@@ -39,7 +39,7 @@ async function renderBenchmarks() {
         <div class="proof-main">
           <div class="proof-grid">
             <article class="proof-card">
-              <p class="section-kicker">原著断点</p>
+              <p class="section-kicker">原文断点</p>
               <strong>${escapeHtml(showcase.source_label)}</strong>
               <pre class="showcase-prose">${escapeHtml(showcase.source_excerpt || "-")}</pre>
             </article>
@@ -65,7 +65,7 @@ async function renderBenchmarks() {
             <p class="showcase-label">章节目标</p>
             <p>${escapeHtml(showcase.chapter_goal || "-")}</p>
           </div>
-          <p class="bench-footnote">全部内容来自仓库内原创样例，可直接公开展示；既给你看文字，也给你看分数。</p>
+          <p class="bench-footnote">公开实证只展示原创或公版文本短片段；既给你看文字，也给你看分数。</p>
         </aside>
       </section>
     `;

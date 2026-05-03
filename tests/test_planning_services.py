@@ -7,10 +7,10 @@ from core.services.planning import ArcPlanner, ChapterAllocator, ExpansionAlloca
 
 def build_world_model() -> WorldModel:
     return WorldModel(
-        title="斗破苍穹",
-        summary="萧炎的崛起正在触发家族与外部世界的连锁反应。",
-        world_tensions=["家族权力斗争", "外部势力窥视"],
-        open_mysteries=["神秘老师的真实来历", "外界为何开始关注萧炎"],
+        title="旧城夜雨",
+        summary="林舟的查案正在触发旧城内部与外部势力的连锁反应。",
+        world_tensions=["旧城权力斗争", "外部势力窥视"],
+        open_mysteries=["无名信的真实来历", "外界为何开始关注林舟"],
         expansion_slots=[
             ExpansionSlot(
                 slot_id="slot-001",
@@ -26,8 +26,8 @@ def build_world_model() -> WorldModel:
             ),
         ],
         active_threads=[
-            StoryThread(id="family_politics", description="家族内斗", introduced_at=20, last_advanced=50),
-            StoryThread(id="mysterious_teacher", description="神秘老师", introduced_at=8, last_advanced=49),
+            StoryThread(id="city_politics", description="旧城内斗", introduced_at=20, last_advanced=50),
+            StoryThread(id="anonymous_letter", description="无名信", introduced_at=8, last_advanced=49),
         ],
     )
 
@@ -99,7 +99,7 @@ def test_chapter_allocator_produces_brief() -> None:
 
     assert brief.chapter_number == 53
     assert brief.chapter_goal
-    assert brief.focus_threads == ["family_politics", "mysterious_teacher"]
+    assert brief.focus_threads == ["city_politics", "anonymous_letter"]
     assert brief.allowed_expansion.new_character is True
     assert brief.constraints[0].label == "arc_alignment"
 

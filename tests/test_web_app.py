@@ -126,17 +126,17 @@ class FakeRunManager:
 
     def get_public_showcase(self):
         return WebPublicShowcase(
-            title="原创悬疑样例 · 公开可展示",
-            source_label="sample_novel · 原著断点",
-            source_excerpt="原著末尾片段",
-            output_label="sample_novel-demo · AI 续写片段",
-            output_excerpt="AI 续写片段",
-            chapter_goal="先推进主角与尾随者的正面碰撞，再回收一个旧伏笔。",
+            title="红楼梦第120回 · source-voice 回归",
+            source_label="红楼梦前80回断点 · 公版原文片段",
+            source_excerpt="迎春方哭哭啼啼的在王夫人房中诉委曲。",
+            output_label="红楼梦第120回 · AI 续写片段",
+            output_excerpt="话说宝玉自晴雯去后，终日恍恍惚惚。",
+            chapter_goal="承接迎春归宁受苦与大观园离散，推进第120回末段声口验证。",
             evaluation_summary="推进稳定。",
             continuity_score=0.9,
-            character_score=0.84,
+            character_score=0.48,
             world_consistency_score=0.9,
-            novelty_score=0.95,
+            novelty_score=0.8,
             arc_progress_score=0.95,
         )
 
@@ -463,8 +463,8 @@ def test_get_public_showcase_endpoint() -> None:
     response = client.get("/api/showcase")
 
     assert response.status_code == 200
-    assert response.json()["title"] == "原创悬疑样例 · 公开可展示"
-    assert response.json()["source_label"] == "sample_novel · 原著断点"
+    assert response.json()["title"] == "红楼梦第120回 · source-voice 回归"
+    assert response.json()["source_label"] == "红楼梦前80回断点 · 公版原文片段"
 
 
 def test_get_example_detail_endpoint() -> None:

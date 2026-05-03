@@ -20,6 +20,9 @@ class BuiltInShowcase:
     chapter_goal: str
     evaluation_summary: str
     scores: BuiltInShowcaseScore
+    source_label: str | None = None
+    chapter_number: int = 1
+    artifact_session_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -162,6 +165,26 @@ _SAMPLE_SHOWCASE_EXCERPT = """## 第一章
 “不是城守司。”苏晚开口，声音有些哑，“抓我的人，说话带北地口音。手脚利落，不像寻常江湖客。”"""
 
 
+_HONGLOUMENG_120_SOURCE_TEXT = """第八十回末段
+
+那时迎春已来家好半日，孙家的婆娘媳妇等人已待过晚饭，打发回家去了。迎春方哭哭啼啼的在王夫人房中诉委曲，说孙绍祖“一味好色，好赌酗酒，家中所有的媳妇丫头将及淫遍”。
+
+王夫人并众姊妹无不落泪。王夫人只得用言语解劝说：“已是遇见了这不晓事的人，可怎么样呢。我的儿，这也是你的命。”
+
+迎春一连住了三日，才往邢夫人那边去。又在邢夫人处住了两日，就有孙绍祖的人来接去。迎春虽不愿去，无奈惧孙绍祖之恶，只得勉强忍情作辞了。终不知端的，且听下回分解。
+"""
+
+
+_HONGLOUMENG_120_SHOWCASE_EXCERPT = """# 第一百二十回 紫菱洲空锁并蒂影 芙蓉花下祭薄命魂
+
+话说宝玉自晴雯去后，终日恍恍惚惚，似失了魂一般。虽经贾母、王夫人百般抚慰，又将袭人、麝月等拨在跟前昼夜服侍，然他心中那一团郁结之气，总不得舒展。
+
+这日正值中秋过后，天气渐凉，园中草木皆带衰败之色。宝玉因在房中闷坐，忽想起紫菱洲来。迎春出阁已逾半月，那孙家虽遣了人来请安，却总不见二姐姐回门，心中未免牵挂。
+
+却说宝玉不知这些底细，只当迎春在孙家安好。这日他独自出了怡红院，顺着甬道往紫菱洲来。才走到蓼溆一带，便觉不同：往日这里花红叶绿，水波潋滟，如今却只见一片枯荷败苇，满目萧疏。
+"""
+
+
 BUILT_IN_EXAMPLES: dict[str, BuiltInExample] = {
     "sample_novel": BuiltInExample(
         id="sample_novel",
@@ -186,5 +209,31 @@ BUILT_IN_EXAMPLES: dict[str, BuiltInExample] = {
                 arc_progress_score=0.95,
             ),
         ),
-    )
+    ),
+    "hongloumeng_120": BuiltInExample(
+        id="hongloumeng_120",
+        title="红楼梦第120回示例",
+        description="基于公版《红楼梦》前80回断点的短展示片段，用于首页公开实证，不作为默认试跑入口。",
+        input_filename="hongloumeng_public_excerpt.txt",
+        recommended_goal_hint="承接迎春归宁受苦与大观园离散，推进第120回末段声口验证。",
+        usage_hint="此示例只展示短片段和质检结果；默认快速试看仍使用原创悬疑样例。",
+        text_content=_HONGLOUMENG_120_SOURCE_TEXT,
+        showcase=BuiltInShowcase(
+            title="红楼梦第120回 · source-voice 回归",
+            source_label="红楼梦前80回断点 · 公版原文片段",
+            output_label="红楼梦第120回 · AI 续写片段",
+            output_excerpt=_HONGLOUMENG_120_SHOWCASE_EXCERPT,
+            chapter_goal="承接迎春归宁受苦与大观园离散，推进第120回末段 source-voice 回归。",
+            evaluation_summary="第120回单章回归达到源文本章节长度基线，SourceVoiceGate 通过；连续后段仍需继续验证。",
+            chapter_number=120,
+            artifact_session_name="hongloumeng-showcase",
+            scores=BuiltInShowcaseScore(
+                continuity_score=0.9,
+                character_score=0.48,
+                world_consistency_score=0.9,
+                novelty_score=0.8,
+                arc_progress_score=0.95,
+            ),
+        ),
+    ),
 }

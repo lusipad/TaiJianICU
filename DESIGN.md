@@ -316,8 +316,8 @@ LightRAG 图谱记录实体间关系。额外维护 `data/sessions/unresolved_th
 ```json
 {
   "threads": [
-    {"id": "T001", "desc": "萧炎母亲的下落", "introduced_at": 12, "last_advanced": 45},
-    {"id": "T002", "desc": "古族的真实目的", "introduced_at": 30, "last_advanced": 30}
+    {"id": "T001", "desc": "旧案证人的下落", "introduced_at": 12, "last_advanced": 45},
+    {"id": "T002", "desc": "黑衣人的真实目的", "introduced_at": 30, "last_advanced": 30}
   ]
 }
 ```
@@ -372,7 +372,7 @@ LightRAG 图谱记录实体间关系。额外维护 `data/sessions/unresolved_th
 
 ## 验证方式
 
-1. 准备一部有明确伏笔的小说前 50 章（推荐：斗破苍穹）
+1. 准备一部有明确伏笔且授权边界清晰的小说前 50 章
 2. 运行 `taijianicu run --input data/input/novel.txt --chapters 3`
 3. 检查输出：
    - `data/lightrag/` 中是否正确建立了知识图谱

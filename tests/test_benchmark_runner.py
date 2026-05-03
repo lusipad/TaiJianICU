@@ -55,22 +55,22 @@ def test_prepare_case_accepts_custom_source_file(tmp_path: Path) -> None:
     benchmarks_dir = tmp_path / "benchmarks"
     benchmarks_dir.mkdir(parents=True, exist_ok=True)
     runner = BenchmarkRunner(AppSettings(benchmarks_dir=benchmarks_dir))
-    source_path = tmp_path / "doupo.txt"
+    source_path = tmp_path / "custom_novel.txt"
     source_path.write_text(
-        "第一章 陨落的天才\n萧炎名震乌坦城。\n\n"
-        "第二章 斗气阁\n族中测试开始。\n\n"
-        "第三章 客人\n贵客临门。",
+        "第一章 雨夜\n林舟在旧城醒来。\n\n"
+        "第二章 灯火\n他去酒馆查线索。\n\n"
+        "第三章 客人\n陌生客人登门。",
         encoding="utf-8",
     )
 
     artifacts = runner.prepare_case(
-        dataset_name="doupo",
+        dataset_name="custom_novel",
         prefix_chapters=2,
         target_chapter=3,
         source_path=source_path,
     )
 
-    copied_source = benchmarks_dir / "doupo" / "doupo.txt"
+    copied_source = benchmarks_dir / "custom_novel" / "custom_novel.txt"
     assert copied_source.exists()
     assert artifacts.case.source_path == str(copied_source)
-    assert "第二章 斗气阁" in Path(artifacts.case.prefix_path).read_text(encoding="utf-8")
+    assert "第二章 灯火" in Path(artifacts.case.prefix_path).read_text(encoding="utf-8")

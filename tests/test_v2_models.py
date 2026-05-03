@@ -24,28 +24,28 @@ def test_world_model_roundtrip_json() -> None:
             CanonFact(
                 id="fact-1",
                 category="power",
-                statement="斗气境界不可跳级突破。",
+                statement="旧案线索不可无代价公开。",
                 source_chapter=3,
             )
         ],
         main_characters=[
             CharacterArc(
-                character_name="萧炎",
-                current_state="准备冲击下一阶段",
-                core_wants=["变强"],
-                hidden_pressure=["家族期待"],
+                character_name="林舟",
+                current_state="准备追查下一条线索",
+                core_wants=["查明旧案"],
+                hidden_pressure=["旧城各方盯防"],
             )
         ],
         active_factions=[
             FactionState(
-                name="萧家",
-                public_goal="维持家族地位",
+                name="城守司",
+                public_goal="维持旧城秩序",
                 hidden_goal="压制内部分裂",
             )
         ],
         known_locations=[
             LocationState(
-                name="乌坦城",
+                name="旧城",
                 location_type="城市",
                 story_function="主舞台",
             )
@@ -63,7 +63,7 @@ def test_world_model_roundtrip_json() -> None:
     restored = WorldModel.model_validate_json(model.model_dump_json())
 
     assert restored.title == "测试世界"
-    assert restored.main_characters[0].character_name == "萧炎"
+    assert restored.main_characters[0].character_name == "林舟"
     assert restored.expansion_slots[0].slot_type == "location"
 
 
