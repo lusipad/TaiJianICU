@@ -49,6 +49,7 @@ const state = {
   activeRunId: null,
   activeRunDetail: null,
   activeBenchmarkKey: null,
+  currentStudioPage: "dashboard",
   activeSourceTab: "excerpt",
   activeOutputTab: "chapter",
   activeWorkspaceTab: "overview",
@@ -138,13 +139,34 @@ const elements = {
   goalHintInput: document.querySelector('textarea[name="goal_hint"]'),
   modelOptions: document.getElementById("model-options"),
   advancedOptionsDetails: document.getElementById("advanced-options"),
+  pageTitle: document.getElementById("studio-page-title"),
+  studioWorkspace: document.querySelector(".studio-workspace"),
+  pageSections: Array.from(document.querySelectorAll("[data-page-section]")),
   workspaceTabs: Array.from(document.querySelectorAll(".workspace-tab")),
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
   sidebarTabs: Array.from(document.querySelectorAll(".inspector-tab")),
   sidebarPanels: Array.from(document.querySelectorAll("[data-sidebar-panel]")),
   sourceTabButtons: Array.from(document.querySelectorAll("[data-source-tab-target]")),
   outputTabButtons: Array.from(document.querySelectorAll("[data-output-tab-target]")),
-  studioNavLinks: Array.from(document.querySelectorAll(".studio-menu a")),
+  studioNavLinks: Array.from(document.querySelectorAll("[data-studio-page-link]")),
+};
+
+const studioPages = {
+  dashboard: { title: "月夜之诗 · 示例项目", tab: "overview" },
+  library: { title: "作品库", tab: null },
+  world: { title: "世界观", tab: "planning" },
+  characters: { title: "人物设定", tab: "planning" },
+  stats: { title: "统计", tab: "diagnostics" },
+  settings: { title: "设置", tab: null },
+};
+
+const studioPathPages = {
+  "/studio": "dashboard",
+  "/studio/library": "library",
+  "/studio/world": "world",
+  "/studio/characters": "characters",
+  "/studio/stats": "stats",
+  "/studio/settings": "settings",
 };
 
 function escapeHtml(value) {
@@ -525,10 +547,62 @@ function openAdvancedOptions({ scroll = true } = {}) {
   }
 }
 
+function scrollStudioWorkspaceTop() {
+  if (elements.studioWorkspace) {
+    elements.studioWorkspace.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function getStudioPageFromLocation() {
+  const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/studio";
+  const hash = window.location.hash;
+  if (normalizedPath === "/studio") {
+    if (["#quickstart-sample", "#bring-your-own-api", "#advanced-options"].includes(hash)) {
+      return "settings";
+    }
+    if (hash === "#runs") return "library";
+    if (hash === "#planning") return "world";
+    if (hash === "#diagnostics") return "stats";
+  }
+  return studioPathPages[normalizedPath] || "dashboard";
+}
+
+function applyStudioPageVisibility() {
+  for (const section of elements.pageSections) {
+    const pages = String(section.dataset.pageSection || "").split(/\s+/);
+    section.classList.toggle("page-section-hidden", !pages.includes(state.currentStudioPage));
+  }
+}
+
+function applyStudioPage() {
+  state.currentStudioPage = getStudioPageFromLocation();
+  const config = studioPages[state.currentStudioPage] || studioPages.dashboard;
+  document.body.dataset.studioPage = state.currentStudioPage;
+  if (elements.pageTitle) {
+    elements.pageTitle.textContent = config.title;
+  }
+  if (config.tab) {
+    setWorkspaceTab(config.tab);
+  }
+  updateStudioNavActive();
+  applyStudioPageVisibility();
+}
+
 function applyStudioHashIntent() {
   const hash = window.location.hash;
   if (hash === "#overview") {
     setWorkspaceTab("overview");
+    scrollStudioWorkspaceTop();
+    return;
+  }
+  if (hash === "#runs") {
+    document.getElementById("runs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (hash === "#quickstart-sample") {
+    document.getElementById("quickstart-sample")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   if (hash === "#planning") {
@@ -542,11 +616,11 @@ function applyStudioHashIntent() {
     return;
   }
   if (hash === "#bring-your-own-api") {
-    focusApiConfig({ scroll: false });
+    focusApiConfig();
     return;
   }
   if (hash === "#advanced-options") {
-    openAdvancedOptions({ scroll: false });
+    openAdvancedOptions();
   }
 }
 
@@ -707,13 +781,13 @@ function setWorkspaceTab(tabName) {
   for (const panel of elements.workspacePanels) {
     panel.classList.toggle("hidden", panel.dataset.tabPanel !== tabName);
   }
-  updateStudioNavActive(tabName);
+  updateStudioNavActive();
 }
 
-function updateStudioNavActive(tabName) {
+function updateStudioNavActive() {
   let matched = false;
   for (const link of elements.studioNavLinks) {
-    const isActive = !matched && link.dataset.studioNavTab === tabName;
+    const isActive = !matched && link.dataset.studioPageLink === state.currentStudioPage;
     link.classList.toggle("is-active", isActive);
     if (isActive) matched = true;
   }
@@ -1260,6 +1334,7 @@ function renderRun(run) {
   state.activeRunDetail = run;
   elements.emptyState.classList.add("hidden");
   elements.runView.classList.remove("hidden");
+  applyStudioPageVisibility();
 
   elements.runId.textContent = run.id;
   elements.runSession.textContent = run.session_name;
@@ -1440,32 +1515,6 @@ function startPolling(runId) {
   }, 2200);
 }
 
-function handleStudioNav(event) {
-  const link = event.currentTarget;
-  const tabName = link.dataset.studioNavTab;
-  const scrollTarget = link.dataset.studioNavScroll;
-  const openTarget = link.dataset.studioNavOpen;
-  if (tabName) {
-    event.preventDefault();
-    setWorkspaceTab(tabName);
-    if (tabName === "overview") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    document.getElementById(tabName)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
-  if (scrollTarget) {
-    event.preventDefault();
-    document.getElementById(scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    return;
-  }
-  if (openTarget) {
-    event.preventDefault();
-    openAdvancedOptions();
-  }
-}
-
 elements.fileInput.addEventListener("change", () => {
   const file = elements.fileInput.files?.[0];
   elements.selectedFileName.textContent = file ? file.name : "选择一个 `.txt` 文件";
@@ -1530,9 +1579,6 @@ window.addEventListener("load", async () => {
     for (const tab of elements.outputTabButtons) {
       tab.addEventListener("click", () => setOutputTab(tab.dataset.outputTabTarget));
     }
-    for (const link of elements.studioNavLinks) {
-      link.addEventListener("click", handleStudioNav);
-    }
     for (const tab of elements.sidebarTabs) {
       tab.addEventListener("click", () => setSidebarTab(tab.dataset.sidebarTarget));
     }
@@ -1562,8 +1608,11 @@ window.addEventListener("load", async () => {
     if (elements.openAdvancedOptionsButton) {
       elements.openAdvancedOptionsButton.addEventListener("click", () => openAdvancedOptions());
     }
-    window.addEventListener("hashchange", applyStudioHashIntent);
-    setWorkspaceTab(state.activeWorkspaceTab);
+    window.addEventListener("hashchange", () => {
+      applyStudioPage();
+      applyStudioHashIntent();
+    });
+    applyStudioPage();
     setSourceTab(state.activeSourceTab);
     setOutputTab(state.activeOutputTab);
     setSidebarTab(state.activeSidebarTab);
@@ -1572,6 +1621,7 @@ window.addEventListener("load", async () => {
     await loadExamples();
     await refreshRuns({ autoSelect: true });
     await refreshBenchmarks();
+    applyStudioPage();
     applyStudioHashIntent();
   } catch (error) {
     setFormStatus(`初始化失败：${error.message}`, "tone-error");

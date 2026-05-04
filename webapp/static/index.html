@@ -92,12 +92,12 @@
           <span>TaiJianICU Studio</span>
         </a>
         <nav class="studio-menu" aria-label="Studio 主导航">
-          <a class="is-active" href="#overview" data-studio-nav-tab="overview">工作台</a>
-          <a href="#runs" data-studio-nav-scroll="runs">作品库</a>
-          <a href="#planning" data-studio-nav-tab="planning">世界观</a>
-          <a href="#planning" data-studio-nav-tab="planning">人物设定</a>
-          <a href="#diagnostics" data-studio-nav-tab="diagnostics">统计</a>
-          <a href="#advanced-options" data-studio-nav-open="advanced-options">设置</a>
+          <a class="is-active" href="/studio" data-studio-page-link="dashboard">工作台</a>
+          <a href="/studio/library" data-studio-page-link="library">作品库</a>
+          <a href="/studio/world" data-studio-page-link="world">世界观</a>
+          <a href="/studio/characters" data-studio-page-link="characters">人物设定</a>
+          <a href="/studio/stats" data-studio-page-link="stats">统计</a>
+          <a href="/studio/settings" data-studio-page-link="settings">设置</a>
         </nav>
         <div class="sidebar-quote">
           <p>“不是替你写，而是陪你把故事走得更远。”</p>
@@ -108,22 +108,22 @@
       <main class="studio-workspace">
         <header class="studio-project-head">
           <div>
-            <h1>月夜之诗 · 示例项目</h1>
+            <h1 id="studio-page-title">月夜之诗 · 示例项目</h1>
           </div>
           <div class="studio-project-actions">
             <a class="utility-button studio-top-action" href="/">← 返回首页</a>
-            <label class="utility-button studio-top-action upload-top-action" for="file-input">导入原稿</label>
+            <a class="utility-button studio-top-action upload-top-action" href="/studio/settings">导入原稿</a>
           </div>
         </header>
 
-        <section class="progress-stage" aria-label="任务进度">
+        <section class="progress-stage page-section" data-page-section="dashboard" aria-label="任务进度">
           <span class="is-done"><b aria-hidden="true">✓</b>上传原稿</span>
           <span class="is-done"><b aria-hidden="true">✓</b>理解设定</span>
           <span class="is-active"><b aria-hidden="true">3</b>生成续写</span>
           <span><b aria-hidden="true">4</b>质量评估</span>
         </section>
 
-        <section class="studio-metric-grid" aria-label="项目指标">
+        <section class="studio-metric-grid page-section" data-page-section="dashboard" aria-label="项目指标">
           <article>
             <p>累计字数</p>
             <strong id="metric-tokens">0</strong>
@@ -146,7 +146,7 @@
           </article>
         </section>
 
-        <section id="empty-state" class="empty-state">
+        <section id="empty-state" class="empty-state page-section" data-page-section="dashboard">
           <div class="empty-state-icon" aria-hidden="true">羽</div>
           <p class="empty-state-title">还没有选中任务</p>
           <p>第一次用？先免费试看，再决定要不要真跑。也可以上传自己的 `.txt`，开始一轮真实续写。</p>
@@ -158,7 +158,7 @@
           </div>
         </section>
 
-        <div id="run-view" class="run-view hidden">
+        <div id="run-view" class="run-view hidden page-section" data-page-section="dashboard world characters stats">
           <div id="error-banner" class="status-banner hidden"></div>
 
           <div class="studio-tabs-row">
@@ -370,8 +370,8 @@
           </section>
         </div>
 
-        <section class="studio-bottom-grid">
-          <aside id="runs" class="recent-panel">
+        <section class="studio-bottom-grid page-section" data-page-section="library settings">
+          <aside id="runs" class="recent-panel page-section" data-page-section="library">
             <div class="panel-head panel-head-compact">
               <p class="section-kicker">作品库</p>
               <h2>最近任务与评测</h2>
@@ -396,7 +396,7 @@
             </section>
           </aside>
 
-          <form id="run-form" class="config-panel">
+          <form id="run-form" class="config-panel page-section" data-page-section="settings">
             <div class="panel-head">
               <p class="section-kicker">输入区</p>
               <h2>上传原著，再开始真正的续写任务</h2>

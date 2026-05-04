@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,6 +31,7 @@ from webapp.models import (
 )
 
 _AUTH_EXEMPT_PATHS = frozenset({"/health", "/ready"})
+_STUDIO_PAGES = frozenset({"library", "world", "characters", "stats", "settings"})
 
 
 def _format_window_label(window_seconds: int) -> str:
@@ -429,6 +430,12 @@ def create_app(
 
     @app.get("/studio", include_in_schema=False)
     async def studio() -> FileResponse:
+        return FileResponse(static_dir / "index.html")
+
+    @app.get("/studio/{studio_page}", include_in_schema=False)
+    async def studio_page(studio_page: str) -> FileResponse:
+        if studio_page not in _STUDIO_PAGES:
+            raise HTTPException(status_code=404)
         return FileResponse(static_dir / "index.html")
 
     app.mount("/static", StaticFiles(directory=static_dir), name="static")

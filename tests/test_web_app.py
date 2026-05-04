@@ -274,6 +274,27 @@ def test_web_health_and_index() -> None:
     assert "image/svg+xml" in favicon.headers["content-type"]
 
 
+def test_studio_pages_are_split_by_route() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    expected_pages = {
+        "/studio": "data-studio-page-link=\"dashboard\"",
+        "/studio/library": "data-studio-page-link=\"library\"",
+        "/studio/world": "data-studio-page-link=\"world\"",
+        "/studio/characters": "data-studio-page-link=\"characters\"",
+        "/studio/stats": "data-studio-page-link=\"stats\"",
+        "/studio/settings": "data-studio-page-link=\"settings\"",
+    }
+
+    for path, marker in expected_pages.items():
+        response = client.get(path)
+        assert response.status_code == 200
+        assert marker in response.text
+
+    assert client.get("/studio/missing").status_code == 404
+
+
 def test_marketing_pages_are_split_by_route() -> None:
     app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
     client = TestClient(app)
@@ -291,6 +312,7 @@ def test_marketing_pages_are_split_by_route() -> None:
         assert title in response.text
         assert "browser-chrome" not in response.text
         assert "/pricing" not in response.text
+        assert "/studio#quickstart-sample" not in response.text
         assert "定价" not in response.text
 
     assert client.get("/pricing").status_code == 404
