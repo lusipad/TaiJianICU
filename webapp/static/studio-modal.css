@@ -13,10 +13,13 @@
 .onboarding-panel {
   width: 100%;
   max-width: 540px;
-  border-radius: 28px;
-  border: 1px solid var(--border-medium);
-  background: linear-gradient(180deg, rgba(200, 149, 108, 0.08), transparent 18%), var(--bg-card);
-  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(218, 158, 106, 0.28);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 70% 12%, rgba(214, 157, 111, 0.11), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    #101113;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.54), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   overflow: hidden;
 }
 
@@ -24,15 +27,113 @@
   padding: 28px 28px 0;
 }
 
-.onboarding-img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  object-position: top center;
-  border-radius: 16px;
-  border: 1px solid var(--border-subtle);
+.onboarding-visual {
+  min-height: 248px;
+  display: grid;
   margin-bottom: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(218, 158, 106, 0.22);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    url("/static/design/sidebar-books.png") left bottom / 250px auto no-repeat,
+    #0b0d0f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.onboarding-visual-studio {
+  grid-template-columns: 140px minmax(0, 1fr);
+}
+
+.onboarding-visual-side {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 20px 14px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.onboarding-visual-side strong {
+  margin-bottom: 8px;
+  color: #f1dfcf;
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.onboarding-visual-side span {
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: rgba(226, 213, 201, 0.66);
+  font-size: 12px;
+}
+
+.onboarding-visual-side span.is-active {
+  border: 1px solid rgba(218, 158, 106, 0.2);
+  background: rgba(218, 158, 106, 0.12);
+  color: #f0d7bd;
+}
+
+.onboarding-visual-main {
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  padding: 28px;
+}
+
+.onboarding-visual-main p,
+.onboarding-visual-quickstart p {
+  margin: 0;
+  color: #d7a078;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onboarding-visual-main strong,
+.onboarding-visual-quickstart strong {
+  color: #f1dfcf;
+  font-family: var(--font-display);
+  font-size: 25px;
+  line-height: 1.25;
+}
+
+.onboarding-visual-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.onboarding-visual-metrics span {
+  padding: 13px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #e5b087;
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.onboarding-visual-quickstart {
+  align-content: center;
+  gap: 22px;
+  padding: 34px;
+  background:
+    linear-gradient(180deg, rgba(212, 160, 121, 0.12), rgba(8, 9, 11, 0.78)),
+    url("/static/design/sidebar-books.png") left bottom / 260px auto no-repeat,
+    #0b0d0f;
+}
+
+.onboarding-visual-quickstart span {
+  width: min(260px, 100%);
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #e6b489, #bd7f55);
+  color: #24140d;
+  font-weight: 700;
 }
 
 .onboarding-icon-wrap {
@@ -60,7 +161,8 @@
 }
 
 .onboarding-title {
-  font-size: clamp(26px, 4vw, 30px);
+  color: #f1dfcf;
+  font-size: clamp(28px, 4vw, 32px);
   line-height: 1.2;
   margin-bottom: 10px;
 }
@@ -91,6 +193,7 @@
   padding: 20px 28px 24px;
   margin-top: 20px;
   border-top: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .onboarding-skip-check {
