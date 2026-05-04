@@ -280,7 +280,6 @@ def test_marketing_pages_are_split_by_route() -> None:
     expected_pages = {
         "/product": "专注长期创作的",
         "/showcase": "红楼梦第120回",
-        "/pricing": "选择适合你的",
         "/docs": "文档中心",
         "/about": "让你的故事，在你掌控下延续。",
     }
@@ -290,6 +289,10 @@ def test_marketing_pages_are_split_by_route() -> None:
         assert response.status_code == 200
         assert title in response.text
         assert "browser-chrome" not in response.text
+        assert "/pricing" not in response.text
+        assert "定价" not in response.text
+
+    assert client.get("/pricing").status_code == 404
 
 
 def test_web_requires_basic_auth_when_password_configured() -> None:

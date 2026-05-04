@@ -481,7 +481,6 @@
 
 .capability-list h3,
 .case-card h3,
-.price-card h3,
 .docs-cards h3 {
   margin: 0;
   color: #e7cdb6;
@@ -494,8 +493,6 @@
 
 .capability-list p,
 .case-card span,
-.price-card p,
-.price-card li,
 .docs-cards p {
   color: rgba(226, 213, 202, 0.68);
   line-height: 1.8;
@@ -598,7 +595,6 @@
 }
 
 .case-grid,
-.pricing-grid,
 .docs-cards {
   display: grid;
   gap: 18px;
@@ -645,72 +641,6 @@
   margin-top: 26px;
   color: #dfaa7e;
   font-weight: 700;
-}
-
-.pricing-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  align-items: stretch;
-}
-
-.price-card {
-  position: relative;
-  display: grid;
-  gap: 20px;
-  padding: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.11);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
-}
-
-.price-card-featured {
-  border-color: rgba(225, 160, 109, 0.68);
-  box-shadow: 0 0 42px rgba(201, 134, 84, 0.15), inset 0 0 0 1px rgba(225, 160, 109, 0.18);
-}
-
-.price-card em {
-  width: fit-content;
-  margin: -14px auto 0;
-  padding: 7px 20px;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #d6a077, #9a6848);
-  color: #fff0df;
-  font-style: normal;
-  font-weight: 700;
-}
-
-.price-card strong {
-  color: #edc4a7;
-  font-family: var(--font-display);
-  font-size: 58px;
-  line-height: 1.1;
-}
-
-.price-card strong span {
-  color: rgba(226, 213, 202, 0.7);
-  font-size: 20px;
-}
-
-.price-card ul {
-  display: grid;
-  gap: 13px;
-  margin: 0;
-  padding: 22px 0 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.09);
-  list-style: none;
-}
-
-.price-card li::before {
-  content: "✓";
-  display: inline-flex;
-  width: 22px;
-  height: 22px;
-  align-items: center;
-  justify-content: center;
-  margin-right: 10px;
-  border-radius: 50%;
-  background: rgba(218, 158, 106, 0.44);
-  color: #ffe4c8;
-  font-size: 12px;
 }
 
 .docs-shell {
@@ -1053,7 +983,6 @@
 
   .preview-metrics,
   .case-grid,
-  .pricing-grid,
   .docs-cards,
   .flow-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1102,7 +1031,6 @@
   .preview-metrics,
   .flow-steps,
   .case-grid,
-  .pricing-grid,
   .docs-cards,
   .proof-grid,
   .console-controls,

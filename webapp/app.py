@@ -419,10 +419,6 @@ def create_app(
     async def showcase() -> FileResponse:
         return FileResponse(static_dir / "showcase.html")
 
-    @app.get("/pricing", include_in_schema=False)
-    async def pricing() -> FileResponse:
-        return FileResponse(static_dir / "pricing.html")
-
     @app.get("/docs", include_in_schema=False)
     async def docs() -> FileResponse:
         return FileResponse(static_dir / "docs.html")
