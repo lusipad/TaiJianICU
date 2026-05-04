@@ -140,7 +140,13 @@ def create_app(
     manager = run_manager or WebRunManager(app_settings)
     static_dir = Path(__file__).resolve().parent / "static"
 
-    app = FastAPI(title="TaiJianICU Web", version="0.1.0")
+    app = FastAPI(
+        title="TaiJianICU Web",
+        version="0.1.0",
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+        openapi_url="/api/openapi.json",
+    )
     app.state.settings = app_settings
     app.state.run_manager = manager
     app.state.example_rate_limiter = _ExampleRunRateLimiter(
@@ -404,6 +410,26 @@ def create_app(
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
         return FileResponse(static_dir / "landing.html")
+
+    @app.get("/product", include_in_schema=False)
+    async def product() -> FileResponse:
+        return FileResponse(static_dir / "product.html")
+
+    @app.get("/showcase", include_in_schema=False)
+    async def showcase() -> FileResponse:
+        return FileResponse(static_dir / "showcase.html")
+
+    @app.get("/pricing", include_in_schema=False)
+    async def pricing() -> FileResponse:
+        return FileResponse(static_dir / "pricing.html")
+
+    @app.get("/docs", include_in_schema=False)
+    async def docs() -> FileResponse:
+        return FileResponse(static_dir / "docs.html")
+
+    @app.get("/about", include_in_schema=False)
+    async def about() -> FileResponse:
+        return FileResponse(static_dir / "about.html")
 
     @app.get("/studio", include_in_schema=False)
     async def studio() -> FileResponse:

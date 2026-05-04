@@ -256,7 +256,7 @@ def test_web_health_and_index() -> None:
     assert "TaiJianICU" in response.text
     assert "让<span>故事</span>" in response.text
     assert "开始免费试用" in response.text
-    assert "红楼梦第120回" in response.text
+    assert "红楼梦第120回" not in response.text
     studio = client.get("/studio")
     assert studio.status_code == 200
     assert "TaiJianICU Studio" in studio.text
@@ -273,6 +273,25 @@ def test_web_health_and_index() -> None:
     assert "image/svg+xml" in favicon.headers["content-type"]
 
 
+def test_marketing_pages_are_split_by_route() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    expected_pages = {
+        "/product": "专注长期创作的",
+        "/showcase": "红楼梦第120回",
+        "/pricing": "选择适合你的",
+        "/docs": "文档中心",
+        "/about": "让你的故事，在你掌控下延续。",
+    }
+
+    for path, title in expected_pages.items():
+        response = client.get(path)
+        assert response.status_code == 200
+        assert title in response.text
+        assert "browser-chrome" not in response.text
+
+
 def test_web_requires_basic_auth_when_password_configured() -> None:
     settings = AppSettings(TAIJIAN_WEB_PASSWORD="secret123")
     app = create_app(settings=settings, run_manager=FakeRunManager())
@@ -286,6 +305,10 @@ def test_web_requires_basic_auth_when_password_configured() -> None:
     authed_response = client.get("/", auth=("admin", "secret123"))
     assert authed_response.status_code == 200
     assert "开始免费试用" in authed_response.text
+
+    product_response = client.get("/product", auth=("admin", "secret123"))
+    assert product_response.status_code == 200
+    assert "专注长期创作的" in product_response.text
 
     studio_response = client.get("/studio", auth=("admin", "secret123"))
     assert studio_response.status_code == 200

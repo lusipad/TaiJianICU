@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>案例 · TaiJianICU</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body class="landing-body">
+    <div class="landing-frame">
+      <nav id="landing-nav" class="landing-nav">
+        <a class="landing-nav-brand" href="/">
+          <span class="landing-nav-logo">笔</span>
+          <span>TaiJianICU</span>
+        </a>
+        <div class="landing-nav-links" aria-label="主导航">
+          <a class="landing-nav-link" href="/product">产品</a>
+          <a class="landing-nav-link is-current" href="/showcase" aria-current="page">案例</a>
+          <a class="landing-nav-link" href="/pricing">定价</a>
+          <a class="landing-nav-link" href="/docs">文档</a>
+          <a class="landing-nav-link" href="/about">关于</a>
+        </div>
+        <div class="landing-nav-actions">
+          <a class="landing-login" href="/studio">登录</a>
+          <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">开始创作</a>
+        </div>
+      </nav>
+
+      <main class="landing-sections standalone-page">
+        <section class="landing-section showcase-section">
+          <div class="landing-center">
+            <p class="section-pill">续写示例</p>
+            <h1 class="landing-section-title" data-reveal>灵感来自真实的创作</h1>
+            <p class="landing-section-desc" data-reveal>原创样例与公版文本示例直接展示，不混入外部版权作品片段。</p>
+          </div>
+
+          <div class="case-grid">
+            <article class="case-card case-card-red" data-reveal>
+              <p>公版示例</p>
+              <h3>红楼梦第120回</h3>
+              <span>承接前八十回断点，观察 source-voice 与人物声口。</span>
+              <a href="/showcase#benchmark">查看故事 →</a>
+            </article>
+            <article class="case-card" data-reveal>
+              <p>奇幻 · 成长</p>
+              <h3>月夜之诗</h3>
+              <span>在月光洒落的峡谷深处，一段关于记忆与救赎的旅程悄然展开。</span>
+              <a href="/studio#quickstart-sample">查看故事 →</a>
+            </article>
+            <article class="case-card" data-reveal>
+              <p>悬疑 · 都市</p>
+              <h3>雨夜追魂</h3>
+              <span>从义庄门口的一盏旧灯开始，让旧案在细雨里继续发酵。</span>
+              <a href="/studio#quickstart-sample">查看故事 →</a>
+            </article>
+            <article class="case-card" data-reveal>
+              <p>武侠 · 江湖</p>
+              <h3>风起南山</h3>
+              <span>风起云涌，江湖再起波澜，有人执剑而行，有人归隐山林。</span>
+              <a href="/studio#quickstart-sample">查看故事 →</a>
+            </article>
+            <article class="case-card" data-reveal>
+              <p>科幻 · 未来</p>
+              <h3>无尽回响</h3>
+              <span>回声穿越时空裂缝，记忆与真相在无尽回响中浮现。</span>
+              <a href="/studio#quickstart-sample">查看故事 →</a>
+            </article>
+            <article class="case-card" data-reveal>
+              <p>温情 · 群像</p>
+              <h3>灯火人间</h3>
+              <span>万家灯火下的人间烟火，藏着无数平凡而动人的选择。</span>
+              <a href="/studio#quickstart-sample">查看故事 →</a>
+            </article>
+          </div>
+        </section>
+
+        <section id="benchmark" class="landing-section proof-section">
+          <div class="landing-center">
+            <p class="section-pill">公开实证</p>
+            <h2 class="landing-section-title" data-reveal>不只给分数，也把内容摊开给你看</h2>
+            <p class="landing-section-desc" data-reveal>这里优先展示公版或原创样例的原文断点、AI 续写和质检结果。</p>
+          </div>
+          <div id="landing-benchmark-list" class="landing-benchmark-list">
+            <p class="hint">正在加载公开样例实证...</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <footer class="landing-footer">
+      <span>© 2026 TaiJianICU</span>
+      <span>
+        <a href="/studio">Studio</a>
+        <a href="/showcase">Showcase</a>
+      </span>
+    </footer>
+
+    <script src="/static/landing.js" defer></script>
+  </body>
+</html>
