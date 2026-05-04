@@ -254,9 +254,9 @@ def test_web_health_and_index() -> None:
     response = client.get("/")
     assert response.status_code == 200
     assert "TaiJianICU" in response.text
-    assert "第一次使用，先看固定样例和免费试跑就够了" in response.text
-    assert "先免费试看" in response.text
-    assert "支持本地版本" in response.text
+    assert "让<span>故事</span>" in response.text
+    assert "开始免费试用" in response.text
+    assert "红楼梦第120回" in response.text
     studio = client.get("/studio")
     assert studio.status_code == 200
     assert "TaiJianICU Studio" in studio.text
@@ -285,7 +285,7 @@ def test_web_requires_basic_auth_when_password_configured() -> None:
 
     authed_response = client.get("/", auth=("admin", "secret123"))
     assert authed_response.status_code == 200
-    assert "第一次使用，先看固定样例和免费试跑就够了" in authed_response.text
+    assert "开始免费试用" in authed_response.text
 
     studio_response = client.get("/studio", auth=("admin", "secret123"))
     assert studio_response.status_code == 200

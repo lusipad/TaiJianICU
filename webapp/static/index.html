@@ -47,7 +47,7 @@
             <p class="onboarding-step-num">3 / 3</p>
             <h2 class="onboarding-title">怎么开始？</h2>
             <p class="onboarding-body">
-              先点左侧的 <strong>「快速试看原创样例」</strong> 看固定结果；如果觉得效果对，再上传自己的原著。需要更多控制权时，再去右侧填写 endpoint / Key 或用本地版本。
+              先点 <strong>「快速试看原创样例」</strong> 看固定结果；如果觉得效果对，再上传自己的原著。
             </p>
             <p class="onboarding-note">右侧切换「总览 / 规划 / 诊断」查看不同层级的结果。</p>
           </div>
@@ -66,305 +66,308 @@
       </div>
     </div>
 
-    <header class="studio-topbar">
-      <a class="studio-topbar-brand" href="/">
-        <span class="studio-topbar-logo">笔</span>
-        <span>TaiJianICU Studio</span>
-      </a>
-      <div class="studio-topbar-actions">
-        <span class="studio-chip">续写工作台</span>
-        <span class="studio-chip">模型路由</span>
-        <a class="studio-link" href="/">返回首页</a>
-      </div>
-    </header>
+    <div class="studio-app-shell">
+      <aside class="studio-sidebar">
+        <a class="studio-sidebar-brand" href="/">
+          <span>TaiJianICU Studio</span>
+        </a>
+        <nav class="studio-menu" aria-label="Studio 主导航">
+          <a class="is-active" href="/studio">工作台</a>
+          <a href="#runs">作品库</a>
+          <a href="#planning">世界观</a>
+          <a href="#planning">人物设定</a>
+          <a href="#diagnostics">统计</a>
+          <a href="#advanced-options">设置</a>
+        </nav>
+        <div class="sidebar-quote">
+          <p>“不是替你写，而是陪你把故事走得更远。”</p>
+          <span>羽</span>
+        </div>
+      </aside>
 
-    <div class="studio-shell">
-      <main class="studio-layout">
-        <aside class="panel form-panel">
-          <div class="panel-head">
-            <p class="section-kicker">输入区</p>
-            <h1>续写工作台</h1>
-            <p class="panel-copy">第一次先免费试看和平台试跑；满意后再上传自己的原著。自带 Key 和本地版本保留，但只是额外方式，不是默认主路径。</p>
+      <main class="studio-workspace">
+        <header class="studio-project-head">
+          <div>
+            <h1>月夜之诗 · 示例项目</h1>
+          </div>
+          <div class="studio-project-actions">
+            <a class="utility-button studio-top-action" href="/">← 返回项目列表</a>
+            <label class="utility-button studio-top-action upload-top-action" for="file-input">导入原稿</label>
+          </div>
+        </header>
+
+        <section class="progress-stage" aria-label="任务进度">
+          <span class="is-done"><b aria-hidden="true">✓</b>上传原稿</span>
+          <span class="is-done"><b aria-hidden="true">✓</b>理解设定</span>
+          <span class="is-active"><b aria-hidden="true">3</b>生成续写</span>
+          <span><b aria-hidden="true">4</b>质量评估</span>
+        </section>
+
+        <section class="studio-metric-grid" aria-label="项目指标">
+          <article>
+            <p>累计字数</p>
+            <strong id="metric-tokens">0</strong>
+            <span>字</span>
+          </article>
+          <article>
+            <p>完成章节</p>
+            <strong id="metric-chapters">0 / 0</strong>
+            <span>章</span>
+          </article>
+          <article>
+            <p>预计剩余时间</p>
+            <strong id="metric-time">约 12</strong>
+            <span>分钟</span>
+          </article>
+          <article>
+            <p>当前状态</p>
+            <strong id="run-status">-</strong>
+            <span id="progress-count">0/0</span>
+          </article>
+        </section>
+
+        <section id="empty-state" class="empty-state">
+          <div class="empty-state-icon" aria-hidden="true">羽</div>
+          <p class="empty-state-title">还没有选中任务</p>
+          <p>第一次用？先免费试看，再决定要不要真跑。也可以上传自己的 `.txt`，开始一轮真实续写。</p>
+          <div class="empty-state-actions">
+            <div class="dual-action-row">
+              <button id="empty-example-button" type="button">快速试看原创样例</button>
+              <button id="empty-fill-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
+            </div>
+          </div>
+        </section>
+
+        <div id="run-view" class="run-view hidden">
+          <div id="error-banner" class="status-banner hidden"></div>
+
+          <div class="studio-tabs-row">
+            <nav class="workspace-tabs" aria-label="工作台分区">
+              <button type="button" class="workspace-tab is-active" data-tab-target="overview">总览</button>
+              <button type="button" class="workspace-tab" data-tab-target="planning">规划</button>
+              <button type="button" class="workspace-tab" data-tab-target="diagnostics">诊断</button>
+            </nav>
+            <div class="progress-wrap">
+              <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill"></div>
+              </div>
+              <div class="progress-meta">
+                <span id="progress-message">等待开始</span>
+                <span id="progress-percent">0%</span>
+              </div>
+            </div>
           </div>
 
-          <form id="run-form" class="run-form">
-            <section class="quickstart-card">
-              <div class="quickstart-copy">
-                <p class="section-kicker">快速开始</p>
-                <h2>第一次用？先免费试看，再决定要不要真跑</h2>
-                <p class="hint">默认主路径是固定样例和小额度平台试跑。确定有说服力以后，再上传自己的原著；你自己的 Key 和本地版本只是附加能力。</p>
-              </div>
-
-              <div class="quickstart-priority-grid">
-                <section id="quickstart-sample" class="quickstart-panel quickstart-panel-primary anchor-target">
-                  <div class="quickstart-panel-head">
-                    <div>
-                      <p class="label">免费试看</p>
-                      <strong>先看固定样例，再做一次平台试跑</strong>
-                    </div>
-                  </div>
-                  <div class="quickstart-steps">
-                    <span>1. 「快速试看」直接加载预计算结果，不消耗你当前填写的 endpoint / Key</span>
-                    <span>2. 「按当前配置试跑样例」会真的调用当前页面配置；如果你没填自己的 Key，就走平台小额度试跑</span>
-                    <span>3. 确认效果以后，再上传自己的原著文本开始正式续写</span>
-                  </div>
-                  <div class="quickstart-actions">
-                    <div class="dual-action-row">
-                      <button id="try-example-button" type="button">快速试看原创样例</button>
-                      <button id="load-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
-                    </div>
-                    <p id="example-description" class="hint">正在加载示例信息...</p>
-                  </div>
-                </section>
-
-                <section id="bring-your-own-api" class="quickstart-panel quickstart-panel-secondary anchor-target">
-                  <div class="quickstart-panel-head">
-                    <div>
-                      <p class="label">额外方式</p>
-                      <strong>使用自己的 Key，或者直接用本地版本</strong>
-                    </div>
-                    <button id="clear-api-config-button" class="utility-button" type="button">清空当前 API</button>
-                  </div>
-                  <p class="quickstart-panel-copy">
-                    如果你想自己控制模型、成本和额度，可以在这里填 endpoint / Key。你的 Key 只在当前页面和这次提交里生效，不会写入任务记录。仓库也已经提供本地部署方案，适合长期使用。
-                  </p>
-                  <div class="field-grid model-grid">
-                    <label class="field">
-                      <span>API Endpoint</span>
-                      <input
-                        id="api-base-url-input"
-                        name="api_base_url"
-                        type="url"
-                        inputmode="url"
-                        autocomplete="off"
-                        spellcheck="false"
-                        placeholder="留空则使用部署默认 endpoint"
-                      />
-                    </label>
-                    <label class="field">
-                      <span>API Key</span>
-                      <input
-                        id="api-key-input"
-                        name="api_key"
-                        type="password"
-                        autocomplete="off"
-                        spellcheck="false"
-                        placeholder="留空则使用部署默认 Key"
-                      />
-                    </label>
-                    <label class="field">
-                      <span>Wire API</span>
-                      <select id="wire-api-input" name="wire_api">
-                        <option value="chat">Chat Completions</option>
-                        <option value="responses">Responses</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div class="quickstart-primary-actions">
-                    <button id="open-advanced-options-button" class="utility-button" type="button">继续配置模型路由</button>
-                    <span id="runtime-api-hint" class="field-note">
-                      留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。
-                    </span>
-                  </div>
-                </section>
-              </div>
-            </section>
-
-            <section class="quickstart-card quickstart-card-subtle">
-              <div class="quickstart-copy">
-                <p class="section-kicker">正式提交</p>
-                <h2>上传原著，再开始真正的续写任务</h2>
-                <p class="hint">免费试看确认效果以后，再来这里上传自己的文本。上面的 API 配置只是额外能力，没填也能继续走平台默认配置。</p>
-              </div>
-
-              <div class="quickstart-steps">
-                <span>推荐顺序：先免费试看样例，再上传原著文本</span>
-                <span>如果你想控成本或切模型，再去右侧额外方式里填写自己的 endpoint / Key</span>
-                <span>如果要长期使用，也可以直接部署本地版本，再回到这里继续用同一套界面</span>
-              </div>
-            </section>
-
-            <section class="form-section form-section-primary">
-              <div class="form-section-summary">
-                <div class="form-section-head">
-                  <div>
-                    <p class="section-kicker">原著输入</p>
-                    <h3>文本与章节</h3>
-                  </div>
-                  <span class="field-note">试看满意后上传原著文件，设置续写章节数，然后直接开始。</span>
+          <section class="story-duo" data-tab-panel="overview">
+            <article class="story-panel">
+              <div class="story-panel-head">
+                <div>
+                  <h2 id="source-preview-label">原稿片段</h2>
+                  <p id="source-preview-meta">当前正在处理第 3 章</p>
+                </div>
+                <div class="story-preview-tabs" role="tablist" aria-label="原文视图切换">
+                  <button
+                    id="source-tab-excerpt"
+                    type="button"
+                    class="story-preview-tab is-active"
+                    data-source-tab-target="excerpt"
+                  >
+                    衔接片段
+                  </button>
+                  <button type="button" class="story-preview-tab" data-source-tab-target="full">原始正文</button>
                 </div>
               </div>
+              <article id="source-preview" class="markdown-preview markdown-preview-source">-</article>
+              <footer>
+                <span>来源：月夜之诗 · 第 3 章</span>
+                <button type="button" class="utility-button">查看原稿</button>
+              </footer>
+            </article>
 
-              <div class="form-section-body">
-                <label class="field upload-field">
-                  <span>原著文本</span>
-                  <div class="upload-box">
-                    <div class="upload-file-action" aria-hidden="true">
-                      <span class="upload-trigger">选择文件</span>
-                      <span class="upload-inline-note">点击选择 `.txt`，或先用上方内置样例</span>
-                    </div>
-                    <input id="file-input" name="file" type="file" accept=".txt,text/plain" required />
-                    <strong id="selected-file-name">选择一个 `.txt` 文件</strong>
-                    <small>支持 UTF-8 / UTF-8-SIG / GB18030 / GBK，上传后统一转为 UTF-8。</small>
-                  </div>
-                </label>
-
-                <div class="field-grid">
-                  <label class="field">
-                    <span>续写章节数</span>
-                    <input name="chapters" type="number" min="1" max="20" value="1" required />
-                  </label>
-                  <label class="field">
-                    <span>起始章节</span>
-                    <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
-                  </label>
+            <article class="story-panel story-panel-ai">
+              <div class="story-panel-head">
+                <div>
+                  <h2 id="output-preview-label">续写预览</h2>
+                  <p id="output-preview-meta">AI 生成的续写章节 · 约 800 字</p>
                 </div>
-
-                <div class="action-row">
-                  <button id="submit-button" type="submit">开始分析并续写</button>
-                  <p id="form-status" class="hint">提交后会自动轮询任务进度。默认走平台当前配置；如果你填写了自己的 endpoint / Key，会只对这次提交生效。</p>
-                </div>
+                <button class="utility-button" type="button">重新生成</button>
               </div>
-            </section>
-
-            <details id="advanced-options" class="form-section form-section-advanced anchor-target">
-              <summary class="form-section-summary">
-                <div class="form-section-head">
-                  <div>
-                    <p class="section-kicker">高级选项</p>
-                    <h3>模型路由、规划与执行</h3>
-                  </div>
-                  <span class="field-note">可选。上方已经提供免费试看和额外 API 方式，这里只留模型路由和更细的执行参数。</span>
-                </div>
-              </summary>
-
-              <div class="form-section-body">
-                <label class="field">
-                  <span>会话名</span>
-                  <input name="session_name" type="text" placeholder="留空则按文件名与时间戳自动生成" />
-                </label>
-
-                <div class="form-subgroup">
-                  <p class="form-subgroup-label">规划与候选</p>
-                  <div class="field-grid">
-                    <label class="field">
-                      <span>规划模式 <button type="button" class="field-tooltip" title="balanced：平衡；strict：更严格贴近原著；expansive：允许更大胆创新">?</button></span>
-                      <select name="planning_mode">
-                        <option value="balanced">balanced（推荐）</option>
-                        <option value="strict">strict</option>
-                        <option value="expansive">expansive</option>
-                      </select>
-                    </label>
-                    <label class="field">
-                      <span>提纲草稿数 <button type="button" class="field-tooltip" title="生成几个提纲草稿供筛选，越多越慢">?</button></span>
-                      <input name="skeleton_candidates" type="number" min="1" max="5" placeholder="默认" />
-                    </label>
-                    <label class="field">
-                      <span>续写候选数 <button type="button" class="field-tooltip" title="生成几个正文候选，越多越耗 token">?</button></span>
-                      <input name="draft_candidates" type="number" min="1" max="5" placeholder="默认" />
-                    </label>
-                  </div>
-
-                  <div class="field-grid field-grid-slim">
-                    <label class="field">
-                      <span>新人物预算 <button type="button" class="field-tooltip" title="允许新增的角色数量。0 表示不新增。">?</button></span>
-                      <input name="new_character_budget" type="number" min="0" max="5" placeholder="自动" />
-                    </label>
-                    <label class="field">
-                      <span>新地点预算 <button type="button" class="field-tooltip" title="允许新增的地点数量。留空则自动决定。">?</button></span>
-                      <input name="new_location_budget" type="number" min="0" max="5" placeholder="自动" />
-                    </label>
-                    <label class="field">
-                      <span>新势力预算 <button type="button" class="field-tooltip" title="允许新增的阵营或势力数量。留空则自动决定。">?</button></span>
-                      <input name="new_faction_budget" type="number" min="0" max="5" placeholder="自动" />
-                    </label>
-                  </div>
-                </div>
-
-                <div class="form-subgroup">
-                  <p class="form-subgroup-label">模型配置</p>
-                  <div class="form-inline-actions">
-                    <button id="reset-models-button" class="utility-button" type="button">恢复部署默认模型</button>
-                    <span id="runtime-model-hint" class="field-note">当前使用部署默认模型。</span>
-                  </div>
-                  <div class="field-grid model-grid">
-                    <label class="field">
-                      <span>风格分析模型</span>
-                      <input id="style-model-input" name="style_model" type="text" list="model-options" />
-                    </label>
-                    <label class="field">
-                      <span>情节规划模型</span>
-                      <input id="plot-model-input" name="plot_model" type="text" list="model-options" />
-                    </label>
-                    <label class="field">
-                      <span>正文生成模型</span>
-                      <input id="draft-model-input" name="draft_model" type="text" list="model-options" />
-                    </label>
-                    <label class="field">
-                      <span>质检评估模型</span>
-                      <input id="quality-model-input" name="quality_model" type="text" list="model-options" />
-                    </label>
-                    <label class="field model-span-wide">
-                      <span>原著索引模型</span>
-                      <input id="lightrag-model-input" name="lightrag_model_name" type="text" list="model-options" />
-                    </label>
-                  </div>
-                </div>
-
-                <datalist id="model-options"></datalist>
-
-                <div class="form-subgroup">
-                  <p class="form-subgroup-label">目标与执行</p>
-                  <label class="field">
-                    <span>章节目标提示</span>
-                    <textarea
-                      name="goal_hint"
-                      rows="4"
-                      placeholder="可选。比如：先推进主角与反派的正面碰撞，再回收一个旧伏笔。"
-                    ></textarea>
-                  </label>
-
-                  <div class="toggle-row">
-                    <label class="toggle">
-                      <input name="use_existing_index" type="checkbox" />
-                      <span>复用已有索引</span>
-                    </label>
-                    <label class="toggle">
-                      <input name="overwrite" type="checkbox" />
-                      <span>允许覆盖同名产物</span>
-                    </label>
-                  </div>
-                </div>
+              <span id="output-path" class="workspace-path">-</span>
+              <div class="story-preview-tabs" role="tablist" aria-label="续写视图切换">
+                <button type="button" class="story-preview-tab" data-output-tab-target="chapter">续写章节</button>
+                <button type="button" class="story-preview-tab is-active" data-output-tab-target="combined">拼接预览</button>
               </div>
-            </details>
-          </form>
+              <div id="output-preview" class="story-output-preview">-</div>
+              <footer>
+                <button type="button" class="utility-button">替换</button>
+                <button type="button" class="utility-button">插入</button>
+                <button class="utility-button" type="button">再生成</button>
+              </footer>
+            </article>
+          </section>
 
-          <section class="recent-panel">
+          <div class="accept-row" data-tab-panel="overview">
+            <p>提示：你可以对生成内容进行替换、插入或重新生成，满意后将其插入故事中。</p>
+            <button type="button">接受并插入</button>
+          </div>
+
+          <section class="workspace-block workspace-block-primary meta-panel" data-tab-panel="overview">
+            <div class="run-meta">
+              <div>
+                <p class="label">任务 ID</p>
+                <strong id="run-id">-</strong>
+              </div>
+              <div>
+                <p class="label">会话名</p>
+                <strong id="run-session">-</strong>
+              </div>
+              <div>
+                <p class="label">总调用</p>
+                <strong id="metric-calls">0</strong>
+              </div>
+              <div>
+                <p class="label">成本估算</p>
+                <strong id="metric-cost">$0.000000</strong>
+              </div>
+              <div>
+                <p class="label">续写质量</p>
+                <strong id="metric-quality">-</strong>
+              </div>
+              <div>
+                <p class="label">人物一致性</p>
+                <strong id="metric-consistency">-</strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="workspace-block detail-panel" data-tab-panel="overview">
+            <div class="result-grid result-grid-emphasis">
+              <article class="result-card result-card-feature">
+                <p class="label">风格摘要</p>
+                <pre id="style-summary">-</pre>
+              </article>
+              <article class="result-card result-card-feature">
+                <p class="label">故事状态</p>
+                <pre id="story-summary">-</pre>
+              </article>
+            </div>
+            <div class="result-grid result-grid-triple">
+              <article class="result-card">
+                <p class="label">模型路由</p>
+                <pre id="model-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">最新章节目标</p>
+                <pre id="goal-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">运行产物</p>
+                <div id="artifact-list" class="path-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="planning" class="workspace-block detail-panel" data-tab-panel="planning">
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">作品 skill</p>
+                <pre id="work-skill-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">世界设定</p>
+                <pre id="world-summary">-</pre>
+              </article>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">导演人物走向</p>
+                <div id="arc-list" class="chapter-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">参考资料</p>
+                <div id="reference-list" class="thread-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">世界观</p>
+                <pre id="lorebook-summary">-</pre>
+              </article>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">最新章节目标</p>
+                <pre id="brief-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">章节评测</p>
+                <pre id="evaluation-summary">-</pre>
+              </article>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">提纲草稿</p>
+                <div id="skeleton-candidate-list" class="path-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">续写候选</p>
+                <div id="draft-candidate-list" class="path-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="diagnostics" class="workspace-block detail-panel" data-tab-panel="diagnostics">
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">质检</p>
+                <pre id="quality-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">一致性</p>
+                <pre id="consistency-summary">-</pre>
+              </article>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">复活诊断</p>
+                <pre id="revival-diagnosis-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">盲看 1000 字</p>
+                <div id="blind-challenge" class="thread-list"></div>
+              </article>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">未收束伏笔</p>
+                <div id="threads-list" class="thread-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">章节结果</p>
+                <div id="chapter-list" class="chapter-list"></div>
+              </article>
+            </div>
+            <article class="result-card logs-card">
+              <p class="label">运行日志</p>
+              <div id="run-logs" class="log-list"></div>
+            </article>
+          </section>
+        </div>
+
+        <section class="studio-bottom-grid">
+          <aside id="runs" class="recent-panel">
             <div class="panel-head panel-head-compact">
-              <p class="section-kicker">侧边栏</p>
+              <p class="section-kicker">作品库</p>
               <h2>最近任务与评测</h2>
             </div>
-
             <nav class="inspector-tabs" aria-label="侧边栏分区">
               <button type="button" class="inspector-tab is-active" data-sidebar-target="runs">任务</button>
               <button type="button" class="inspector-tab" data-sidebar-target="benchmarks">评测</button>
             </nav>
-
             <section data-sidebar-panel="runs">
-              <div class="panel-head panel-head-compact">
-                <p class="section-kicker">历史记录</p>
-                <h2>最近任务</h2>
-              </div>
               <div id="run-list" class="run-list">
                 <p class="hint">正在加载历史任务...</p>
               </div>
             </section>
-
             <section data-sidebar-panel="benchmarks" class="hidden">
-              <div class="panel-head panel-head-compact">
-                <p class="section-kicker">对比评测</p>
-                <h2>对照报告</h2>
-              </div>
               <div id="benchmark-list" class="run-list">
                 <p class="hint">正在加载对照评测...</p>
               </div>
@@ -373,308 +376,190 @@
                 <pre id="benchmark-summary">-</pre>
               </article>
             </section>
-          </section>
-        </aside>
+          </aside>
 
-        <section class="panel status-panel">
-          <div class="workspace-head">
-            <div>
-              <p class="section-kicker">运行面板</p>
-              <h2>当前任务</h2>
+          <form id="run-form" class="config-panel">
+            <div class="panel-head">
+              <p class="section-kicker">输入区</p>
+              <h2>上传原著，再开始真正的续写任务</h2>
+              <p class="panel-copy">免费试看确认效果以后，再上传自己的文本。默认走平台当前配置；高级选项可以继续细调。</p>
             </div>
-            <p class="workspace-head-note">右侧优先展示正文、进度和关键信息，次级信息分层收纳，不把你丢进一页到底的聊天记录里。</p>
-          </div>
 
-          <div class="pipeline-strip" aria-hidden="true">
-            <span class="pipeline-step pipeline-step-done">1 上传文本</span>
-            <span class="pipeline-divider"></span>
-            <span class="pipeline-step pipeline-step-active">2 AI 读原著</span>
-            <span class="pipeline-divider"></span>
-            <span class="pipeline-step">3 生成续写</span>
-            <span class="pipeline-divider"></span>
-            <span class="pipeline-step">4 质量对比</span>
-          </div>
-
-          <div id="empty-state" class="empty-state">
-            <div class="empty-state-icon" aria-hidden="true">✍</div>
-            <p class="empty-state-title">还没有选中任务</p>
-            <p>推荐先在左侧快速试看样例，判断值不值得用；满意后再上传自己的原著。自带 Key 和本地版本只是额外方式。</p>
-            <div class="empty-state-steps">
-              <span>先点左侧「快速试看样例」或「按当前配置试跑样例」</span>
-              <span>确认效果以后，再上传 .txt 做正式续写；模型路由可在高级选项继续细调</span>
-              <span>如果你想自己控模型和成本，再去右侧额外方式填写自己的 Key，或者直接使用本地版本</span>
-            </div>
-            <div class="empty-state-actions">
+            <section id="quickstart-sample" class="quickstart-panel quickstart-panel-primary anchor-target">
+              <p class="label">免费试看</p>
+              <strong>第一次用？先免费试看，再决定要不要真跑</strong>
+              <p id="example-description" class="hint">正在加载示例信息...</p>
               <div class="dual-action-row">
-                <button id="empty-example-button" type="button">快速试看样例</button>
-                <button id="empty-fill-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
+                <button id="try-example-button" type="button">快速试看原创样例</button>
+                <button id="load-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
               </div>
+            </section>
+
+            <label class="field upload-field">
+              <span>原著文本</span>
+              <div class="upload-box">
+                <div class="upload-file-action" aria-hidden="true">
+                  <span class="upload-trigger">选择文件</span>
+                  <span class="upload-inline-note">点击选择 `.txt`，或先用内置样例</span>
+                </div>
+                <input id="file-input" name="file" type="file" accept=".txt,text/plain" required />
+                <strong id="selected-file-name">选择一个 `.txt` 文件</strong>
+                <small>支持 UTF-8 / UTF-8-SIG / GB18030 / GBK，上传后统一转为 UTF-8。</small>
+              </div>
+            </label>
+
+            <div class="field-grid">
+              <label class="field">
+                <span>续写章节数</span>
+                <input name="chapters" type="number" min="1" max="20" value="1" required />
+              </label>
+              <label class="field">
+                <span>起始章节</span>
+                <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
+              </label>
+              <label class="field">
+                <span>章节目标提示</span>
+                <textarea name="goal_hint" rows="2" placeholder="可选：回收伏笔、推进冲突等"></textarea>
+              </label>
             </div>
-          </div>
 
-          <div id="run-view" class="run-view hidden">
-            <div id="error-banner" class="status-banner hidden"></div>
-
-            <nav class="workspace-tabs" aria-label="工作台分区">
-              <button type="button" class="workspace-tab is-active" data-tab-target="overview">总览</button>
-              <button type="button" class="workspace-tab" data-tab-target="planning">规划</button>
-              <button type="button" class="workspace-tab" data-tab-target="diagnostics">诊断</button>
-            </nav>
-
-            <section class="workspace-block workspace-block-primary">
-              <div class="run-meta">
+            <section id="bring-your-own-api" class="api-panel anchor-target">
+              <div class="quickstart-panel-head">
                 <div>
-                  <p class="label">任务 ID</p>
-                  <strong id="run-id">-</strong>
+                  <p class="label">额外方式</p>
+                  <strong>使用自己的 Key，或者直接用本地版本</strong>
                 </div>
-                <div>
-                  <p class="label">会话名</p>
-                  <strong id="run-session">-</strong>
-                </div>
-                <div>
-                  <p class="label">状态</p>
-                  <strong id="run-status">-</strong>
-                </div>
+                <button id="clear-api-config-button" class="utility-button" type="button">清空当前 API</button>
               </div>
-
-              <div class="progress-wrap">
-                <div class="progress-bar">
-                  <div id="progress-fill" class="progress-fill"></div>
-                </div>
-                <div class="progress-meta">
-                  <span id="progress-message">等待开始</span>
-                  <span id="progress-percent">0%</span>
-                </div>
-                <div class="progress-note">
-                  <span id="progress-count">0/0</span>
-                </div>
+              <div class="field-grid model-grid">
+                <label class="field">
+                  <span>API Endpoint</span>
+                  <input
+                    id="api-base-url-input"
+                    name="api_base_url"
+                    type="url"
+                    inputmode="url"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="留空则使用部署默认 endpoint"
+                  />
+                </label>
+                <label class="field">
+                  <span>API Key</span>
+                  <input
+                    id="api-key-input"
+                    name="api_key"
+                    type="password"
+                    autocomplete="off"
+                    spellcheck="false"
+                    placeholder="留空则使用部署默认 Key"
+                  />
+                </label>
+                <label class="field">
+                  <span>Wire API</span>
+                  <select id="wire-api-input" name="wire_api">
+                    <option value="chat">Chat Completions</option>
+                    <option value="responses">Responses</option>
+                  </select>
+                </label>
               </div>
-
-              <div class="stats-grid">
-                <article class="stat-card">
-                  <p class="label">总调用</p>
-                  <strong id="metric-calls">0</strong>
-                </article>
-                <article class="stat-card">
-                  <p class="label">总 Token 数</p>
-                  <strong id="metric-tokens">0</strong>
-                </article>
-                <article class="stat-card">
-                  <p class="label">总成本</p>
-                  <strong id="metric-cost">$0.000000</strong>
-                </article>
-                <article class="stat-card">
-                  <p class="label">章节进度</p>
-                  <strong id="metric-chapters">0 / 0</strong>
-                </article>
-                <article class="stat-card">
-                  <p class="label">续写质量</p>
-                  <strong id="metric-quality">-</strong>
-                </article>
-                <article class="stat-card">
-                  <p class="label">人物一致性</p>
-                  <strong id="metric-consistency">-</strong>
-                </article>
+              <div class="quickstart-primary-actions">
+                <button id="open-advanced-options-button" class="utility-button" type="button">继续配置模型路由</button>
+                <span id="runtime-api-hint" class="field-note">
+                  留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。
+                </span>
               </div>
             </section>
 
-            <section class="workspace-block" data-tab-panel="overview">
-              <div class="workspace-block-head">
-                <div>
-                  <p class="section-kicker">总览</p>
-                  <h3>正文、风格与故事状态</h3>
+            <details id="advanced-options" class="advanced-panel anchor-target">
+              <summary>
+                <span>
+                  <p class="section-kicker">高级选项</p>
+                  <strong>模型路由、规划与执行</strong>
+                </span>
+              </summary>
+              <div class="advanced-body">
+                <label class="field">
+                  <span>会话名</span>
+                  <input name="session_name" type="text" placeholder="留空则按文件名与时间戳自动生成" />
+                </label>
+                <div class="field-grid">
+                  <label class="field">
+                    <span>规划模式</span>
+                    <select name="planning_mode">
+                      <option value="balanced">balanced（推荐）</option>
+                      <option value="strict">strict</option>
+                      <option value="expansive">expansive</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>提纲草稿数</span>
+                    <input name="skeleton_candidates" type="number" min="1" max="5" placeholder="默认" />
+                  </label>
+                  <label class="field">
+                    <span>续写候选数</span>
+                    <input name="draft_candidates" type="number" min="1" max="5" placeholder="默认" />
+                  </label>
+                </div>
+                <div class="field-grid field-grid-slim">
+                  <label class="field">
+                    <span>新人物预算</span>
+                    <input name="new_character_budget" type="number" min="0" max="5" placeholder="自动" />
+                  </label>
+                  <label class="field">
+                    <span>新地点预算</span>
+                    <input name="new_location_budget" type="number" min="0" max="5" placeholder="自动" />
+                  </label>
+                  <label class="field">
+                    <span>新势力预算</span>
+                    <input name="new_faction_budget" type="number" min="0" max="5" placeholder="自动" />
+                  </label>
+                </div>
+                <div class="form-inline-actions">
+                  <button id="reset-models-button" class="utility-button" type="button">恢复部署默认模型</button>
+                  <span id="runtime-model-hint" class="field-note">当前使用部署默认模型。</span>
+                </div>
+                <div class="field-grid model-grid">
+                  <label class="field">
+                    <span>风格分析模型</span>
+                    <input id="style-model-input" name="style_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field">
+                    <span>情节规划模型</span>
+                    <input id="plot-model-input" name="plot_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field">
+                    <span>正文生成模型</span>
+                    <input id="draft-model-input" name="draft_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field">
+                    <span>质检评估模型</span>
+                    <input id="quality-model-input" name="quality_model" type="text" list="model-options" />
+                  </label>
+                  <label class="field model-span-wide">
+                    <span>原著索引模型</span>
+                    <input id="lightrag-model-input" name="lightrag_model_name" type="text" list="model-options" />
+                  </label>
+                </div>
+                <datalist id="model-options"></datalist>
+                <div class="toggle-row">
+                  <label class="toggle">
+                    <input name="use_existing_index" type="checkbox" />
+                    <span>复用已有索引</span>
+                  </label>
+                  <label class="toggle">
+                    <input name="overwrite" type="checkbox" />
+                    <span>允许覆盖同名产物</span>
+                  </label>
                 </div>
               </div>
+            </details>
 
-              <section class="workspace-block workspace-block-feature workspace-block-nested">
-                <div class="workspace-block-head">
-                  <div>
-                    <p class="section-kicker">正文输出</p>
-                    <h3>续写正文预览</h3>
-                  </div>
-                </div>
-                <div class="story-preview-stack">
-                  <section class="story-preview-panel">
-                    <div class="story-preview-panel-head">
-                      <div class="story-preview-copy">
-                        <p id="source-preview-label" class="label">原文断点</p>
-                        <span id="source-preview-meta" class="workspace-path source-preview-meta">仅展示当前衔接最相关的原文片段</span>
-                      </div>
-                      <div class="story-preview-tabs" role="tablist" aria-label="原文视图切换">
-                        <button
-                          id="source-tab-excerpt"
-                          type="button"
-                          class="story-preview-tab is-active"
-                          data-source-tab-target="excerpt"
-                        >
-                          衔接片段
-                        </button>
-                        <button type="button" class="story-preview-tab" data-source-tab-target="full">原始正文</button>
-                      </div>
-                    </div>
-                    <article id="source-preview" class="markdown-preview markdown-preview-source">-</article>
-                  </section>
-
-                  <section class="story-preview-panel story-preview-panel-ai">
-                    <div class="story-preview-panel-head">
-                      <div class="story-preview-copy">
-                        <p id="output-preview-label" class="label">AI 生成的续写章节</p>
-                        <span id="output-preview-meta" class="workspace-path output-preview-meta">
-                          按连续阅读方式展示：先原文断点，再接 AI 生成章节
-                        </span>
-                      </div>
-                      <div class="story-preview-panel-actions">
-                        <span id="output-path" class="workspace-path">-</span>
-                        <div class="story-preview-tabs" role="tablist" aria-label="续写视图切换">
-                          <button type="button" class="story-preview-tab" data-output-tab-target="chapter">
-                            续写章节
-                          </button>
-                          <button
-                            type="button"
-                            class="story-preview-tab is-active"
-                            data-output-tab-target="combined"
-                          >
-                            拼接预览
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    <div id="output-preview" class="story-output-preview">-</div>
-                  </section>
-                </div>
-              </section>
-
-              <div class="result-grid result-grid-emphasis">
-                <article class="result-card result-card-feature">
-                  <p class="label">风格摘要</p>
-                  <pre id="style-summary">-</pre>
-                </article>
-                <article class="result-card result-card-feature">
-                  <p class="label">故事状态</p>
-                  <pre id="story-summary">-</pre>
-                </article>
-              </div>
-
-              <div class="result-grid result-grid-triple">
-                <article class="result-card">
-                  <p class="label">模型路由</p>
-                  <pre id="model-summary">-</pre>
-                </article>
-                <article class="result-card">
-                  <p class="label">最新章节目标</p>
-                  <pre id="goal-summary">-</pre>
-                </article>
-                <article class="result-card">
-                  <p class="label">运行产物</p>
-                  <div id="artifact-list" class="path-list"></div>
-                </article>
-              </div>
-            </section>
-
-            <section class="workspace-block" data-tab-panel="planning">
-              <div class="workspace-block-head">
-                <div>
-                  <p class="section-kicker">规划层</p>
-                  <h3>规划与参考</h3>
-                </div>
-              </div>
-
-              <div class="result-grid">
-                <article class="result-card">
-                  <p class="label">作品 skill</p>
-                  <pre id="work-skill-summary">-</pre>
-                </article>
-                <article class="result-card">
-                  <p class="label">世界设定</p>
-                  <pre id="world-summary">-</pre>
-                </article>
-              </div>
-
-              <div class="result-grid">
-                <article class="result-card">
-                  <p class="label">导演人物走向</p>
-                  <div id="arc-list" class="chapter-list"></div>
-                </article>
-                <article class="result-card">
-                  <p class="label">参考资料</p>
-                  <div id="reference-list" class="thread-list"></div>
-                </article>
-                <article class="result-card">
-                  <p class="label">世界设定参考</p>
-                  <pre id="lorebook-summary">-</pre>
-                </article>
-              </div>
-
-              <div class="result-grid">
-                <article class="result-card">
-                  <p class="label">最新章节目标</p>
-                  <pre id="brief-summary">-</pre>
-                </article>
-                <article class="result-card">
-                  <p class="label">章节评测</p>
-                  <pre id="evaluation-summary">-</pre>
-                </article>
-              </div>
-
-              <div class="result-grid">
-                <article class="result-card">
-                  <p class="label">提纲草稿</p>
-                  <div id="skeleton-candidate-list" class="path-list"></div>
-                </article>
-                <article class="result-card">
-                  <p class="label">续写候选</p>
-                  <div id="draft-candidate-list" class="path-list"></div>
-                </article>
-              </div>
-            </section>
-
-            <section class="workspace-block" data-tab-panel="diagnostics">
-              <div class="workspace-block-head">
-                <div>
-                  <p class="section-kicker">诊断层</p>
-                  <h3>质检、日志与章节明细</h3>
-                </div>
-              </div>
-
-              <div class="result-grid">
-                <article class="result-card">
-                  <p class="label">质检</p>
-                  <pre id="quality-summary">-</pre>
-                </article>
-                <article class="result-card">
-                  <p class="label">一致性</p>
-                  <pre id="consistency-summary">-</pre>
-                </article>
-              </div>
-
-              <div class="result-grid">
-                <article class="result-card">
-                  <p class="label">复活诊断</p>
-                  <pre id="revival-diagnosis-summary">-</pre>
-                </article>
-                <article class="result-card">
-                  <p class="label">盲看 1000 字</p>
-                  <div id="blind-challenge" class="thread-list"></div>
-                </article>
-              </div>
-
-              <div class="result-grid">
-                <article class="result-card">
-                  <p class="label">未收束伏笔</p>
-                  <div id="threads-list" class="thread-list"></div>
-                </article>
-                <article class="result-card">
-                  <p class="label">章节结果</p>
-                  <div id="chapter-list" class="chapter-list"></div>
-                </article>
-              </div>
-
-              <article class="result-card logs-card">
-                <p class="label">运行日志</p>
-                <div id="run-logs" class="log-list"></div>
-              </article>
-            </section>
-          </div>
+            <div class="action-row">
+              <button id="submit-button" type="submit">开始分析并续写</button>
+              <p id="form-status" class="hint">提交后会自动轮询任务进度。</p>
+            </div>
+          </form>
         </section>
       </main>
     </div>

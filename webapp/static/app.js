@@ -50,7 +50,7 @@ const state = {
   activeRunDetail: null,
   activeBenchmarkKey: null,
   activeSourceTab: "excerpt",
-  activeOutputTab: "combined",
+  activeOutputTab: "chapter",
   activeWorkspaceTab: "overview",
   activeSidebarTab: "runs",
   exampleCache: [],
@@ -94,6 +94,7 @@ const elements = {
   metricCalls: document.getElementById("metric-calls"),
   metricTokens: document.getElementById("metric-tokens"),
   metricCost: document.getElementById("metric-cost"),
+  metricTime: document.getElementById("metric-time"),
   metricChapters: document.getElementById("metric-chapters"),
   metricQuality: document.getElementById("metric-quality"),
   metricConsistency: document.getElementById("metric-consistency"),
@@ -247,6 +248,12 @@ function formatNumber(value) {
 
 function formatCurrency(value) {
   return `$${Number(value || 0).toFixed(6)}`;
+}
+
+function formatMinutes(value) {
+  const seconds = Number(value || 0);
+  if (!Number.isFinite(seconds) || seconds <= 0) return "约 12";
+  return `约 ${Math.max(1, Math.ceil(seconds / 60))}`;
 }
 
 function formatRunStatus(value) {
@@ -1055,7 +1062,25 @@ function renderSourcePanel(run) {
     elements.sourcePreviewLabel.textContent = run.latest_source_preview_label || "原文断点";
     elements.sourcePreviewMeta.textContent = "仅展示当前衔接最相关的原文片段";
     elements.sourcePreview.classList.remove("markdown-preview-scrollable");
-    elements.sourcePreview.innerHTML = renderMarkdownPreview(run.latest_source_preview);
+    if (String(run.latest_source_preview || "").trim()) {
+      elements.sourcePreview.innerHTML = renderMarkdownPreview(run.latest_source_preview);
+      return;
+    }
+
+    const entry = state.sourceTextCache[run.id];
+    if (entry?.status === "loaded") {
+      const text = String(entry.payload.text_content || "").trim();
+      const excerpt = text.length > 520 ? `${text.slice(0, 520)}……` : text;
+      elements.sourcePreviewMeta.textContent = `${entry.payload.input_filename} · ${formatNumber(entry.payload.character_count)} 字`;
+      elements.sourcePreview.innerHTML = renderMarkdownPreview(excerpt);
+      return;
+    }
+    if (entry?.status === "error") {
+      elements.sourcePreview.innerHTML = `<p class="markdown-empty">${escapeHtml(entry.error || "原稿片段加载失败")}</p>`;
+      return;
+    }
+    elements.sourcePreview.innerHTML = '<p class="markdown-empty">正在加载原稿片段...</p>';
+    void ensureSourceTextLoaded(run.id);
     return;
   }
 
@@ -1218,6 +1243,7 @@ function renderRun(run) {
   elements.metricCalls.textContent = formatNumber(run.metrics?.total_calls || 0);
   elements.metricTokens.textContent = formatNumber(run.metrics?.total_tokens || 0);
   elements.metricCost.textContent = formatCurrency(run.metrics?.total_cost_usd || 0);
+  elements.metricTime.textContent = formatMinutes(run.metrics?.latest_elapsed_seconds);
   elements.metricChapters.textContent = `${run.metrics?.completed_chapters || 0} / ${run.metrics?.chapter_count || 0}`;
   elements.metricQuality.textContent = formatScore(
     run.metrics?.latest_quality_score,

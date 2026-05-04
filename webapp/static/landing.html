@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>TaiJianICU · 你的坑，AI 来填</title>
+    <title>TaiJianICU · 让故事，自然继续</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,293 +14,351 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body class="landing-body">
-    <nav id="landing-nav" class="landing-nav">
-      <a class="landing-nav-brand" href="/">
-        <span class="landing-nav-logo">笔</span>
-        <span>TaiJianICU</span>
-      </a>
-      <div class="landing-nav-links">
-        <a class="landing-nav-link" href="#how-it-works">怎么开始</a>
-        <a class="landing-nav-link" href="#showcase">续写示例</a>
-        <a class="landing-nav-link" href="#benchmark">公开实证</a>
-        <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">免费试看</a>
+    <div class="landing-frame">
+      <div class="browser-chrome" aria-hidden="true">
+        <span></span>
+        <span></span>
+        <span></span>
       </div>
-    </nav>
 
-    <main class="landing-page">
-      <section class="landing-hero">
-        <div class="hero-bg" aria-hidden="true">
-          <div class="hero-orb hero-orb-1"></div>
-          <div class="hero-orb hero-orb-2"></div>
-          <div class="hero-orb hero-orb-3"></div>
-          <div class="hero-lines"></div>
+      <nav id="landing-nav" class="landing-nav">
+        <a class="landing-nav-brand" href="/">
+          <span class="landing-nav-logo">笔</span>
+          <span>TaiJianICU</span>
+        </a>
+        <div class="landing-nav-links" aria-label="主导航">
+          <a class="landing-nav-link" href="#product">产品</a>
+          <a class="landing-nav-link" href="#showcase">案例</a>
+          <a class="landing-nav-link" href="#pricing">定价</a>
+          <a class="landing-nav-link" href="#docs">文档</a>
+          <a class="landing-nav-link" href="#about">关于</a>
         </div>
+        <div class="landing-nav-actions">
+          <a class="landing-login" href="/studio">登录</a>
+          <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">开始创作</a>
+        </div>
+      </nav>
 
-        <div class="hero-inner">
-          <p class="hero-badge">
-            <span class="dot"></span>
-            免费试看优先 · 自带 Key 可选 · 支持本地版本
-          </p>
-          <h1 class="hero-title">
-            你的坑，
-            <span>AI 来填。</span>
-          </h1>
-          <p class="hero-sub">
-            上传原著 .txt，AI 先读懂风格和世界观，再按原著的味道续写。第一次使用，先看固定样例和免费试跑就够了；如果你要长期用、控成本，或者想自己托管，也支持自带 Key 和本地版本。
-          </p>
-          <div class="hero-flow" aria-label="续写流程">
-            <span>上传 .txt</span>
-            <span class="arrow">→</span>
-            <span>AI 读原著</span>
-            <span class="arrow">→</span>
-            <span>生成续写</span>
-            <span class="arrow">→</span>
-            <span>质量对比</span>
+      <main class="landing-page">
+        <section class="landing-hero">
+          <div class="hero-copy">
+            <h1 class="hero-title">
+              让<span>故事</span>，<br />
+              自然继续。
+            </h1>
+            <p class="hero-sub">
+              为长篇创作者定制的续写工作台，保留你的原著风格，支持深度创作与世界观管理。
+            </p>
+            <div class="hero-actions">
+              <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">开始免费试用</a>
+              <a class="landing-button landing-button-secondary" href="#product">了解产品</a>
+            </div>
           </div>
-          <div class="hero-actions">
-            <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">先免费试看</a>
-            <a class="landing-button landing-button-secondary" href="/studio">进入 Studio</a>
+          <div class="hero-visual" aria-hidden="true"></div>
+        </section>
+
+        <section class="studio-preview" aria-label="TaiJianICU Studio 预览">
+          <aside class="studio-preview-side">
+            <strong>TaiJianICU Studio</strong>
+            <span class="is-active">运行面板</span>
+            <span>作品库</span>
+            <span>世界观设定</span>
+            <span>人物设定</span>
+            <span>统计</span>
+            <span>设置</span>
+          </aside>
+          <div class="studio-preview-main">
+            <p class="section-kicker">运行中</p>
+            <div class="studio-preview-head">
+              <div>
+                <h2>月夜之诗 · 示例项目</h2>
+                <p>在破碎的世界中，一群追梦者寻找被遗忘的真相。</p>
+              </div>
+              <div class="preview-tags">
+                <span>长篇连载</span>
+                <span>奇幻</span>
+                <span>多 POV</span>
+              </div>
+            </div>
+            <div class="preview-metrics">
+              <span>
+                章节进度
+                <strong>3 / 6</strong>
+              </span>
+              <span>
+                总字数
+                <strong>12 万</strong>
+              </span>
+              <span>
+                总 TOKEN 数
+                <strong>122,026</strong>
+              </span>
+              <a class="landing-button landing-button-primary" href="/studio">继续创作</a>
+            </div>
           </div>
-          <div class="hero-paths">
-            <article class="hero-path hero-path-primary">
-              <p class="showcase-label">免费试用</p>
-              <strong>先看固定样例，再决定值不值得用</strong>
-              <span>第一次来先看效果最重要。公开样例和小额度平台试跑就是默认主路径。</span>
+        </section>
+
+        <section class="creation-flow" aria-label="创作流程">
+          <h2>创作流程</h2>
+          <div class="flow-steps">
+            <article>
+              <span class="flow-icon">◎</span>
+              <strong>上传原著</strong>
+              <p>导入已写内容</p>
             </article>
-            <article class="hero-path">
-              <p class="showcase-label">可选能力</p>
-              <strong>也可以带你自己的 endpoint / Key</strong>
-              <span>适合正式长期使用，或者你想自己控制模型、额度和账单归属。</span>
+            <article>
+              <span class="flow-arrow">→</span>
+              <span class="flow-icon">▣</span>
+              <strong>理解与记忆</strong>
+              <p>构建深度语义记忆</p>
             </article>
-            <article class="hero-path">
-              <p class="showcase-label">本地版本</p>
-              <strong>仓库已提供本地部署方案</strong>
-              <span>如果你不想依赖在线试用，也可以自己部署本地版或私有服务器版本来使用。</span>
+            <article>
+              <span class="flow-arrow">→</span>
+              <span class="flow-icon">✧</span>
+              <strong>自由创作</strong>
+              <p>续写你的故事</p>
+            </article>
+            <article>
+              <span class="flow-arrow">→</span>
+              <span class="flow-icon">☷</span>
+              <strong>反复打磨</strong>
+              <p>对比优化，持续精进</p>
             </article>
           </div>
-          <p class="hero-note">先看公开实证和免费样例；满意之后，再决定是继续平台试跑、切自己的 Key，还是直接用本地版本。</p>
+        </section>
+      </main>
+    </div>
+
+    <main class="landing-sections">
+      <section id="product" class="landing-section product-section">
+        <div class="landing-center">
+          <p class="section-pill">产品能力</p>
+          <h2 class="landing-section-title" data-reveal>专注长期创作的<span>核心能力</span></h2>
+          <p class="landing-section-desc" data-reveal>更懂中文创作，更懂你的创作风格。</p>
+        </div>
+
+        <div class="product-grid">
+          <div class="capability-list" data-reveal>
+            <article>
+              <span>◌</span>
+              <div>
+                <h3>风格延续</h3>
+                <p>根据学习的内容与设定延续写作风格，保持你的表达和叙事节奏。</p>
+              </div>
+            </article>
+            <article>
+              <span>♙</span>
+              <div>
+                <h3>人物一致</h3>
+                <p>通过角色记忆与关系网络，让角色在每一次出场都真实、可信地成长。</p>
+              </div>
+            </article>
+            <article>
+              <span>✶</span>
+              <div>
+                <h3>世界观对齐</h3>
+                <p>理解并遵循你的世界观、时间线与设定，确保故事逻辑严谨、内在自洽。</p>
+              </div>
+            </article>
+            <article>
+              <span>☰</span>
+              <div>
+                <h3>可控可调</h3>
+                <p>提供参数和质量反馈，让续写不是一次性黑盒，而是可以反复打磨的工作流。</p>
+              </div>
+            </article>
+          </div>
+
+          <div class="product-console" data-reveal>
+            <nav>
+              <span class="is-active">续写设置</span>
+              <span>人物设定</span>
+              <span>世界观</span>
+              <span>大纲</span>
+              <span>总纲</span>
+            </nav>
+            <h3>月夜之诗 · 第三章</h3>
+            <p>
+              银白色的月光洒在古老的城墙上，风从塔楼的缝隙间穿过，带来远处海面的咸湿气息。
+            </p>
+            <div class="console-controls">
+              <label>
+                风格强度
+                <span><i style="width: 74%"></i></span>
+              </label>
+              <label>
+                创造性
+                <span><i style="width: 52%"></i></span>
+              </label>
+              <strong>预计字数<br />800 字</strong>
+            </div>
+            <div class="console-actions">
+              <a class="landing-button landing-button-secondary" href="/studio">预览续写</a>
+              <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">应用并插入</a>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section class="landing-section">
+      <section id="showcase" class="landing-section showcase-section">
         <div class="landing-center">
-          <p class="section-kicker">续写标准</p>
-          <h2 class="landing-section-title" data-reveal>填坑不是瞎编，得先读懂原著再动笔</h2>
+          <h2 class="landing-section-title" data-reveal>灵感来自真实的创作</h2>
+          <p class="landing-section-desc" data-reveal>原创样例与公版文本示例直接展示，不混入外部版权作品片段。</p>
         </div>
 
-        <div class="principles-grid">
-          <article class="principle-card" data-reveal>
-            <p class="principle-icon">01</p>
-            <strong>先锁死世界观，再写一个字</strong>
-            <span>人物关系、叙事气味、未收束伏笔先被抽出来，正文在硬约束里生成，不让模型自己乱编。</span>
+        <div class="case-grid">
+          <article class="case-card case-card-red" data-reveal>
+            <p>公版示例</p>
+            <h3>红楼梦第120回</h3>
+            <span>承接前八十回断点，观察 source-voice 与人物声口。</span>
+            <a href="#benchmark">查看故事 →</a>
           </article>
-          <article class="principle-card" data-reveal>
-            <p class="principle-icon">02</p>
-            <strong>写给不甘心的人</strong>
-            <span>网文作者、同人创作者、断更受害者都可以先看效果，再决定要不要拿自己的原著进 Studio。</span>
+          <article class="case-card" data-reveal>
+            <p>奇幻 · 成长</p>
+            <h3>月夜之诗</h3>
+            <span>在月光洒落的峡谷深处，一段关于记忆与救赎的旅程悄然展开。</span>
+            <a href="/studio#quickstart-sample">查看故事 →</a>
           </article>
-        </div>
-      </section>
-
-      <section id="how-it-works" class="landing-section landing-section-surface">
-        <div class="landing-center">
-          <p class="section-kicker">快速上手</p>
-          <h2 class="landing-section-title" data-reveal>三步填坑，不废话</h2>
-          <p class="landing-section-desc" data-reveal>第一次使用先免费试看；确认有说服力之后，再决定要不要真跑你自己的文本。</p>
-        </div>
-
-        <div class="steps-grid">
-          <article class="step-item" data-reveal>
-            <div class="step-num">01</div>
-            <strong>先免费试看样例</strong>
-            <span>固定样例和公开实证会先把续写味道、说服力和质量结果摊开给你看，不需要先准备自己的文本。</span>
-            <p class="step-time">≈ 1 分钟</p>
+          <article class="case-card" data-reveal>
+            <p>悬疑 · 都市</p>
+            <h3>雨夜追魂</h3>
+            <span>从义庄门口的一盏旧灯开始，让旧案在细雨里继续发酵。</span>
+            <a href="/studio#quickstart-sample">查看故事 →</a>
           </article>
-          <article class="step-item" data-reveal>
-            <div class="step-num">02</div>
-            <strong>满意后再上传原著</strong>
-            <span>支持 UTF-8 / GBK / GB18030。AI 会抽取人物关系、故事进度和伏笔，先建立世界设定档案。</span>
-            <p class="step-time">≈ 1-2 分钟</p>
+          <article class="case-card" data-reveal>
+            <p>武侠 · 江湖</p>
+            <h3>风起南山</h3>
+            <span>风起云涌，江湖再起波澜，有人执剑而行，有人归隐山林。</span>
+            <a href="/studio#quickstart-sample">查看故事 →</a>
           </article>
-          <article class="step-item" data-reveal>
-            <div class="step-num">03</div>
-            <strong>按需要切换使用方式</strong>
-            <span>你可以继续用平台试跑，也可以切到自己的 Key；如果要长期使用，仓库里也已经提供本地版本部署方案。</span>
-            <p class="step-time">≈ 2-5 分钟</p>
+          <article class="case-card" data-reveal>
+            <p>科幻 · 未来</p>
+            <h3>无尽回响</h3>
+            <span>回声穿越时空裂缝，记忆与真相在无尽回响中浮现。</span>
+            <a href="/studio#quickstart-sample">查看故事 →</a>
           </article>
-        </div>
-      </section>
-
-      <section id="showcase" class="landing-section">
-        <div class="landing-center">
-          <p class="section-kicker">续写示例</p>
-          <h2 class="landing-section-title" data-reveal>填出来的坑，什么味儿？</h2>
-          <p class="landing-section-desc" data-reveal>
-            这里混合展示原创样例与公版文本短片段，原文断点与 AI 续写直接对比。评分来自系统自动质检，不是自己夸自己。
-          </p>
-        </div>
-
-        <div class="showcase-grid">
-          <article class="showcase-card" data-reveal>
-            <header class="showcase-card-head">
-              <p class="label">示例 A</p>
-              <strong>从原文气味切入，武侠悬疑</strong>
-            </header>
-            <div class="showcase-block">
-              <p class="showcase-label">原文片段</p>
-              <pre class="showcase-prose">青石城的夜雨落得很细，像是谁在高天之上缓慢磨刀。沈照拎着一盏旧灯，独自站在城南义庄门口。</pre>
-            </div>
-            <div class="showcase-block">
-              <p class="showcase-label">AI 续写</p>
-              <pre class="showcase-prose showcase-prose-ai">雨丝细密，落在废弃码头的青石板上，溅起一层薄雾。沈照站在三号仓栈前，手里攥着那枚冰凉的铜扣。脚步声从阴影里传来。不是一个人。</pre>
-            </div>
-            <div class="showcase-scores">
-              <span>风格一致性 <strong>8.4</strong></span>
-              <span>叙事连贯性 <strong>9.1</strong></span>
-              <span>伏笔处理 <strong>7.8</strong></span>
-            </div>
-          </article>
-
-          <article class="showcase-card" data-reveal>
-            <header class="showcase-card-head">
-              <p class="label">示例 B</p>
-              <strong>先有提纲，再落正文</strong>
-            </header>
-            <div class="showcase-block">
-              <p class="showcase-label">章节提纲</p>
-              <pre class="showcase-prose showcase-prose-mono">1. 南渡口夜会，确认非黑旗营旧部
-2. 顾行舟暗处观察，发现城守司埋伏
-3. 混战中铜扣被夺</pre>
-            </div>
-            <div class="showcase-block">
-              <p class="showcase-label">AI 续写正文</p>
-              <pre class="showcase-prose showcase-prose-ai">顾行舟伏在水塔顶层，单筒镜抵在眼前。他先看见了紫色火光，又看见仓库周围伏着的另一拨人影。不是绑匪的人，衣角下隐约露出制式皮甲。城守司。</pre>
-            </div>
-            <div class="showcase-scores">
-              <span>风格一致性 <strong>8.7</strong></span>
-              <span>叙事连贯性 <strong>8.9</strong></span>
-              <span>提纲执行度 <strong>9.2</strong></span>
-            </div>
-          </article>
-
-          <article class="showcase-card" data-reveal>
-            <header class="showcase-card-head">
-              <p class="label">示例 C</p>
-              <strong>人物对话风格续写</strong>
-            </header>
-            <div class="showcase-block">
-              <p class="showcase-label">原文片段</p>
-              <pre class="showcase-prose">"你知道那半块玉在哪里。" 他说。不是问句。</pre>
-            </div>
-            <div class="showcase-block">
-              <p class="showcase-label">AI 续写</p>
-              <pre class="showcase-prose showcase-prose-ai">"知道。" 她说，"但我不会告诉你。"沈照没动。他学会了等。"因为告诉我，你就死了。" 他说。</pre>
-            </div>
-            <div class="showcase-scores">
-              <span>风格一致性 <strong>9.0</strong></span>
-              <span>人物声口 <strong>8.6</strong></span>
-              <span>节奏把控 <strong>9.3</strong></span>
-            </div>
-          </article>
-
-          <article class="showcase-card" data-reveal>
-            <header class="showcase-card-head">
-              <p class="label">示例 D</p>
-              <strong>旧伏笔回收场景</strong>
-            </header>
-            <div class="showcase-block">
-              <p class="showcase-label">原文伏笔</p>
-              <pre class="showcase-prose">"黑玉若现，切记——" 然后就没了。</pre>
-            </div>
-            <div class="showcase-block">
-              <p class="showcase-label">AI 回收伏笔</p>
-              <pre class="showcase-prose showcase-prose-ai">顾行舟翻到背面，那里刻着一个字。"归"。祖父的声音突然清晰了："黑玉若现，切记归还北境。那不是沈家的东西。"</pre>
-            </div>
-            <div class="showcase-scores">
-              <span>伏笔回收 <strong>9.4</strong></span>
-              <span>叙事一致性 <strong>9.0</strong></span>
-              <span>情感张力 <strong>8.8</strong></span>
-            </div>
-          </article>
-
-          <article class="showcase-card" data-reveal>
-            <header class="showcase-card-head">
-              <p class="label">红楼示例</p>
-              <strong>公版原文断点，第120回续写</strong>
-            </header>
-            <div class="showcase-block">
-              <p class="showcase-label">原文断点</p>
-              <pre class="showcase-prose">迎春方哭哭啼啼的在王夫人房中诉委曲。王夫人并众姊妹无不落泪，只得解劝说：“我的儿，这也是你的命。”</pre>
-            </div>
-            <div class="showcase-block">
-              <p class="showcase-label">AI 续写</p>
-              <pre class="showcase-prose showcase-prose-ai">话说宝玉自晴雯去后，终日恍恍惚惚，似失了魂一般。中秋过后，园中草木皆带衰败之色，他忽想起紫菱洲来。</pre>
-            </div>
-            <div class="showcase-scores">
-              <span>连贯 <strong>0.90</strong></span>
-              <span>世界一致 <strong>0.90</strong></span>
-              <span>Source-voice <strong>通过</strong></span>
-            </div>
+          <article class="case-card" data-reveal>
+            <p>温情 · 群像</p>
+            <h3>灯火人间</h3>
+            <span>万家灯火下的人间烟火，藏着无数平凡而动人的选择。</span>
+            <a href="/studio#quickstart-sample">查看故事 →</a>
           </article>
         </div>
       </section>
 
-      <section class="landing-section landing-section-surface">
+      <section id="pricing" class="landing-section pricing-section">
         <div class="landing-center">
-          <p class="section-kicker">工作台</p>
-          <h2 class="landing-section-title" data-reveal>这不是聊天框，是填坑控制台</h2>
-          <p class="landing-section-desc" data-reveal>故事规划、候选正文、质量对比全部分层展示。你盯着看，AI 不敢乱写。</p>
+          <h2 class="landing-section-title" data-reveal>选择适合你的<span>创作方案</span></h2>
+          <p class="landing-section-desc" data-reveal>从灵感闪现到长篇巨作，TaiJianICU 陪你走得更远。</p>
         </div>
 
-        <div class="studio-preview-grid">
-          <figure class="studio-preview-card" data-reveal>
-            <div class="studio-preview-shot">
-              <img src="/static/studio-overview.png" alt="TaiJianICU Studio 总览截图" />
-            </div>
-            <figcaption>
-              <p class="showcase-label">总览视图</p>
-              <strong>正文、进度和关键指标优先</strong>
-              <span>首屏先判断这次续写靠不靠谱，再决定要不要继续看细节。</span>
-            </figcaption>
-          </figure>
-
-          <figure class="studio-preview-card" data-reveal>
-            <div class="studio-preview-shot">
-              <img src="/static/studio-planning.png" alt="TaiJianICU Studio 规划视图截图" />
-            </div>
-            <figcaption>
-              <p class="showcase-label">规划视图</p>
-              <strong>提纲、世界设定、候选稿分层收纳</strong>
-              <span>故事走向和参考资料在规划区集中展示，不和正文主区抢注意力。</span>
-            </figcaption>
-          </figure>
+        <div class="pricing-grid">
+          <article class="price-card" data-reveal>
+            <h3>免费版</h3>
+            <p>体验核心功能，开启你的创作之旅。</p>
+            <strong>¥0 <span>/ 月</span></strong>
+            <ul>
+              <li>基础 AI 读原著</li>
+              <li>续写基础字数额度</li>
+              <li>基础模型访问</li>
+              <li>社区支持</li>
+            </ul>
+            <a class="landing-button landing-button-secondary" href="/studio#quickstart-sample">开始免费使用</a>
+          </article>
+          <article class="price-card" data-reveal>
+            <h3>创作者版</h3>
+            <p>为个人创作者设计，解锁更强大的创作能力。</p>
+            <strong>¥29 <span>/ 月</span></strong>
+            <ul>
+              <li>更多 AI 读原著次数</li>
+              <li>更高续写字数额度</li>
+              <li>多模型访问</li>
+              <li>自定义写作风格</li>
+            </ul>
+            <a class="landing-button landing-button-primary" href="/studio">升级到创作者版</a>
+          </article>
+          <article class="price-card price-card-featured" data-reveal>
+            <em>推荐</em>
+            <h3>专业版</h3>
+            <p>适合专业写作者，享受完整的创作自由与效率。</p>
+            <strong>¥99 <span>/ 月</span></strong>
+            <ul>
+              <li>无限 AI 读原著</li>
+              <li>无限续写字数</li>
+              <li>所有高级模型访问</li>
+              <li>角色与世界观管理</li>
+            </ul>
+            <a class="landing-button landing-button-primary" href="/studio">升级到专业版</a>
+          </article>
+          <article class="price-card" data-reveal>
+            <h3>团队版</h3>
+            <p>为团队与企业量身定制，协作创作，高效管理。</p>
+            <strong>定制价格</strong>
+            <ul>
+              <li>专属模型与定制化训练</li>
+              <li>团队协作与权限管理</li>
+              <li>共享知识库与资产管理</li>
+              <li>API 与系统集成</li>
+            </ul>
+            <a class="landing-button landing-button-secondary" href="mailto:hello@example.com">联系销售咨询</a>
+          </article>
         </div>
       </section>
 
-      <section id="benchmark" class="landing-section">
+      <section id="docs" class="landing-section docs-section">
+        <div class="docs-shell">
+          <div class="docs-hero">
+            <p class="feather-mark">羽</p>
+            <h2>文档中心</h2>
+            <p>快速上手，深入了解 TaiJianICU。</p>
+            <label class="docs-search">
+              <span>⌕</span>
+              <input type="search" placeholder="搜索文档、指南和教程" />
+            </label>
+          </div>
+          <div class="docs-cards">
+            <article>
+              <span>✦</span>
+              <h3>新手指南</h3>
+              <p>快速了解 TaiJianICU，完成你的第一次创作。</p>
+            </article>
+            <article>
+              <span>□</span>
+              <h3>功能说明</h3>
+              <p>详细了解各项功能，掌握完整操作流程。</p>
+            </article>
+            <article>
+              <span>☷</span>
+              <h3>最佳实践</h3>
+              <p>学习优秀创作方法，提升内容质量与效率。</p>
+            </article>
+            <article>
+              <span>?</span>
+              <h3>常见问题</h3>
+              <p>解答使用过程中遇到的常见问题。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="benchmark" class="landing-section proof-section">
         <div class="landing-center">
-          <p class="section-kicker">公开实证</p>
+          <p class="section-pill">公开实证</p>
           <h2 class="landing-section-title" data-reveal>不只给分数，也把内容摊开给你看</h2>
-          <p class="landing-section-desc" data-reveal>
-            首页优先展示公版或原创样例的原文断点、AI 续写和质检结果；不再混入外部版权作品片段。
-          </p>
+          <p class="landing-section-desc" data-reveal>首页优先展示公版或原创样例的原文断点、AI 续写和质检结果。</p>
         </div>
-
         <div id="landing-benchmark-list" class="landing-benchmark-list">
           <p class="hint">正在加载公开样例实证...</p>
         </div>
       </section>
 
-      <section class="landing-section cta-section">
-        <div class="cta-glow" aria-hidden="true"></div>
-        <div class="cta-panel" data-reveal>
-          <p class="section-kicker">开始使用</p>
-          <h2>先免费试看，满意后再决定用哪种方式继续</h2>
-          <p>默认先用样例和平台试跑看效果；真要长期用时，再切自己的 Key，或者直接部署本地版本。免费试用应该负责说服你，而不是先把配置项砸到你脸上。</p>
-          <div class="cta-actions">
-            <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">先免费试看</a>
-            <a class="landing-button landing-button-secondary" href="/studio">进入 Studio</a>
-          </div>
+      <section id="about" class="landing-section final-cta">
+        <p class="section-pill">开始使用</p>
+        <h2 data-reveal>让你的故事，在你设定的轨道上继续。</h2>
+        <p data-reveal>不是替你写，而是陪你把故事走下去，直到抵达你想要的远方。</p>
+        <div class="cta-actions" data-reveal>
+          <a class="landing-button landing-button-primary" href="/studio#quickstart-sample">开始免费试看</a>
+          <a class="landing-button landing-button-secondary" href="/studio">进入 Studio</a>
         </div>
       </section>
     </main>
