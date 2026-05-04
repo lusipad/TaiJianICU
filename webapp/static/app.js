@@ -121,6 +121,7 @@ const elements = {
   sourcePreviewLabel: document.getElementById("source-preview-label"),
   sourcePreviewMeta: document.getElementById("source-preview-meta"),
   sourcePreview: document.getElementById("source-preview"),
+  sourceFullButton: document.getElementById("source-full-button"),
   outputPreviewLabel: document.getElementById("output-preview-label"),
   outputPreviewMeta: document.getElementById("output-preview-meta"),
   outputPath: document.getElementById("output-path"),
@@ -143,6 +144,7 @@ const elements = {
   sidebarPanels: Array.from(document.querySelectorAll("[data-sidebar-panel]")),
   sourceTabButtons: Array.from(document.querySelectorAll("[data-source-tab-target]")),
   outputTabButtons: Array.from(document.querySelectorAll("[data-output-tab-target]")),
+  studioNavLinks: Array.from(document.querySelectorAll(".studio-menu a")),
 };
 
 function escapeHtml(value) {
@@ -525,6 +527,20 @@ function openAdvancedOptions({ scroll = true } = {}) {
 
 function applyStudioHashIntent() {
   const hash = window.location.hash;
+  if (hash === "#overview") {
+    setWorkspaceTab("overview");
+    return;
+  }
+  if (hash === "#planning") {
+    setWorkspaceTab("planning");
+    document.getElementById("planning")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (hash === "#diagnostics") {
+    setWorkspaceTab("diagnostics");
+    document.getElementById("diagnostics")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
   if (hash === "#bring-your-own-api") {
     focusApiConfig({ scroll: false });
     return;
@@ -690,6 +706,16 @@ function setWorkspaceTab(tabName) {
   }
   for (const panel of elements.workspacePanels) {
     panel.classList.toggle("hidden", panel.dataset.tabPanel !== tabName);
+  }
+  updateStudioNavActive(tabName);
+}
+
+function updateStudioNavActive(tabName) {
+  let matched = false;
+  for (const link of elements.studioNavLinks) {
+    const isActive = !matched && link.dataset.studioNavTab === tabName;
+    link.classList.toggle("is-active", isActive);
+    if (isActive) matched = true;
   }
 }
 
@@ -1046,12 +1072,15 @@ function renderChapterList(chapters) {
 
 function renderSourcePanel(run) {
   const isFullText = state.activeSourceTab === "full";
+  if (elements.sourceFullButton) {
+    elements.sourceFullButton.textContent = isFullText ? "查看断点" : "查看原稿";
+  }
   for (const tab of elements.sourceTabButtons) {
     tab.classList.toggle("is-active", tab.dataset.sourceTabTarget === state.activeSourceTab);
   }
 
   if (!run) {
-    elements.sourcePreviewLabel.textContent = "原文断点";
+    elements.sourcePreviewLabel.textContent = "原稿片段";
     elements.sourcePreviewMeta.textContent = "仅展示当前衔接最相关的原文片段";
     elements.sourcePreview.classList.remove("markdown-preview-scrollable");
     elements.sourcePreview.innerHTML = renderMarkdownPreview(null);
@@ -1059,7 +1088,10 @@ function renderSourcePanel(run) {
   }
 
   if (!isFullText) {
-    elements.sourcePreviewLabel.textContent = run.latest_source_preview_label || "原文断点";
+    const sourceLabel = run.latest_source_preview_label === "原文断点"
+      ? "原稿片段"
+      : run.latest_source_preview_label;
+    elements.sourcePreviewLabel.textContent = sourceLabel || "原稿片段";
     elements.sourcePreviewMeta.textContent = "仅展示当前衔接最相关的原文片段";
     elements.sourcePreview.classList.remove("markdown-preview-scrollable");
     if (String(run.latest_source_preview || "").trim()) {
@@ -1136,17 +1168,19 @@ function renderOutputPanel(run) {
     (Array.isArray(run.output_paths) && run.output_paths.length ? run.output_paths[run.output_paths.length - 1] : "-");
   const { body, noteBody } = splitOutputMarkdown(run.latest_output_preview);
   const outputBody = body || run.latest_output_preview;
-  const sourceLabel = run.latest_source_preview_label || "原文断点";
+  const sourceLabel = run.latest_source_preview_label === "原文断点"
+    ? "原稿片段"
+    : run.latest_source_preview_label || "原稿片段";
   const sourcePreviewHtml = renderMarkdownPreview(run.latest_source_preview);
   const outputPreviewHtml = renderMarkdownPreview(outputBody);
   const noteHtml = renderOutputNote(noteBody);
 
   elements.outputPath.textContent = latestOutputPath;
   elements.outputPath.title = latestOutputPath;
-  elements.outputPreviewLabel.textContent = "AI 生成的续写章节";
+  elements.outputPreviewLabel.textContent = "续写预览";
 
   if (state.activeOutputTab === "chapter") {
-    elements.outputPreviewMeta.textContent = "仅展示 AI 新生成章节正文，便于单独评估文风、节奏和信息推进。";
+    elements.outputPreviewMeta.textContent = "AI 生成 · 约 800 字";
     elements.outputPreview.innerHTML = `
       <section class="stitched-preview-section stitched-preview-section-output stitched-preview-section-single">
         <div class="stitched-preview-heading">
@@ -1406,6 +1440,32 @@ function startPolling(runId) {
   }, 2200);
 }
 
+function handleStudioNav(event) {
+  const link = event.currentTarget;
+  const tabName = link.dataset.studioNavTab;
+  const scrollTarget = link.dataset.studioNavScroll;
+  const openTarget = link.dataset.studioNavOpen;
+  if (tabName) {
+    event.preventDefault();
+    setWorkspaceTab(tabName);
+    if (tabName === "overview") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    document.getElementById(tabName)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (scrollTarget) {
+    event.preventDefault();
+    document.getElementById(scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (openTarget) {
+    event.preventDefault();
+    openAdvancedOptions();
+  }
+}
+
 elements.fileInput.addEventListener("change", () => {
   const file = elements.fileInput.files?.[0];
   elements.selectedFileName.textContent = file ? file.name : "选择一个 `.txt` 文件";
@@ -1470,8 +1530,16 @@ window.addEventListener("load", async () => {
     for (const tab of elements.outputTabButtons) {
       tab.addEventListener("click", () => setOutputTab(tab.dataset.outputTabTarget));
     }
+    for (const link of elements.studioNavLinks) {
+      link.addEventListener("click", handleStudioNav);
+    }
     for (const tab of elements.sidebarTabs) {
       tab.addEventListener("click", () => setSidebarTab(tab.dataset.sidebarTarget));
+    }
+    if (elements.sourceFullButton) {
+      elements.sourceFullButton.addEventListener("click", () => {
+        setSourceTab(state.activeSourceTab === "full" ? "excerpt" : "full");
+      });
     }
     if (elements.tryExampleButton) {
       elements.tryExampleButton.addEventListener("click", previewExampleRun);

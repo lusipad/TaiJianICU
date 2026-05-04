@@ -92,12 +92,12 @@
           <span>TaiJianICU Studio</span>
         </a>
         <nav class="studio-menu" aria-label="Studio 主导航">
-          <a class="is-active" href="/studio">工作台</a>
-          <a href="#runs">作品库</a>
-          <a href="#planning">世界观</a>
-          <a href="#planning">人物设定</a>
-          <a href="#diagnostics">统计</a>
-          <a href="#advanced-options">设置</a>
+          <a class="is-active" href="#overview" data-studio-nav-tab="overview">工作台</a>
+          <a href="#runs" data-studio-nav-scroll="runs">作品库</a>
+          <a href="#planning" data-studio-nav-tab="planning">世界观</a>
+          <a href="#planning" data-studio-nav-tab="planning">人物设定</a>
+          <a href="#diagnostics" data-studio-nav-tab="diagnostics">统计</a>
+          <a href="#advanced-options" data-studio-nav-open="advanced-options">设置</a>
         </nav>
         <div class="sidebar-quote">
           <p>“不是替你写，而是陪你把故事走得更远。”</p>
@@ -111,7 +111,7 @@
             <h1>月夜之诗 · 示例项目</h1>
           </div>
           <div class="studio-project-actions">
-            <a class="utility-button studio-top-action" href="/">← 返回项目列表</a>
+            <a class="utility-button studio-top-action" href="/">← 返回首页</a>
             <label class="utility-button studio-top-action upload-top-action" for="file-input">导入原稿</label>
           </div>
         </header>
@@ -200,7 +200,7 @@
               <article id="source-preview" class="markdown-preview markdown-preview-source">-</article>
               <footer>
                 <span>来源：月夜之诗 · 第 3 章</span>
-                <button type="button" class="utility-button">查看原稿</button>
+                <button id="source-full-button" type="button" class="utility-button">查看原稿</button>
               </footer>
             </article>
 
@@ -210,7 +210,7 @@
                   <h2 id="output-preview-label">续写预览</h2>
                   <p id="output-preview-meta">AI 生成的续写章节 · 约 800 字</p>
                 </div>
-                <button class="utility-button" type="button">重新生成</button>
+                <span class="preview-state">正文预览</span>
               </div>
               <span id="output-path" class="workspace-path">-</span>
               <div class="story-preview-tabs" role="tablist" aria-label="续写视图切换">
@@ -219,16 +219,14 @@
               </div>
               <div id="output-preview" class="story-output-preview">-</div>
               <footer>
-                <button type="button" class="utility-button">替换</button>
-                <button type="button" class="utility-button">插入</button>
-                <button class="utility-button" type="button">再生成</button>
+                <span class="preview-action-note">当前页只做预览与评估；确认采用后请以产物文件为准。</span>
               </footer>
             </article>
           </section>
 
           <div class="accept-row" data-tab-panel="overview">
-            <p>提示：你可以对生成内容进行替换、插入或重新生成，满意后将其插入故事中。</p>
-            <button type="button">接受并插入</button>
+            <p>提示：当前版本不在浏览器内直接改写原稿，避免把未确认内容误写回源文本。</p>
+            <span class="preview-integration-note">已生成内容会保存在运行产物中</span>
           </div>
 
           <section class="workspace-block workspace-block-primary meta-panel" data-tab-panel="overview">
