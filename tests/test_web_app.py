@@ -260,7 +260,14 @@ def test_web_health_and_index() -> None:
     studio = client.get("/studio")
     assert studio.status_code == 200
     assert "TaiJianICU Studio" in studio.text
+    assert "创作区" in studio.text
+    assert "资料库" in studio.text
+    assert "阶段导演计划" in studio.text
+    assert "章节队列" in studio.text
+    assert "单章评审" in studio.text
     assert "世界设定" in studio.text
+    assert "API 配置" in studio.text
+    assert "连接测试" in studio.text
     assert "AI 生成的续写章节" in studio.text
     assert "拼接预览" in studio.text
     assert "导演人物走向" in studio.text
@@ -279,11 +286,15 @@ def test_studio_pages_are_split_by_route() -> None:
     client = TestClient(app)
 
     expected_pages = {
-        "/studio": "data-studio-page-link=\"dashboard\"",
-        "/studio/library": "data-studio-page-link=\"library\"",
+        "/studio": "data-studio-page-link=\"overview\"",
+        "/studio/director": "data-studio-page-link=\"director\"",
+        "/studio/chapters": "data-studio-page-link=\"chapters\"",
+        "/studio/review": "data-studio-page-link=\"review\"",
         "/studio/world": "data-studio-page-link=\"world\"",
         "/studio/characters": "data-studio-page-link=\"characters\"",
+        "/studio/threads": "data-studio-page-link=\"threads\"",
         "/studio/stats": "data-studio-page-link=\"stats\"",
+        "/studio/artifacts": "data-studio-page-link=\"artifacts\"",
         "/studio/settings": "data-studio-page-link=\"settings\"",
     }
 
@@ -293,6 +304,13 @@ def test_studio_pages_are_split_by_route() -> None:
         assert marker in response.text
 
     assert client.get("/studio/missing").status_code == 404
+
+
+def test_studio_static_scripts_support_markdown_preview() -> None:
+    script = (Path(__file__).resolve().parents[1] / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert "renderFencedCodeBlock" in script
+    assert "markdown-preview-code" in script
 
 
 def test_marketing_pages_are_split_by_route() -> None:

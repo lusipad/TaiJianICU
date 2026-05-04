@@ -49,7 +49,7 @@ const state = {
   activeRunId: null,
   activeRunDetail: null,
   activeBenchmarkKey: null,
-  currentStudioPage: "dashboard",
+  currentStudioPage: "overview",
   activeSourceTab: "excerpt",
   activeOutputTab: "chapter",
   activeWorkspaceTab: "overview",
@@ -98,6 +98,7 @@ const elements = {
   metricTime: document.getElementById("metric-time"),
   metricChapters: document.getElementById("metric-chapters"),
   metricQuality: document.getElementById("metric-quality"),
+  metricQualityDetail: document.getElementById("metric-quality-detail"),
   metricConsistency: document.getElementById("metric-consistency"),
   modelSummary: document.getElementById("model-summary"),
   styleSummary: document.getElementById("style-summary"),
@@ -152,20 +153,28 @@ const elements = {
 };
 
 const studioPages = {
-  dashboard: { title: "月夜之诗 · 示例项目", tab: "overview" },
-  library: { title: "作品库", tab: null },
-  world: { title: "世界观", tab: "planning" },
-  characters: { title: "人物设定", tab: "planning" },
-  stats: { title: "统计", tab: "diagnostics" },
+  overview: { title: "导演驾驶舱", tab: "overview" },
+  director: { title: "阶段导演计划", tab: "director" },
+  chapters: { title: "章节队列", tab: "chapters" },
+  review: { title: "单章评审", tab: "review" },
+  world: { title: "世界观资料", tab: "world" },
+  characters: { title: "人物设定资料", tab: "characters" },
+  threads: { title: "伏笔资料", tab: "threads" },
+  stats: { title: "统计", tab: "stats" },
+  artifacts: { title: "产物", tab: "artifacts" },
   settings: { title: "设置", tab: null },
 };
 
 const studioPathPages = {
-  "/studio": "dashboard",
-  "/studio/library": "library",
+  "/studio": "overview",
+  "/studio/director": "director",
+  "/studio/chapters": "chapters",
+  "/studio/review": "review",
   "/studio/world": "world",
   "/studio/characters": "characters",
+  "/studio/threads": "threads",
   "/studio/stats": "stats",
+  "/studio/artifacts": "artifacts",
   "/studio/settings": "settings",
 };
 
@@ -185,6 +194,55 @@ function renderInlineMarkdown(value) {
     .replace(/\*([^*]+)\*/g, "<em>$1</em>");
 }
 
+function renderFencedCodeBlock(code, language = "") {
+  const label = language ? `<span>${escapeHtml(language)}</span>` : "";
+  return `<pre class="markdown-preview-code">${label}<code>${escapeHtml(code)}</code></pre>`;
+}
+
+function renderMarkdownTextBlock(block) {
+  const lines = block.split("\n").map((line) => line.trimEnd());
+  const headingMatch = lines.length === 1 ? lines[0].match(/^(#{1,6})\s+(.+)$/) : null;
+  if (headingMatch) {
+    const level = Math.min(6, headingMatch[1].length);
+    return `<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`;
+  }
+
+  const thematicBreak = lines.length === 1 && /^([-*_])(?:\s*\1){2,}$/.test(lines[0].trim());
+  if (thematicBreak) {
+    return "<hr>";
+  }
+
+  const unorderedList = lines.every((line) => /^[-*]\s+/.test(line.trim()));
+  if (unorderedList) {
+    const items = lines
+      .map((line) => `<li>${renderInlineMarkdown(line.replace(/^[-*]\s+/, ""))}</li>`)
+      .join("");
+    return `<ul>${items}</ul>`;
+  }
+
+  const orderedList = lines.every((line) => /^\d+\.\s+/.test(line.trim()));
+  if (orderedList) {
+    const items = lines
+      .map((line) => `<li>${renderInlineMarkdown(line.replace(/^\d+\.\s+/, ""))}</li>`)
+      .join("");
+    return `<ol>${items}</ol>`;
+  }
+
+  const quoteBlock = lines.every((line) => line.trim().startsWith(">"));
+  if (quoteBlock) {
+    const content = lines
+      .map((line) => renderInlineMarkdown(line.replace(/^>\s?/, "")))
+      .join("<br>");
+    return `<blockquote><p>${content}</p></blockquote>`;
+  }
+
+  const paragraph = lines
+    .map((line) => renderInlineMarkdown(line.trim()))
+    .filter(Boolean)
+    .join("<br>");
+  return `<p>${paragraph}</p>`;
+}
+
 function renderMarkdownPreview(markdown) {
   const normalized = String(markdown || "")
     .replace(/\r\n/g, "\n")
@@ -193,51 +251,51 @@ function renderMarkdownPreview(markdown) {
     return '<p class="markdown-empty">暂无正文预览</p>';
   }
 
-  const blocks = normalized.split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
+  const blocks = [];
+  let textLines = [];
+  let codeLines = [];
+  let codeLanguage = "";
+
+  function flushText() {
+    const block = textLines.join("\n").trim();
+    if (block) blocks.push({ type: "text", value: block });
+    textLines = [];
+  }
+
+  for (const line of normalized.split("\n")) {
+    const fenceMatch = line.trim().match(/^```([\w-]*)\s*$/);
+    if (codeLanguage || codeLines.length) {
+      if (fenceMatch) {
+        blocks.push({ type: "code", value: codeLines.join("\n"), language: codeLanguage });
+        codeLines = [];
+        codeLanguage = "";
+      } else {
+        codeLines.push(line);
+      }
+      continue;
+    }
+    if (fenceMatch) {
+      flushText();
+      codeLanguage = fenceMatch[1] || "text";
+      continue;
+    }
+    if (!line.trim()) {
+      flushText();
+      continue;
+    }
+    textLines.push(line);
+  }
+  flushText();
+  if (codeLanguage || codeLines.length) {
+    blocks.push({ type: "code", value: codeLines.join("\n"), language: codeLanguage || "text" });
+  }
+
   return blocks
-    .map((block) => {
-      const lines = block.split("\n").map((line) => line.trimEnd());
-      const headingMatch = lines.length === 1 ? lines[0].match(/^(#{1,6})\s+(.+)$/) : null;
-      if (headingMatch) {
-        const level = Math.min(6, headingMatch[1].length);
-        return `<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`;
-      }
-
-      const thematicBreak = lines.length === 1 && /^([-*_])(?:\s*\1){2,}$/.test(lines[0].trim());
-      if (thematicBreak) {
-        return "<hr>";
-      }
-
-      const unorderedList = lines.every((line) => /^[-*]\s+/.test(line.trim()));
-      if (unorderedList) {
-        const items = lines
-          .map((line) => `<li>${renderInlineMarkdown(line.replace(/^[-*]\s+/, ""))}</li>`)
-          .join("");
-        return `<ul>${items}</ul>`;
-      }
-
-      const orderedList = lines.every((line) => /^\d+\.\s+/.test(line.trim()));
-      if (orderedList) {
-        const items = lines
-          .map((line) => `<li>${renderInlineMarkdown(line.replace(/^\d+\.\s+/, ""))}</li>`)
-          .join("");
-        return `<ol>${items}</ol>`;
-      }
-
-      const quoteBlock = lines.every((line) => line.trim().startsWith(">"));
-      if (quoteBlock) {
-        const content = lines
-          .map((line) => renderInlineMarkdown(line.replace(/^>\s?/, "")))
-          .join("<br>");
-        return `<blockquote><p>${content}</p></blockquote>`;
-      }
-
-      const paragraph = lines
-        .map((line) => renderInlineMarkdown(line.trim()))
-        .filter(Boolean)
-        .join("<br>");
-      return `<p>${paragraph}</p>`;
-    })
+    .map((block) =>
+      block.type === "code"
+        ? renderFencedCodeBlock(block.value, block.language)
+        : renderMarkdownTextBlock(block.value)
+    )
     .join("");
 }
 
@@ -562,11 +620,11 @@ function getStudioPageFromLocation() {
     if (["#quickstart-sample", "#bring-your-own-api", "#advanced-options"].includes(hash)) {
       return "settings";
     }
-    if (hash === "#runs") return "library";
-    if (hash === "#planning") return "world";
-    if (hash === "#diagnostics") return "stats";
+    if (hash === "#runs") return "artifacts";
+    if (hash === "#planning") return "director";
+    if (hash === "#diagnostics") return "review";
   }
-  return studioPathPages[normalizedPath] || "dashboard";
+  return studioPathPages[normalizedPath] || "overview";
 }
 
 function applyStudioPageVisibility() {
@@ -578,7 +636,7 @@ function applyStudioPageVisibility() {
 
 function applyStudioPage() {
   state.currentStudioPage = getStudioPageFromLocation();
-  const config = studioPages[state.currentStudioPage] || studioPages.dashboard;
+  const config = studioPages[state.currentStudioPage] || studioPages.overview;
   document.body.dataset.studioPage = state.currentStudioPage;
   if (elements.pageTitle) {
     elements.pageTitle.textContent = config.title;
@@ -606,13 +664,13 @@ function applyStudioHashIntent() {
     return;
   }
   if (hash === "#planning") {
-    setWorkspaceTab("planning");
-    document.getElementById("planning")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setWorkspaceTab("director");
+    document.getElementById("director")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   if (hash === "#diagnostics") {
-    setWorkspaceTab("diagnostics");
-    document.getElementById("diagnostics")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setWorkspaceTab("review");
+    document.getElementById("review")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   if (hash === "#bring-your-own-api") {
@@ -779,7 +837,8 @@ function setWorkspaceTab(tabName) {
     tab.classList.toggle("is-active", tab.dataset.tabTarget === tabName);
   }
   for (const panel of elements.workspacePanels) {
-    panel.classList.toggle("hidden", panel.dataset.tabPanel !== tabName);
+    const panelTabs = String(panel.dataset.tabPanel || "").split(/\s+/);
+    panel.classList.toggle("hidden", !panelTabs.includes(tabName));
   }
   updateStudioNavActive();
 }
@@ -1354,10 +1413,14 @@ function renderRun(run) {
   elements.metricCost.textContent = formatCurrency(run.metrics?.total_cost_usd || 0);
   elements.metricTime.textContent = formatMinutes(run.metrics?.latest_elapsed_seconds);
   elements.metricChapters.textContent = `${run.metrics?.completed_chapters || 0} / ${run.metrics?.chapter_count || 0}`;
-  elements.metricQuality.textContent = formatScore(
+  const latestQuality = formatScore(
     run.metrics?.latest_quality_score,
     run.metrics?.latest_quality_verdict
   );
+  elements.metricQuality.textContent = latestQuality;
+  if (elements.metricQualityDetail) {
+    elements.metricQualityDetail.textContent = latestQuality;
+  }
   elements.metricConsistency.textContent =
     run.metrics?.consistency_passed == null ? "-" : run.metrics.consistency_passed ? "通过" : "未过";
 

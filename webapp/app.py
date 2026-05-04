@@ -31,7 +31,19 @@ from webapp.models import (
 )
 
 _AUTH_EXEMPT_PATHS = frozenset({"/health", "/ready"})
-_STUDIO_PAGES = frozenset({"library", "world", "characters", "stats", "settings"})
+_STUDIO_PAGES = frozenset(
+    {
+        "director",
+        "chapters",
+        "review",
+        "world",
+        "characters",
+        "threads",
+        "stats",
+        "artifacts",
+        "settings",
+    }
+)
 
 
 def _format_window_label(window_seconds: int) -> str:

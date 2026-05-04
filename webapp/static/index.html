@@ -92,12 +92,25 @@
           <span>TaiJianICU Studio</span>
         </a>
         <nav class="studio-menu" aria-label="Studio 主导航">
-          <a class="is-active" href="/studio" data-studio-page-link="dashboard">工作台</a>
-          <a href="/studio/library" data-studio-page-link="library">作品库</a>
-          <a href="/studio/world" data-studio-page-link="world">世界观</a>
-          <a href="/studio/characters" data-studio-page-link="characters">人物设定</a>
-          <a href="/studio/stats" data-studio-page-link="stats">统计</a>
-          <a href="/studio/settings" data-studio-page-link="settings">设置</a>
+          <div class="studio-nav-group">
+            <p class="studio-nav-heading">创作区</p>
+            <a class="is-active" href="/studio" data-nav-icon="⌂" data-studio-page-link="overview">总览</a>
+            <a href="/studio/director" data-nav-icon="◇" data-studio-page-link="director">导演计划</a>
+            <a href="/studio/chapters" data-nav-icon="▦" data-studio-page-link="chapters">章节队列</a>
+            <a href="/studio/review" data-nav-icon="◉" data-studio-page-link="review">单章评审</a>
+          </div>
+          <div class="studio-nav-group">
+            <p class="studio-nav-heading">资料库</p>
+            <a href="/studio/world" data-nav-icon="◎" data-studio-page-link="world">世界观</a>
+            <a href="/studio/characters" data-nav-icon="♙" data-studio-page-link="characters">人物设定</a>
+            <a href="/studio/threads" data-nav-icon="⌁" data-studio-page-link="threads">伏笔</a>
+            <a href="/studio/stats" data-nav-icon="▥" data-studio-page-link="stats">统计</a>
+            <a href="/studio/artifacts" data-nav-icon="▤" data-studio-page-link="artifacts">产物</a>
+          </div>
+          <div class="studio-nav-group">
+            <p class="studio-nav-heading">运行配置</p>
+            <a href="/studio/settings" data-nav-icon="⚙" data-studio-page-link="settings">设置</a>
+          </div>
         </nav>
         <div class="sidebar-quote">
           <p>“不是替你写，而是陪你把故事走得更远。”</p>
@@ -108,7 +121,7 @@
       <main class="studio-workspace">
         <header class="studio-project-head">
           <div>
-            <h1 id="studio-page-title">月夜之诗 · 示例项目</h1>
+            <h1 id="studio-page-title">导演驾驶舱</h1>
           </div>
           <div class="studio-project-actions">
             <a class="utility-button studio-top-action" href="/">← 返回首页</a>
@@ -116,14 +129,14 @@
           </div>
         </header>
 
-        <section class="progress-stage page-section" data-page-section="dashboard" aria-label="任务进度">
+        <section class="progress-stage page-section" data-page-section="overview" aria-label="任务进度">
           <span class="is-done"><b aria-hidden="true">✓</b>上传原稿</span>
           <span class="is-done"><b aria-hidden="true">✓</b>理解设定</span>
-          <span class="is-active"><b aria-hidden="true">3</b>生成续写</span>
-          <span><b aria-hidden="true">4</b>质量评估</span>
+          <span class="is-active"><b aria-hidden="true">3</b>导演多章计划</span>
+          <span><b aria-hidden="true">4</b>评审与反馈</span>
         </section>
 
-        <section class="studio-metric-grid page-section" data-page-section="dashboard" aria-label="项目指标">
+        <section class="studio-metric-grid page-section" data-page-section="overview" aria-label="项目指标">
           <article>
             <p>累计字数</p>
             <strong id="metric-tokens">0</strong>
@@ -146,7 +159,7 @@
           </article>
         </section>
 
-        <section id="empty-state" class="empty-state page-section" data-page-section="dashboard">
+        <section id="empty-state" class="empty-state page-section" data-page-section="overview">
           <div class="empty-state-icon" aria-hidden="true">羽</div>
           <p class="empty-state-title">还没有选中任务</p>
           <p>第一次用？先免费试看，再决定要不要真跑。也可以上传自己的 `.txt`，开始一轮真实续写。</p>
@@ -158,14 +171,19 @@
           </div>
         </section>
 
-        <div id="run-view" class="run-view hidden page-section" data-page-section="dashboard world characters stats">
+        <div
+          id="run-view"
+          class="run-view hidden page-section"
+          data-page-section="overview director chapters review world characters threads stats artifacts"
+        >
           <div id="error-banner" class="status-banner hidden"></div>
 
           <div class="studio-tabs-row">
             <nav class="workspace-tabs" aria-label="工作台分区">
               <button type="button" class="workspace-tab is-active" data-tab-target="overview">总览</button>
-              <button type="button" class="workspace-tab" data-tab-target="planning">规划</button>
-              <button type="button" class="workspace-tab" data-tab-target="diagnostics">诊断</button>
+              <button type="button" class="workspace-tab" data-tab-target="director">导演计划</button>
+              <button type="button" class="workspace-tab" data-tab-target="chapters">章节队列</button>
+              <button type="button" class="workspace-tab" data-tab-target="review">单章评审</button>
             </nav>
             <div class="progress-wrap">
               <div class="progress-bar">
@@ -178,7 +196,34 @@
             </div>
           </div>
 
-          <section class="story-duo" data-tab-panel="overview">
+          <section class="workspace-block director-dashboard" data-tab-panel="overview">
+            <div class="panel-head">
+              <p class="section-kicker">创作区</p>
+              <h2>从作品全局进入下一段创作</h2>
+              <p class="panel-copy">
+                这里先看当前阶段、下一步导演目标和最近结果；世界观、人物、伏笔和统计作为资料层随时可查。
+              </p>
+            </div>
+            <div class="director-lane-grid">
+              <article>
+                <p class="label">当前阶段</p>
+                <strong>理解原稿后，规划接下来多章走向</strong>
+                <span>先稳住人物声口，再决定冲突推进和伏笔收放。</span>
+              </article>
+              <article>
+                <p class="label">导演目标</p>
+                <strong id="goal-summary">-</strong>
+                <span>目标可以来自用户提示，也可以由系统从最新章节目标提炼。</span>
+              </article>
+              <article>
+                <p class="label">最近结果</p>
+                <strong id="metric-quality">-</strong>
+                <span>结合单章评审判断是否采用、重写或调整后续计划。</span>
+              </article>
+            </div>
+          </section>
+
+          <section class="story-duo" data-tab-panel="review">
             <article class="story-panel">
               <div class="story-panel-head">
                 <div>
@@ -224,12 +269,17 @@
             </article>
           </section>
 
-          <div class="accept-row" data-tab-panel="overview">
+          <div class="accept-row" data-tab-panel="review">
             <p>提示：当前版本不在浏览器内直接改写原稿，避免把未确认内容误写回源文本。</p>
             <span class="preview-integration-note">已生成内容会保存在运行产物中</span>
           </div>
 
-          <section class="workspace-block workspace-block-primary meta-panel" data-tab-panel="overview">
+          <section class="workspace-block workspace-block-primary meta-panel" data-tab-panel="stats">
+            <div class="panel-head">
+              <p class="section-kicker">资料库</p>
+              <h2>统计</h2>
+              <p class="panel-copy">统计只回答运行表现和质量趋势，不参与导演意图本身。</p>
+            </div>
             <div class="run-meta">
               <div>
                 <p class="label">任务 ID</p>
@@ -249,7 +299,7 @@
               </div>
               <div>
                 <p class="label">续写质量</p>
-                <strong id="metric-quality">-</strong>
+                <strong id="metric-quality-detail">-</strong>
               </div>
               <div>
                 <p class="label">人物一致性</p>
@@ -258,7 +308,7 @@
             </div>
           </section>
 
-          <section class="workspace-block detail-panel" data-tab-panel="overview">
+          <section class="workspace-block detail-panel" data-tab-panel="overview artifacts">
             <div class="result-grid result-grid-emphasis">
               <article class="result-card result-card-feature">
                 <p class="label">风格摘要</p>
@@ -275,24 +325,27 @@
                 <pre id="model-summary">-</pre>
               </article>
               <article class="result-card">
-                <p class="label">最新章节目标</p>
-                <pre id="goal-summary">-</pre>
-              </article>
-              <article class="result-card">
                 <p class="label">运行产物</p>
                 <div id="artifact-list" class="path-list"></div>
               </article>
             </div>
           </section>
 
-          <section id="planning" class="workspace-block detail-panel" data-tab-panel="planning">
+          <section id="director" class="workspace-block detail-panel" data-tab-panel="director world characters threads">
+            <div class="panel-head">
+              <p class="section-kicker">创作区</p>
+              <h2>阶段导演计划</h2>
+              <p class="panel-copy">
+                把世界观、人物和伏笔变成接下来多章的导演约束，而不是孤立资料。
+              </p>
+            </div>
             <div class="result-grid">
               <article class="result-card">
                 <p class="label">作品 skill</p>
                 <pre id="work-skill-summary">-</pre>
               </article>
               <article class="result-card">
-                <p class="label">世界设定</p>
+                <p class="label">世界设定资料</p>
                 <pre id="world-summary">-</pre>
               </article>
             </div>
@@ -306,7 +359,7 @@
                 <div id="reference-list" class="thread-list"></div>
               </article>
               <article class="result-card">
-                <p class="label">世界观</p>
+                <p class="label">世界观约束</p>
                 <pre id="lorebook-summary">-</pre>
               </article>
             </div>
@@ -320,6 +373,14 @@
                 <pre id="evaluation-summary">-</pre>
               </article>
             </div>
+          </section>
+
+          <section id="chapters" class="workspace-block detail-panel" data-tab-panel="chapters">
+            <div class="panel-head">
+              <p class="section-kicker">创作区</p>
+              <h2>章节队列</h2>
+              <p class="panel-copy">多章续写应按队列推进：每章有目标、候选、结果和回写到导演计划的反馈。</p>
+            </div>
             <div class="result-grid">
               <article class="result-card">
                 <p class="label">提纲草稿</p>
@@ -330,9 +391,18 @@
                 <div id="draft-candidate-list" class="path-list"></div>
               </article>
             </div>
+            <article class="result-card">
+              <p class="label">章节结果</p>
+              <div id="chapter-list" class="chapter-list"></div>
+            </article>
           </section>
 
-          <section id="diagnostics" class="workspace-block detail-panel" data-tab-panel="diagnostics">
+          <section id="review" class="workspace-block detail-panel" data-tab-panel="review stats threads">
+            <div class="panel-head">
+              <p class="section-kicker">创作区</p>
+              <h2>单章评审</h2>
+              <p class="panel-copy">单章评审是放大镜：判断这一章是否执行导演意图，并把问题反馈到后续章节。</p>
+            </div>
             <div class="result-grid">
               <article class="result-card">
                 <p class="label">质检</p>
@@ -358,10 +428,6 @@
                 <p class="label">未收束伏笔</p>
                 <div id="threads-list" class="thread-list"></div>
               </article>
-              <article class="result-card">
-                <p class="label">章节结果</p>
-                <div id="chapter-list" class="chapter-list"></div>
-              </article>
             </div>
             <article class="result-card logs-card">
               <p class="label">运行日志</p>
@@ -370,11 +436,12 @@
           </section>
         </div>
 
-        <section class="studio-bottom-grid page-section" data-page-section="library settings">
-          <aside id="runs" class="recent-panel page-section" data-page-section="library">
+        <section class="studio-bottom-grid page-section" data-page-section="artifacts settings">
+          <aside id="runs" class="recent-panel page-section" data-page-section="artifacts">
             <div class="panel-head panel-head-compact">
-              <p class="section-kicker">作品库</p>
-              <h2>最近任务与评测</h2>
+              <p class="section-kicker">资料库</p>
+              <h2>产物</h2>
+              <p class="panel-copy">正文、报告、候选稿和历史任务都放在资料层，不抢占导演工作流。</p>
             </div>
             <nav class="inspector-tabs" aria-label="侧边栏分区">
               <button type="button" class="inspector-tab is-active" data-sidebar-target="runs">任务</button>
@@ -398,8 +465,8 @@
 
           <form id="run-form" class="config-panel page-section" data-page-section="settings">
             <div class="panel-head">
-              <p class="section-kicker">输入区</p>
-              <h2>上传原著，再开始真正的续写任务</h2>
+              <p class="section-kicker">运行配置</p>
+              <h2>设置</h2>
               <p class="panel-copy">免费试看确认效果以后，再上传自己的文本。默认走平台当前配置；高级选项可以继续细调。</p>
             </div>
 
@@ -444,7 +511,7 @@
             <section id="bring-your-own-api" class="api-panel anchor-target">
               <div class="quickstart-panel-head">
                 <div>
-                  <p class="label">额外方式</p>
+                  <p class="label">API 配置</p>
                   <strong>使用自己的 Key，或者直接用本地版本</strong>
                 </div>
                 <button id="clear-api-config-button" class="utility-button" type="button">清空当前 API</button>
@@ -483,6 +550,7 @@
               </div>
               <div class="quickstart-primary-actions">
                 <button id="open-advanced-options-button" class="utility-button" type="button">继续配置模型路由</button>
+                <button class="utility-button" type="button" disabled title="下一步接入最小 completion smoke">连接测试</button>
                 <span id="runtime-api-hint" class="field-note">
                   留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。
                 </span>
