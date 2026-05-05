@@ -8,12 +8,17 @@ from fastapi.testclient import TestClient
 from config.settings import AppSettings
 from webapp.app import create_app
 from webapp.models import (
+    WebDirectorPlan,
+    WebDirectorPlanChapterItem,
+    WebDirectorPlanUpdate,
     WebExampleDetail,
     WebBenchmarkDetail,
     WebExampleSummary,
     WebPublicShowcase,
     WebArcSelectionRequest,
     WebBlindChallengeRatingRequest,
+    WebRuntimeConnectionTestRequest,
+    WebRuntimeConnectionTestResult,
     WebRuntimeApiOverride,
     WebRunDetail,
     WebRunProgress,
@@ -47,6 +52,9 @@ class FakeRunManager:
         self.arc_selection_calls = 0
         self.blind_rating_calls = 0
         self.preview_calls = 0
+        self.director_plan_get_calls = 0
+        self.director_plan_save_calls = 0
+        self.connection_test_calls = 0
         self.last_request = None
         self.last_runtime_api_override = None
 
@@ -182,6 +190,51 @@ class FakeRunManager:
             character_count=18,
         )
 
+    def get_director_plan(self, run_id: str):
+        assert run_id == "run-1"
+        self.director_plan_get_calls += 1
+        return WebDirectorPlan(
+            session_name="demo-session",
+            updated_at=datetime.now(timezone.utc),
+            summary="接下来两章先稳住人物声口，再推进旧案。",
+            chapter_window_start=1,
+            chapter_window_end=2,
+            notes="导演备注",
+            chapter_queue=[
+                WebDirectorPlanChapterItem(
+                    chapter_number=1,
+                    title="雨夜追魂",
+                    goal="把沈照逼到义庄门口",
+                    status="done",
+                    notes="已完成",
+                )
+            ],
+        )
+
+    def save_director_plan(self, run_id: str, request: WebDirectorPlanUpdate):
+        assert run_id == "run-1"
+        self.director_plan_save_calls += 1
+        self.last_request = request
+        return WebDirectorPlan(
+            session_name="demo-session",
+            updated_at=datetime.now(timezone.utc),
+            summary=request.summary,
+            chapter_window_start=request.chapter_window_start,
+            chapter_window_end=request.chapter_window_end,
+            notes=request.notes,
+            chapter_queue=request.chapter_queue,
+        )
+
+    async def test_runtime_connection(self, request: WebRuntimeConnectionTestRequest):
+        self.connection_test_calls += 1
+        self.last_request = request
+        return WebRuntimeConnectionTestResult(
+            ok=True,
+            model=request.model or "deepseek/deepseek-chat",
+            wire_api=request.wire_api or "chat",
+            response_preview="连接成功",
+        )
+
     def save_uploaded_text(self, filename: str, content: bytes):
         return Path("demo.txt"), "demo"
 
@@ -268,6 +321,10 @@ def test_web_health_and_index() -> None:
     assert "世界设定" in studio.text
     assert "API 配置" in studio.text
     assert "连接测试" in studio.text
+    assert "id=\"director-plan-summary\"" in studio.text
+    assert "id=\"director-plan-save-button\"" in studio.text
+    assert "id=\"connection-test-button\"" in studio.text
+    assert "id=\"connection-test-status\"" in studio.text
     assert "AI 生成的续写章节" in studio.text
     assert "拼接预览" in studio.text
     assert "导演人物走向" in studio.text
@@ -311,6 +368,16 @@ def test_studio_static_scripts_support_markdown_preview() -> None:
 
     assert "renderFencedCodeBlock" in script
     assert "markdown-preview-code" in script
+
+
+def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
+    script = (Path(__file__).resolve().parents[1] / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
+
+    assert "loadDirectorPlan" in script
+    assert "saveDirectorPlan" in script
+    assert "/director-plan" in script
+    assert "testRuntimeConnection" in script
+    assert "/api/runtime/connection-test" in script
 
 
 def test_marketing_pages_are_split_by_route() -> None:
@@ -578,6 +645,64 @@ def test_get_run_source_text_endpoint() -> None:
     assert response.status_code == 200
     assert response.json()["input_filename"] == "demo.txt"
     assert "沈照站在义庄门口" in response.json()["text_content"]
+
+
+def test_director_plan_endpoints() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    get_response = client.get("/api/runs/run-1/director-plan")
+    save_response = client.post(
+        "/api/runs/run-1/director-plan",
+        json={
+            "summary": "先铺压迫感，再回收旧线索。",
+            "chapter_window_start": 1,
+            "chapter_window_end": 3,
+            "notes": "避免只堆设定。",
+            "chapter_queue": [
+                {
+                    "chapter_number": 1,
+                    "title": "雨夜追魂",
+                    "goal": "逼主角进义庄",
+                    "status": "writing",
+                    "notes": "保持冷峻。",
+                }
+            ],
+        },
+    )
+
+    assert get_response.status_code == 200
+    assert get_response.json()["summary"].startswith("接下来两章")
+    assert save_response.status_code == 200
+    assert save_response.json()["summary"] == "先铺压迫感，再回收旧线索。"
+    assert manager.director_plan_get_calls == 1
+    assert manager.director_plan_save_calls == 1
+    assert manager.last_request.chapter_queue[0].status == "writing"
+
+
+def test_runtime_connection_test_endpoint() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/runtime/connection-test",
+        json={
+            "api_base_url": "https://openrouter.ai/api/v1",
+            "api_key": "sk-demo",
+            "wire_api": "responses",
+            "model": "openai/gpt-4.1-mini",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+    assert response.json()["model"] == "openai/gpt-4.1-mini"
+    assert response.json()["wire_api"] == "responses"
+    assert response.json()["response_preview"] == "连接成功"
+    assert manager.connection_test_calls == 1
+    assert manager.last_request.api_base_url == "https://openrouter.ai/api/v1"
 
 
 def test_create_example_run_endpoint() -> None:

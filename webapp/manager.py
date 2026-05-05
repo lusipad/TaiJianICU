@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from config.settings import AppSettings
 from core.benchmarking.runner import BenchmarkReport
+from core.llm.litellm_client import LiteLLMService
 from core.models.arc_outline import ArcOutline
 from core.models.chapter_brief import ChapterBrief
 from core.models.evaluation import ChapterEvaluation
@@ -34,6 +35,9 @@ from pipeline.revival import digest_payload
 from webapp.builtin_examples import BUILT_IN_EXAMPLES, BuiltInExample
 from webapp.errors import ApiError
 from webapp.models import (
+    WebDirectorPlan,
+    WebDirectorPlanChapterItem,
+    WebDirectorPlanUpdate,
     WebExampleDetail,
     WebExampleSummary,
     WebBenchmarkDetail,
@@ -45,6 +49,8 @@ from webapp.models import (
     WebBlindChallengeRatingRequest,
     WebRunArtifactPaths,
     WebRuntimeApiOverride,
+    WebRuntimeConnectionTestRequest,
+    WebRuntimeConnectionTestResult,
     WebRunDetail,
     WebRunMetrics,
     WebRunProgress,
@@ -71,6 +77,12 @@ class WebRunManager:
 
     def _run_file(self, run_id: str) -> Path:
         return self.settings.web_runs_dir / f"{run_id}.json"
+
+    def _session_dir(self, session_name: str) -> Path:
+        return self.settings.sessions_dir / session_name
+
+    def _director_plan_path(self, session_name: str) -> Path:
+        return self._session_dir(session_name) / "director_plan.json"
 
     def _benchmark_report_files(self) -> list[Path]:
         return sorted(
@@ -136,6 +148,21 @@ class WebRunManager:
             return run
         hydrated = run.model_copy(
             update={"arc_options_digest": self._arc_options_digest(run.arc_options)}
+        )
+        self._persist(hydrated)
+        return hydrated
+
+    def _ensure_director_plan_artifact(self, run: WebRunDetail) -> WebRunDetail:
+        plan_path = self._director_plan_path(run.session_name)
+        plan_path_str = str(plan_path)
+        if run.artifact_paths.director_plan == plan_path_str:
+            return run
+        if not plan_path.exists():
+            return run
+        hydrated = run.model_copy(
+            update={
+                "artifact_paths": run.artifact_paths.model_copy(update={"director_plan": plan_path_str})
+            }
         )
         self._persist(hydrated)
         return hydrated
@@ -225,8 +252,115 @@ class WebRunManager:
                 raise ApiError("找不到对应的运行任务。", 404, "Not Found")
             run = self._ensure_story_previews(run)
             run = self._ensure_arc_options_digest(run)
+            run = self._ensure_director_plan_artifact(run)
             self._runs[run.id] = run
             return run.model_copy(deep=True)
+
+    @staticmethod
+    def _chapter_plan_status(status: str) -> str:
+        normalized = status.strip().lower()
+        if normalized.startswith("completed") or normalized == "skipped_existing_output":
+            return "done"
+        if normalized in {"running", "generating"}:
+            return "writing"
+        if normalized in {"awaiting_arc_selection", "analyzing"}:
+            return "reviewing"
+        return "planned"
+
+    def _build_default_director_plan(self, run: WebRunDetail) -> WebDirectorPlan:
+        start_chapter = run.request.start_chapter or 1
+        requested_chapters = max(1, run.request.chapters or 1)
+        chapter_total = max(requested_chapters, len(run.chapter_summaries))
+        summary_by_chapter = {item.chapter_number: item for item in run.chapter_summaries}
+        queue: list[WebDirectorPlanChapterItem] = []
+        for offset in range(chapter_total):
+            chapter_number = start_chapter + offset
+            summary = summary_by_chapter.get(chapter_number)
+            queue.append(
+                WebDirectorPlanChapterItem(
+                    chapter_number=chapter_number,
+                    title=f"第 {chapter_number} 章" if summary else "",
+                    goal=(summary.chapter_goal if summary and summary.chapter_goal else run.latest_chapter_goal or ""),
+                    status=self._chapter_plan_status(summary.status) if summary else "planned",
+                    notes=(
+                        f"质检：{summary.quality_verdict}"
+                        if summary and summary.quality_verdict
+                        else ""
+                    ),
+                )
+            )
+        return WebDirectorPlan(
+            session_name=run.session_name,
+            updated_at=run.updated_at,
+            summary=run.latest_chapter_goal or run.request.goal_hint or "",
+            chapter_window_start=start_chapter,
+            chapter_window_end=start_chapter + chapter_total - 1,
+            notes="",
+            chapter_queue=queue,
+        )
+
+    def get_director_plan(self, run_id: str) -> WebDirectorPlan:
+        run = self.get_run(run_id)
+        plan = self._load_json_model(self._director_plan_path(run.session_name), WebDirectorPlan)
+        if isinstance(plan, WebDirectorPlan):
+            return plan
+        return self._build_default_director_plan(run)
+
+    def save_director_plan(self, run_id: str, request: WebDirectorPlanUpdate) -> WebDirectorPlan:
+        run = self.get_run(run_id)
+        path = self._director_plan_path(run.session_name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        plan = WebDirectorPlan(
+            session_name=run.session_name,
+            updated_at=datetime.now(timezone.utc),
+            summary=request.summary.strip(),
+            chapter_window_start=request.chapter_window_start,
+            chapter_window_end=request.chapter_window_end,
+            notes=request.notes.strip(),
+            chapter_queue=request.chapter_queue,
+        )
+        path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+        self._update_run(
+            run_id,
+            artifact_paths=run.artifact_paths.model_copy(update={"director_plan": str(path)}),
+        )
+        return plan
+
+    async def test_runtime_connection(
+        self,
+        request: WebRuntimeConnectionTestRequest,
+    ) -> WebRuntimeConnectionTestResult:
+        run_settings = self.settings.model_copy(deep=True)
+        if request.api_base_url and request.api_base_url.strip():
+            run_settings.runtime_api_base_url = request.api_base_url.strip()
+        if request.api_key and request.api_key.strip():
+            run_settings.runtime_api_key = request.api_key.strip()
+        if request.wire_api:
+            run_settings.runtime_wire_api = request.wire_api
+
+        model = (request.model or self.get_runtime_config().quality_model).strip() or self.get_runtime_config().quality_model
+        llm_service = LiteLLMService(run_settings)
+        try:
+            response = await llm_service.complete_text(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "你只需回复四个字：连接成功。"},
+                    {"role": "user", "content": "请回复连接成功。"},
+                ],
+                temperature=0.0,
+                max_tokens=16,
+                operation="runtime_connection_test",
+            )
+        except Exception as exc:
+            raise ApiError(f"连接测试失败：{exc}", 502, "Connection Test Failed") from exc
+
+        preview = response.text.strip() or "连接成功"
+        return WebRuntimeConnectionTestResult(
+            ok=True,
+            model=model,
+            wire_api=run_settings.runtime_wire_api,
+            response_preview=preview[:200],
+        )
 
     def get_run_source_text(self, run_id: str) -> WebRunSourceText:
         run = self.get_run(run_id)

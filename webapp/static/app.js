@@ -61,6 +61,7 @@ const state = {
   runtimeConfig: null,
   runCache: [],
   sourceTextCache: {},
+  directorPlanCache: {},
 };
 
 const elements = {
@@ -79,6 +80,8 @@ const elements = {
   openAdvancedOptionsButton: document.getElementById("open-advanced-options-button"),
   runtimeModelHint: document.getElementById("runtime-model-hint"),
   runtimeApiHint: document.getElementById("runtime-api-hint"),
+  connectionTestButton: document.getElementById("connection-test-button"),
+  connectionTestStatus: document.getElementById("connection-test-status"),
   runList: document.getElementById("run-list"),
   benchmarkList: document.getElementById("benchmark-list"),
   benchmarkSummary: document.getElementById("benchmark-summary"),
@@ -138,6 +141,15 @@ const elements = {
   apiKeyInput: document.getElementById("api-key-input"),
   wireApiInput: document.getElementById("wire-api-input"),
   goalHintInput: document.querySelector('textarea[name="goal_hint"]'),
+  directorPlanSummary: document.getElementById("director-plan-summary"),
+  directorPlanWindowStart: document.getElementById("director-plan-window-start"),
+  directorPlanWindowEnd: document.getElementById("director-plan-window-end"),
+  directorPlanNotes: document.getElementById("director-plan-notes"),
+  directorPlanQueue: document.getElementById("director-plan-queue"),
+  directorPlanStatus: document.getElementById("director-plan-status"),
+  directorPlanRefreshButton: document.getElementById("director-plan-refresh-button"),
+  directorPlanAddChapterButton: document.getElementById("director-plan-add-chapter-button"),
+  directorPlanSaveButton: document.getElementById("director-plan-save-button"),
   modelOptions: document.getElementById("model-options"),
   advancedOptionsDetails: document.getElementById("advanced-options"),
   pageTitle: document.getElementById("studio-page-title"),
@@ -583,6 +595,48 @@ function clearApiConfigInputs() {
   if (elements.wireApiInput) elements.wireApiInput.value = state.runtimeConfig?.wire_api || "chat";
 }
 
+function getConnectionTestModel() {
+  return (
+    elements.qualityModelInput?.value?.trim() ||
+    elements.draftModelInput?.value?.trim() ||
+    state.runtimeConfig?.quality_model ||
+    ""
+  );
+}
+
+function setConnectionTestStatus(message, tone = "") {
+  if (!elements.connectionTestStatus) return;
+  elements.connectionTestStatus.textContent = message;
+  elements.connectionTestStatus.className = tone ? `field-note ${tone}` : "field-note";
+}
+
+async function testRuntimeConnection() {
+  if (!elements.connectionTestButton) return;
+  const payload = {
+    api_base_url: elements.apiBaseUrlInput?.value?.trim() || null,
+    api_key: elements.apiKeyInput?.value?.trim() || null,
+    wire_api: elements.wireApiInput?.value || null,
+    model: getConnectionTestModel() || null,
+  };
+  elements.connectionTestButton.disabled = true;
+  setConnectionTestStatus("正在发起连接测试...");
+  try {
+    const result = await fetchJson("/api/runtime/connection-test", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setConnectionTestStatus(
+      `连接成功：${result.model} / ${result.wire_api}，返回：${result.response_preview || "-"}`,
+      "tone-success"
+    );
+  } catch (error) {
+    setConnectionTestStatus(`连接测试失败：${error.message}`, "tone-error");
+  } finally {
+    elements.connectionTestButton.disabled = false;
+  }
+}
+
 function focusApiConfig({ scroll = true } = {}) {
   const container = document.getElementById("bring-your-own-api");
   if (scroll) {
@@ -881,6 +935,192 @@ function setOutputTab(tabName) {
   renderOutputPanel(state.activeRunDetail);
 }
 
+function setDirectorPlanStatus(message, tone = "") {
+  if (!elements.directorPlanStatus) return;
+  elements.directorPlanStatus.textContent = message;
+  elements.directorPlanStatus.className = tone ? `hint ${tone}` : "hint";
+}
+
+function emptyDirectorPlanEditor(message = "选择任务后加载章节计划") {
+  if (elements.directorPlanSummary) elements.directorPlanSummary.value = "";
+  if (elements.directorPlanWindowStart) elements.directorPlanWindowStart.value = "";
+  if (elements.directorPlanWindowEnd) elements.directorPlanWindowEnd.value = "";
+  if (elements.directorPlanNotes) elements.directorPlanNotes.value = "";
+  renderDirectorPlanPlaceholder(message);
+}
+
+function renderDirectorPlanPlaceholder(message) {
+  if (elements.directorPlanQueue) {
+    elements.directorPlanQueue.innerHTML = `<div class="chapter-item"><strong>${escapeHtml(message)}</strong></div>`;
+  }
+}
+
+function directorPlanRowTemplate(item = {}) {
+  return `
+    <div class="director-plan-row" data-director-plan-row>
+      <label class="field director-plan-chapter-number">
+        <span>章节</span>
+        <input data-plan-field="chapter_number" type="number" min="1" max="9999" value="${escapeHtml(item.chapter_number || "")}" />
+      </label>
+      <label class="field">
+        <span>标题</span>
+        <input data-plan-field="title" type="text" value="${escapeHtml(item.title || "")}" placeholder="可选标题" />
+      </label>
+      <label class="field director-plan-status-field">
+        <span>状态</span>
+        <select data-plan-field="status">
+          ${["planned", "writing", "reviewing", "done"]
+            .map(
+              (status) =>
+                `<option value="${status}" ${item.status === status ? "selected" : ""}>${formatDirectorPlanStatus(status)}</option>`
+            )
+            .join("")}
+        </select>
+      </label>
+      <label class="field director-plan-goal-field">
+        <span>目标</span>
+        <textarea data-plan-field="goal" rows="2" placeholder="这一章要完成什么">${escapeHtml(item.goal || "")}</textarea>
+      </label>
+      <label class="field director-plan-notes-field">
+        <span>备注</span>
+        <textarea data-plan-field="notes" rows="2" placeholder="风险、约束、重写提醒">${escapeHtml(item.notes || "")}</textarea>
+      </label>
+      <button type="button" class="utility-button director-plan-remove-button" data-plan-remove>删除</button>
+    </div>
+  `;
+}
+
+function formatDirectorPlanStatus(status) {
+  switch (status) {
+    case "writing":
+      return "写作中";
+    case "reviewing":
+      return "评审中";
+    case "done":
+      return "已完成";
+    case "planned":
+    default:
+      return "计划中";
+  }
+}
+
+function renderDirectorPlan(plan) {
+  if (!plan) {
+    emptyDirectorPlanEditor();
+    return;
+  }
+  if (elements.directorPlanSummary) elements.directorPlanSummary.value = plan.summary || "";
+  if (elements.directorPlanWindowStart) elements.directorPlanWindowStart.value = plan.chapter_window_start || "";
+  if (elements.directorPlanWindowEnd) elements.directorPlanWindowEnd.value = plan.chapter_window_end || "";
+  if (elements.directorPlanNotes) elements.directorPlanNotes.value = plan.notes || "";
+  const queue = Array.isArray(plan.chapter_queue) ? plan.chapter_queue : [];
+  if (elements.directorPlanQueue) {
+    elements.directorPlanQueue.innerHTML = queue.length
+      ? queue.map((item) => directorPlanRowTemplate(item)).join("")
+      : directorPlanRowTemplate({
+          chapter_number: plan.chapter_window_start || state.activeRunDetail?.request?.start_chapter || 1,
+          status: "planned",
+        });
+  }
+  setDirectorPlanStatus(`已加载 ${plan.session_name} 的导演计划。`);
+}
+
+async function loadDirectorPlan(runId, { force = false } = {}) {
+  if (!runId) {
+    emptyDirectorPlanEditor();
+    setDirectorPlanStatus("选择一个任务后，可读取并保存本阶段导演计划。");
+    return;
+  }
+  if (!force && state.directorPlanCache[runId]) {
+    renderDirectorPlan(state.directorPlanCache[runId]);
+    return;
+  }
+  setDirectorPlanStatus("正在加载导演计划...");
+  try {
+    const plan = await fetchJson(`/api/runs/${encodeURIComponent(runId)}/director-plan`);
+    state.directorPlanCache[runId] = plan;
+    renderDirectorPlan(plan);
+  } catch (error) {
+    emptyDirectorPlanEditor("导演计划加载失败");
+    setDirectorPlanStatus(`导演计划加载失败：${error.message}`, "tone-error");
+  }
+}
+
+function addDirectorPlanRow(item = {}) {
+  if (!elements.directorPlanQueue) return;
+  const fallbackChapter =
+    Number(elements.directorPlanWindowStart?.value || 0) ||
+    state.activeRunDetail?.request?.start_chapter ||
+    1;
+  const rowHtml = directorPlanRowTemplate({
+    ...item,
+    chapter_number: item.chapter_number || fallbackChapter,
+    status: item.status || "planned",
+  });
+  const placeholder = elements.directorPlanQueue.querySelector(".chapter-item");
+  if (placeholder) {
+    elements.directorPlanQueue.innerHTML = rowHtml;
+    return;
+  }
+  elements.directorPlanQueue.insertAdjacentHTML("beforeend", rowHtml);
+}
+
+function collectDirectorPlanPayload() {
+  const rows = Array.from(elements.directorPlanQueue?.querySelectorAll("[data-director-plan-row]") || []);
+  const chapterQueue = rows
+    .map((row) => {
+      const valueOf = (fieldName) => row.querySelector(`[data-plan-field="${fieldName}"]`)?.value?.trim() || "";
+      return {
+        chapter_number: Number(valueOf("chapter_number")),
+        title: valueOf("title"),
+        goal: valueOf("goal"),
+        status: valueOf("status") || "planned",
+        notes: valueOf("notes"),
+      };
+    })
+    .filter((item) => Number.isInteger(item.chapter_number) && item.chapter_number >= 1);
+  return {
+    summary: elements.directorPlanSummary?.value?.trim() || "",
+    chapter_window_start: elements.directorPlanWindowStart?.value
+      ? Number(elements.directorPlanWindowStart.value)
+      : null,
+    chapter_window_end: elements.directorPlanWindowEnd?.value
+      ? Number(elements.directorPlanWindowEnd.value)
+      : null,
+    notes: elements.directorPlanNotes?.value?.trim() || "",
+    chapter_queue: chapterQueue,
+  };
+}
+
+async function saveDirectorPlan() {
+  if (!state.activeRunId) {
+    setDirectorPlanStatus("请先选择一个任务。", "tone-error");
+    return;
+  }
+  const payload = collectDirectorPlanPayload();
+  if (!payload.chapter_queue.length) {
+    setDirectorPlanStatus("至少需要保留一个有效章节。", "tone-error");
+    return;
+  }
+  if (elements.directorPlanSaveButton) elements.directorPlanSaveButton.disabled = true;
+  setDirectorPlanStatus("正在保存导演计划...");
+  try {
+    const plan = await fetchJson(`/api/runs/${encodeURIComponent(state.activeRunId)}/director-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    state.directorPlanCache[state.activeRunId] = plan;
+    renderDirectorPlan(plan);
+    await loadRun(state.activeRunId);
+    setDirectorPlanStatus("导演计划已保存。", "tone-success");
+  } catch (error) {
+    setDirectorPlanStatus(`导演计划保存失败：${error.message}`, "tone-error");
+  } finally {
+    if (elements.directorPlanSaveButton) elements.directorPlanSaveButton.disabled = false;
+  }
+}
+
 function renderRunList(runs) {
   state.runCache = runs;
   if (!runs.length) {
@@ -986,6 +1226,7 @@ function renderArtifacts(paths) {
     ["世界模型", paths?.world_model],
     ["世界设定参考", paths?.lorebook],
     ["已选参考片段", paths?.selected_references],
+    ["导演计划", paths?.director_plan],
     ["作品 skill", paths?.work_skill],
     ["人物走向选项", paths?.arc_options],
     ["已选人物走向", paths?.selected_arc],
@@ -1508,6 +1749,7 @@ async function loadRun(runId) {
   const run = await fetchJson(`/api/runs/${runId}`);
   state.activeRunId = runId;
   renderRun(run);
+  await loadDirectorPlan(runId);
   renderRunList(state.runCache);
   if (isLiveRunStatus(run.status)) {
     startPolling(runId);
@@ -1610,6 +1852,18 @@ if (elements.blindChallenge) {
   });
 }
 
+if (elements.directorPlanQueue) {
+  elements.directorPlanQueue.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-plan-remove]");
+    if (!button) return;
+    const row = button.closest("[data-director-plan-row]");
+    row?.remove();
+    if (!elements.directorPlanQueue.querySelector("[data-director-plan-row]")) {
+      renderDirectorPlanPlaceholder("当前计划没有章节");
+    }
+  });
+}
+
 elements.form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = collectRunFormData();
@@ -1670,6 +1924,24 @@ window.addEventListener("load", async () => {
     }
     if (elements.openAdvancedOptionsButton) {
       elements.openAdvancedOptionsButton.addEventListener("click", () => openAdvancedOptions());
+    }
+    if (elements.connectionTestButton) {
+      elements.connectionTestButton.addEventListener("click", testRuntimeConnection);
+    }
+    if (elements.directorPlanRefreshButton) {
+      elements.directorPlanRefreshButton.addEventListener("click", () => {
+        if (state.activeRunId) {
+          void loadDirectorPlan(state.activeRunId, { force: true });
+        } else {
+          setDirectorPlanStatus("请先选择一个任务。", "tone-error");
+        }
+      });
+    }
+    if (elements.directorPlanAddChapterButton) {
+      elements.directorPlanAddChapterButton.addEventListener("click", () => addDirectorPlanRow());
+    }
+    if (elements.directorPlanSaveButton) {
+      elements.directorPlanSaveButton.addEventListener("click", saveDirectorPlan);
     }
     window.addEventListener("hashchange", () => {
       applyStudioPage();

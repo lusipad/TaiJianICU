@@ -339,6 +339,41 @@
                 把世界观、人物和伏笔变成接下来多章的导演约束，而不是孤立资料。
               </p>
             </div>
+            <section class="director-plan-editor" aria-label="阶段导演计划编辑">
+              <div class="director-plan-editor-head">
+                <div>
+                  <p class="label">可保存计划</p>
+                  <strong>导演视角的多章推进表</strong>
+                </div>
+                <div class="director-plan-actions">
+                  <button id="director-plan-refresh-button" type="button" class="utility-button">重新加载</button>
+                  <button id="director-plan-add-chapter-button" type="button" class="utility-button">新增章节</button>
+                  <button id="director-plan-save-button" type="button">保存计划</button>
+                </div>
+              </div>
+              <div class="field-grid director-plan-meta-grid">
+                <label class="field">
+                  <span>阶段目标</span>
+                  <textarea id="director-plan-summary" rows="3" placeholder="例如：接下来三章先稳住人物声口，再推进旧案。"></textarea>
+                </label>
+                <label class="field">
+                  <span>起始章</span>
+                  <input id="director-plan-window-start" type="number" min="1" max="9999" />
+                </label>
+                <label class="field">
+                  <span>结束章</span>
+                  <input id="director-plan-window-end" type="number" min="1" max="9999" />
+                </label>
+              </div>
+              <label class="field">
+                <span>导演备注</span>
+                <textarea id="director-plan-notes" rows="2" placeholder="记录本阶段需要遵守的取舍、风险或重写提醒。"></textarea>
+              </label>
+              <div id="director-plan-queue" class="director-plan-queue">
+                <div class="chapter-item"><strong>选择任务后加载章节计划</strong></div>
+              </div>
+              <p id="director-plan-status" class="hint">选择一个任务后，可读取并保存本阶段导演计划。</p>
+            </section>
             <div class="result-grid">
               <article class="result-card">
                 <p class="label">作品 skill</p>
@@ -550,7 +585,8 @@
               </div>
               <div class="quickstart-primary-actions">
                 <button id="open-advanced-options-button" class="utility-button" type="button">继续配置模型路由</button>
-                <button class="utility-button" type="button" disabled title="下一步接入最小 completion smoke">连接测试</button>
+                <button id="connection-test-button" class="utility-button" type="button">连接测试</button>
+                <span id="connection-test-status" class="field-note">会使用当前 endpoint / Key / Wire API 和质检模型发起一次最小请求。</span>
                 <span id="runtime-api-hint" class="field-note">
                   留空则使用服务端默认 endpoint / Key。仅当前页面有效，刷新后清空，不会写入任务记录。
                 </span>

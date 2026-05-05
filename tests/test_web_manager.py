@@ -28,11 +28,15 @@ from pipeline.revival import digest_payload
 from pipeline.stage1_extraction.novel_indexer import IndexingResult
 from webapp.manager import WebRunManager
 from webapp.models import (
+    WebDirectorPlan,
+    WebDirectorPlanChapterItem,
+    WebDirectorPlanUpdate,
     WebArcSelectionRequest,
     WebBlindChallengeRatingRequest,
     WebRunDetail,
     WebRunProgress,
     WebRunRequest,
+    WebRuntimeConnectionTestRequest,
     WebRuntimeApiOverride,
 )
 
@@ -222,6 +226,101 @@ def test_web_run_manager_loads_workspace_artifacts(tmp_path: Path) -> None:
     assert detail.latest_draft_candidate_paths[0].endswith("chapter_1_draft_candidate_1.md")
     assert detail.latest_source_preview_label == "原文断点"
     assert "一队人已经到了门外" in (detail.latest_source_preview or "")
+
+
+def test_web_run_manager_saves_and_loads_director_plan(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    now = datetime.now(timezone.utc)
+    session_dir = settings.sessions_dir / "demo-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    manager._runs["run-1"] = WebRunDetail(
+        id="run-1",
+        status="completed",
+        created_at=now,
+        updated_at=now,
+        session_name="demo-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=2, start_chapter=3),
+        progress=WebRunProgress(total_steps=5, completed_steps=5),
+        input_path=str(settings.web_uploads_dir / "demo.txt"),
+    )
+
+    saved = manager.save_director_plan(
+        "run-1",
+        WebDirectorPlanUpdate(
+            summary="把三章推进拆成稳住、加压、收束。",
+            chapter_window_start=3,
+            chapter_window_end=4,
+            notes="先保人物声口，再保节奏。",
+            chapter_queue=[
+                WebDirectorPlanChapterItem(
+                    chapter_number=3,
+                    title="起势",
+                    goal="让冲突显形",
+                    status="writing",
+                    notes="先写主角反应。",
+                ),
+                WebDirectorPlanChapterItem(
+                    chapter_number=4,
+                    title="加压",
+                    goal="把旧线索重新压回台面",
+                    status="planned",
+                    notes="留一个可回收的钩子。",
+                ),
+            ],
+        ),
+    )
+
+    loaded = manager.get_director_plan("run-1")
+    detail = manager.get_run("run-1")
+
+    assert saved.session_name == "demo-session"
+    assert saved.summary == "把三章推进拆成稳住、加压、收束。"
+    assert loaded.chapter_queue[0].title == "起势"
+    assert loaded.chapter_queue[1].status == "planned"
+    assert (session_dir / "director_plan.json").exists()
+    assert detail.artifact_paths.director_plan is not None
+    assert detail.artifact_paths.director_plan.endswith("director_plan.json")
+
+
+def test_web_run_manager_tests_runtime_connection(tmp_path: Path, monkeypatch) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    captured: dict[str, object] = {}
+
+    class FakeLiteLLMService:
+        def __init__(self, service_settings):
+            captured["settings"] = service_settings
+
+        async def complete_text(self, **kwargs):
+            captured["kwargs"] = kwargs
+            return type("Response", (), {"text": "连接成功"})()
+
+    monkeypatch.setattr("webapp.manager.LiteLLMService", FakeLiteLLMService)
+
+    result = asyncio.run(
+        manager.test_runtime_connection(
+            WebRuntimeConnectionTestRequest(
+                api_base_url="https://openrouter.ai/api/v1",
+                api_key="sk-demo",
+                wire_api="responses",
+                model="openai/gpt-4.1-mini",
+            )
+        )
+    )
+
+    assert result.ok is True
+    assert result.model == "openai/gpt-4.1-mini"
+    assert result.wire_api == "responses"
+    assert result.response_preview == "连接成功"
+    assert captured["settings"].runtime_api_base_url == "https://openrouter.ai/api/v1"
+    assert captured["settings"].runtime_api_key == "sk-demo"
+    assert captured["settings"].runtime_wire_api == "responses"
+    assert captured["kwargs"]["model"] == "openai/gpt-4.1-mini"
+    assert captured["kwargs"]["temperature"] == 0.0
+    assert captured["kwargs"]["max_tokens"] == 16
+    assert captured["kwargs"]["operation"] == "runtime_connection_test"
 
 
 def test_web_run_manager_populates_revival_analysis_artifacts(tmp_path: Path) -> None:

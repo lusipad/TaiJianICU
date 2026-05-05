@@ -15,6 +15,8 @@ from config.settings import AppSettings, get_settings
 from webapp.errors import ApiError, register_error_handlers
 from webapp.manager import WebRunManager
 from webapp.models import (
+    WebDirectorPlan,
+    WebDirectorPlanUpdate,
     WebArcSelectionRequest,
     WebBlindChallengeRatingRequest,
     WebExampleDetail,
@@ -23,6 +25,8 @@ from webapp.models import (
     WebBenchmarkSummary,
     WebPublicShowcase,
     WebRuntimeApiOverride,
+    WebRuntimeConnectionTestRequest,
+    WebRuntimeConnectionTestResult,
     WebRuntimeConfig,
     WebRunDetail,
     WebRunRequest,
@@ -202,6 +206,17 @@ def create_app(
     async def get_run_source_text(run_id: str) -> WebRunSourceText:
         return app.state.run_manager.get_run_source_text(run_id)
 
+    @app.get("/api/runs/{run_id}/director-plan", response_model=WebDirectorPlan)
+    async def get_director_plan(run_id: str) -> WebDirectorPlan:
+        return app.state.run_manager.get_director_plan(run_id)
+
+    @app.post("/api/runs/{run_id}/director-plan", response_model=WebDirectorPlan)
+    async def save_director_plan(
+        run_id: str,
+        request: WebDirectorPlanUpdate,
+    ) -> WebDirectorPlan:
+        return app.state.run_manager.save_director_plan(run_id, request)
+
     @app.get("/api/benchmarks", response_model=list[WebBenchmarkSummary])
     async def list_benchmarks() -> list[WebBenchmarkSummary]:
         return app.state.run_manager.list_benchmarks()
@@ -213,6 +228,12 @@ def create_app(
     @app.get("/api/config", response_model=WebRuntimeConfig)
     async def get_runtime_config() -> WebRuntimeConfig:
         return app.state.run_manager.get_runtime_config()
+
+    @app.post("/api/runtime/connection-test", response_model=WebRuntimeConnectionTestResult)
+    async def test_runtime_connection(
+        request: WebRuntimeConnectionTestRequest,
+    ) -> WebRuntimeConnectionTestResult:
+        return await app.state.run_manager.test_runtime_connection(request)
 
     @app.get("/api/examples", response_model=list[WebExampleSummary])
     async def list_examples() -> list[WebExampleSummary]:

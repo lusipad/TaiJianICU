@@ -510,6 +510,69 @@
   line-height: 1.7;
 }
 
+.director-plan-editor {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(212, 160, 121, 0.18);
+  border-radius: 14px;
+  background: rgba(212, 160, 121, 0.045);
+}
+
+.director-plan-editor-head,
+.director-plan-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.director-plan-editor-head {
+  justify-content: space-between;
+}
+
+.director-plan-editor-head strong {
+  display: block;
+  margin-top: 4px;
+  color: #f1dfcf;
+  font-family: var(--font-display);
+  font-size: 19px;
+}
+
+.director-plan-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.director-plan-actions button {
+  min-height: 40px;
+}
+
+.director-plan-meta-grid {
+  grid-template-columns: minmax(0, 1fr) 132px 132px;
+}
+
+.director-plan-queue {
+  display: grid;
+  gap: 12px;
+}
+
+.director-plan-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 104px minmax(130px, 0.75fr) 132px minmax(220px, 1.1fr) minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.director-plan-remove-button {
+  min-height: 45px;
+  white-space: nowrap;
+}
+
 .story-panel {
   min-width: 0;
   display: grid;
@@ -1160,6 +1223,7 @@
   .studio-metric-grid,
   .story-duo,
   .director-lane-grid,
+  .director-plan-row,
   .studio-bottom-grid,
   .result-grid,
   .result-grid-triple {
@@ -1216,6 +1280,8 @@
   .studio-metric-grid,
   .story-duo,
   .director-lane-grid,
+  .director-plan-editor-head,
+  .director-plan-row,
   .studio-bottom-grid,
   .result-grid,
   .result-grid-triple,
@@ -1227,6 +1293,10 @@
 
   .model-span-wide {
     grid-column: auto;
+  }
+
+  .director-plan-meta-grid {
+    grid-template-columns: 1fr;
   }
 
   .progress-wrap {

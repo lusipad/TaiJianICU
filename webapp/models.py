@@ -104,6 +104,7 @@ class WebRunArtifactPaths(BaseModel):
     world_model: str | None = None
     lorebook: str | None = None
     selected_references: str | None = None
+    director_plan: str | None = None
     revival_workspace: str | None = None
     work_skill: str | None = None
     arc_options: str | None = None
@@ -232,6 +233,41 @@ class WebRuntimeConfig(BaseModel):
     api_base_url: str | None = None
     wire_api: Literal["chat", "responses"] = "chat"
     model_options: list[str] = Field(default_factory=list)
+
+
+class WebRuntimeConnectionTestRequest(BaseModel):
+    api_base_url: str | None = None
+    api_key: str | None = None
+    wire_api: Literal["chat", "responses"] | None = None
+    model: str | None = None
+
+
+class WebRuntimeConnectionTestResult(BaseModel):
+    ok: bool
+    model: str
+    wire_api: Literal["chat", "responses"]
+    response_preview: str
+
+
+class WebDirectorPlanChapterItem(BaseModel):
+    chapter_number: int = Field(ge=1, le=9999)
+    title: str = ""
+    goal: str = ""
+    status: Literal["planned", "writing", "reviewing", "done"] = "planned"
+    notes: str = ""
+
+
+class WebDirectorPlanUpdate(BaseModel):
+    summary: str = ""
+    chapter_window_start: int | None = Field(default=None, ge=1, le=9999)
+    chapter_window_end: int | None = Field(default=None, ge=1, le=9999)
+    notes: str = ""
+    chapter_queue: list[WebDirectorPlanChapterItem] = Field(default_factory=list)
+
+
+class WebDirectorPlan(WebDirectorPlanUpdate):
+    session_name: str
+    updated_at: datetime
 
 
 class WebExampleSummary(BaseModel):
