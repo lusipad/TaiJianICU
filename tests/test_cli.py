@@ -23,6 +23,7 @@ def test_cli_help() -> None:
     assert "run" in result.stdout
     assert "benchmark" in result.stdout
     assert "web" in result.stdout
+    assert "standalone" in result.stdout
     assert "inspect" in result.stdout
 
 

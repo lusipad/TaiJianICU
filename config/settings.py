@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -10,7 +11,22 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+def _resource_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(getattr(sys, "_MEIPASS")).resolve()
+    return Path(__file__).resolve().parent.parent
+
+
+def _app_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return _resource_dir()
+
+
+RESOURCE_DIR = _resource_dir()
+APP_DIR = _app_dir()
+ROOT_DIR = RESOURCE_DIR
+DOTENV_PATH = APP_DIR / ".env" if getattr(sys, "frozen", False) else ROOT_DIR / ".env"
 
 
 class ModelRoutes(BaseModel):
@@ -53,7 +69,7 @@ class RuntimeTuning(BaseModel):
 
 class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=DOTENV_PATH,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -64,17 +80,17 @@ class AppSettings(BaseSettings):
     runtime_api_key: str | None = None
     runtime_wire_api: Literal["chat", "responses"] = "chat"
 
-    work_dir: Path = ROOT_DIR / "data"
-    input_dir: Path = ROOT_DIR / "data" / "input"
-    output_dir: Path = ROOT_DIR / "data" / "output"
-    sessions_dir: Path = ROOT_DIR / "data" / "sessions"
-    lightrag_dir: Path = ROOT_DIR / "data" / "lightrag"
-    benchmarks_dir: Path = ROOT_DIR / "data" / "benchmarks"
-    web_dir: Path = ROOT_DIR / "data" / "web"
-    web_uploads_dir: Path = ROOT_DIR / "data" / "web" / "uploads"
-    web_runs_dir: Path = ROOT_DIR / "data" / "web" / "runs"
-    prompts_dir: Path = ROOT_DIR / "config" / "prompts"
-    references_dir: Path = ROOT_DIR / "config" / "references"
+    work_dir: Path = APP_DIR / "data"
+    input_dir: Path = APP_DIR / "data" / "input"
+    output_dir: Path = APP_DIR / "data" / "output"
+    sessions_dir: Path = APP_DIR / "data" / "sessions"
+    lightrag_dir: Path = APP_DIR / "data" / "lightrag"
+    benchmarks_dir: Path = APP_DIR / "data" / "benchmarks"
+    web_dir: Path = APP_DIR / "data" / "web"
+    web_uploads_dir: Path = APP_DIR / "data" / "web" / "uploads"
+    web_runs_dir: Path = APP_DIR / "data" / "web" / "runs"
+    prompts_dir: Path = RESOURCE_DIR / "config" / "prompts"
+    references_dir: Path = RESOURCE_DIR / "config" / "references"
     web_host: str = "127.0.0.1"
     web_port: int = 8000
     web_username: str = Field(default="admin", alias="TAIJIAN_WEB_USERNAME")

@@ -20,3 +20,6 @@ data/web/runs/
 data/web/uploads/
 .tmp_*/
 *.log
+/build/
+/dist/
+/*.spec

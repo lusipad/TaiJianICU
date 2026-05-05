@@ -8,6 +8,7 @@ from cli.benchmark_cmd import app as benchmark_app
 from cli.inspect_cmd import app as inspect_app
 from cli.intervene_cmd import app as intervene_app
 from cli.run_cmd import app as run_app
+from cli.standalone_cmd import app as standalone_app
 from cli.web_cmd import app as web_app
 
 
@@ -20,6 +21,7 @@ app = typer.Typer(no_args_is_help=True)
 app.add_typer(run_app)
 app.add_typer(benchmark_app)
 app.add_typer(web_app)
+app.add_typer(standalone_app)
 app.add_typer(inspect_app)
 app.add_typer(intervene_app)
 

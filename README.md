@@ -26,6 +26,18 @@ TaiJianICU 是一个中文长篇续写实验系统。当前主线是“作者复
 - Python 3.11 - 3.14
 - 建议使用项目内 `.venv`
 
+## 单机版交付
+
+如果是给非开发者单机使用，推荐交付 Windows standalone 版本：用户双击 `TaiJianICU.exe`，本机启动 Web 工作台并自动打开浏览器，数据写在 exe 旁边的 `data/` 目录。
+
+开发机打包命令：
+
+```powershell
+.\scripts\build-standalone.ps1
+```
+
+完整说明见 [docs/standalone-windows.md](docs/standalone-windows.md)。
+
 ## 安装
 
 ```powershell
