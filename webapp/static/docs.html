@@ -66,7 +66,25 @@
                 <p>解答使用过程中遇到的常见问题。</p>
               </article>
             </div>
+            <section id="standalone-download" class="standalone-doc-card" aria-label="Windows 单机版下载">
+              <div>
+                <p class="section-kicker">单机版交付</p>
+                <h2>Windows 用户下载一个 exe，双击进入桌面工作台。</h2>
+                <p>
+                  每次推送后，GitHub Actions 会打包 `TaiJianICU-windows-standalone` artifact。
+                  下载并解压后，把 `.env.example` 复制成 `.env`，填好 `DEEPSEEK_API_KEY`，再双击
+                  `TaiJianICU.exe`。端口被占用时程序会自动换到空闲本机端口。
+                </p>
+              </div>
+              <ol>
+                <li>打开本仓库 GitHub 页面，进入 Actions。</li>
+                <li>选择最新的 Build Windows Standalone 运行记录。</li>
+                <li>下载 `TaiJianICU-windows-standalone` artifact 并解压。</li>
+                <li>配置 `.env` 后双击 `TaiJianICU.exe`。</li>
+              </ol>
+            </section>
             <div class="docs-list" aria-label="热门文档">
+              <a href="#standalone-download"><span>Windows 单机版下载与配置</span><span>2026-05-05</span></a>
               <a href="/studio/settings#quickstart-sample"><span>如何开始你的第一个项目</span><span>2026-05-04</span></a>
               <a href="/studio"><span>文档协作与团队管理</span><span>2026-05-04</span></a>
               <a href="/product"><span>AI 助手使用指南</span><span>2026-05-04</span></a>

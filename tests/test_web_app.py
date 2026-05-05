@@ -309,6 +309,8 @@ def test_web_health_and_index() -> None:
     assert "TaiJianICU" in response.text
     assert "让<span>故事</span>" in response.text
     assert "开始免费试用" in response.text
+    assert "下载单机版" in response.text
+    assert "TaiJianICU-windows-standalone" in response.text
     assert "红楼梦第120回" not in response.text
     studio = client.get("/studio")
     assert studio.status_code == 200
@@ -425,6 +427,20 @@ def test_marketing_pages_are_split_by_route() -> None:
         assert "定价" not in response.text
 
     assert client.get("/pricing").status_code == 404
+
+
+def test_docs_page_explains_windows_standalone_artifact() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    response = client.get("/docs")
+
+    assert response.status_code == 200
+    assert 'id="standalone-download"' in response.text
+    assert "Build Windows Standalone" in response.text
+    assert "TaiJianICU-windows-standalone" in response.text
+    assert "TaiJianICU.exe" in response.text
+    assert "DEEPSEEK_API_KEY" in response.text
 
 
 def test_web_requires_basic_auth_when_password_configured() -> None:
