@@ -89,8 +89,8 @@ def test_standalone_command_opens_desktop_window(
     def fake_serve(host: str, port: int) -> None:
         captured["served"] = (host, port)
 
-    def fake_window(url: str, host: str, port: int) -> None:
-        captured["window"] = (url, host, port)
+    def fake_window(url: str, health_url: str) -> None:
+        captured["window"] = (url, health_url)
 
     monkeypatch.setattr(cli.standalone_cmd, "get_settings", lambda: settings)
     monkeypatch.setattr(cli.standalone_cmd, "_serve_web", fake_serve)
@@ -101,4 +101,58 @@ def test_standalone_command_opens_desktop_window(
 
     assert result.exit_code == 0
     assert captured["served"] == ("127.0.0.1", 9124)
-    assert captured["window"] == ("http://127.0.0.1:9124/studio", "127.0.0.1", 9124)
+    assert captured["window"] == (
+        "http://127.0.0.1:9124/studio",
+        "http://127.0.0.1:9124/health",
+    )
+
+
+def test_standalone_command_uses_free_port_when_default_is_busy(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings = AppSettings(
+        work_dir=tmp_path / "data",
+        input_dir=tmp_path / "data" / "input",
+        output_dir=tmp_path / "data" / "output",
+        sessions_dir=tmp_path / "data" / "sessions",
+        lightrag_dir=tmp_path / "data" / "lightrag",
+        benchmarks_dir=tmp_path / "data" / "benchmarks",
+        web_dir=tmp_path / "data" / "web",
+        web_uploads_dir=tmp_path / "data" / "web" / "uploads",
+        web_runs_dir=tmp_path / "data" / "web" / "runs",
+        web_host="127.0.0.1",
+        web_port=9125,
+    )
+    captured: dict[str, object] = {}
+
+    class ImmediateThread:
+        def __init__(self, target, args, daemon):
+            self.target = target
+            self.args = args
+            self.daemon = daemon
+
+        def start(self) -> None:
+            self.target(*self.args)
+
+    def fake_serve(host: str, port: int) -> None:
+        captured["served"] = (host, port)
+
+    def fake_window(url: str, health_url: str) -> None:
+        captured["window"] = (url, health_url)
+
+    monkeypatch.setattr(cli.standalone_cmd, "get_settings", lambda: settings)
+    monkeypatch.setattr(cli.standalone_cmd, "_is_port_available", lambda host, port: False)
+    monkeypatch.setattr(cli.standalone_cmd, "_find_available_port", lambda host: 19125)
+    monkeypatch.setattr(cli.standalone_cmd, "_serve_web", fake_serve)
+    monkeypatch.setattr(cli.standalone_cmd, "_run_desktop_window", fake_window)
+    monkeypatch.setattr(cli.standalone_cmd.threading, "Thread", ImmediateThread)
+
+    result = CliRunner().invoke(app, ["standalone"])
+
+    assert result.exit_code == 0
+    assert captured["served"] == ("127.0.0.1", 19125)
+    assert captured["window"] == (
+        "http://127.0.0.1:19125/studio",
+        "http://127.0.0.1:19125/health",
+    )

@@ -39,5 +39,6 @@ dist\.env.example
 - 单机版仍然需要联网访问所配置的模型 API。
 - 单机版不要求用户安装 Python 或运行 `pip install`。
 - 当前没有引入 Electron；桌面窗口使用 Qt WebEngine 嵌入现有工作台。
-- 如端口 `8000` 被占用，可从命令行启动：`TaiJianICU.exe standalone --port 8010`。
+- 如端口 `8000` 被占用，双击启动会自动改用一个空闲本机端口。
+- 如需固定端口，可从命令行启动：`TaiJianICU.exe standalone --port 8010`。
 - 如需排障内部服务，可从命令行启动：`TaiJianICU.exe standalone --server-only`。

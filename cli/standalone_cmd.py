@@ -4,6 +4,7 @@ import socket
 import threading
 import time
 import traceback
+import urllib.request
 
 import typer
 import uvicorn
@@ -28,13 +29,42 @@ def _append_standalone_log(message: str) -> None:
         pass
 
 
-def _wait_for_port(host: str, port: int, timeout_seconds: float = 45.0) -> bool:
+def _is_port_available(host: str, port: int) -> bool:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind((host, port))
+            return True
+    except OSError:
+        return False
+
+
+def _find_available_port(host: str) -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind((host, 0))
+        return int(sock.getsockname()[1])
+
+
+def _resolve_standalone_port(host: str, configured_port: int, explicit_port: int | None) -> int:
+    if explicit_port is not None:
+        return explicit_port
+    if _is_port_available(host, configured_port):
+        return configured_port
+    resolved_port = _find_available_port(host)
+    _append_standalone_log(
+        f"configured port {configured_port} is busy; using {resolved_port}",
+    )
+    return resolved_port
+
+
+def _wait_for_health(health_url: str, timeout_seconds: float = 45.0) -> bool:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
         try:
-            with socket.create_connection((host, port), timeout=0.5):
+            with urllib.request.urlopen(health_url, timeout=0.5) as response:
+                body = response.read().decode("utf-8", errors="replace")
+            if response.status == 200 and '"status":"ok"' in body.replace(" ", ""):
                 return True
-        except OSError:
+        except Exception:
             time.sleep(0.2)
     return False
 
@@ -58,7 +88,7 @@ def _serve_web(host: str, port: int) -> None:
         raise
 
 
-def _run_desktop_window(url: str, host: str, port: int) -> None:
+def _run_desktop_window(url: str, health_url: str) -> None:
     app = QApplication([])
     window = QMainWindow()
     window.setWindowTitle("TaiJianICU")
@@ -101,7 +131,7 @@ def _run_desktop_window(url: str, host: str, port: int) -> None:
     started_waiting = time.monotonic()
 
     def load_when_ready() -> None:
-        if _wait_for_port(host, port, timeout_seconds=0.2):
+        if _wait_for_health(health_url, timeout_seconds=0.2):
             _append_standalone_log(f"loading desktop window {url}")
             view.setUrl(QUrl(url))
             ready_timer.stop()
@@ -124,8 +154,9 @@ def standalone_command(
 ) -> None:
     settings = get_settings()
     resolved_host = host or settings.web_host
-    resolved_port = port or settings.web_port
+    resolved_port = _resolve_standalone_port(resolved_host, settings.web_port, port)
     url = f"http://{resolved_host}:{resolved_port}/studio"
+    health_url = f"http://{resolved_host}:{resolved_port}/health"
 
     typer.echo("TaiJianICU 单机工作台")
     typer.echo(f"数据目录：{settings.work_dir}")
@@ -145,7 +176,7 @@ def standalone_command(
     ).start()
 
     try:
-        _run_desktop_window(url, resolved_host, resolved_port)
+        _run_desktop_window(url, health_url)
     except Exception as exc:
         _append_standalone_log(f"desktop window failed: {exc}")
         _append_standalone_log(traceback.format_exc())
