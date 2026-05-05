@@ -17,7 +17,7 @@ if (-not (Test-Path $Python)) {
     --clean `
     --name TaiJianICU `
     --onefile `
-    --console `
+    --windowed `
     --add-data "webapp/static;webapp/static" `
     --add-data "config/prompts;config/prompts" `
     --add-data "config/references;config/references" `
@@ -30,6 +30,8 @@ if (-not (Test-Path $Python)) {
     --hidden-import webapp.app `
     --hidden-import cli.main `
     --hidden-import cli.standalone_cmd `
+    --hidden-import PySide6.QtWebEngineCore `
+    --hidden-import PySide6.QtWebEngineWidgets `
     "scripts/standalone_entry.py"
 
 $DistDir = Join-Path $RepoRoot "dist"

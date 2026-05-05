@@ -28,7 +28,7 @@ TaiJianICU 是一个中文长篇续写实验系统。当前主线是“作者复
 
 ## 单机版交付
 
-如果是给非开发者单机使用，推荐交付 Windows standalone 版本：用户双击 `TaiJianICU.exe`，本机启动 Web 工作台并自动打开浏览器，数据写在 exe 旁边的 `data/` 目录。
+如果是给非开发者单机使用，推荐交付 Windows standalone 版本：用户双击 `TaiJianICU.exe`，直接打开桌面应用窗口，数据写在 exe 旁边的 `data/` 目录。
 
 开发机打包命令：
 

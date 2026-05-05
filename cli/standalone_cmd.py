@@ -3,10 +3,13 @@ from __future__ import annotations
 import socket
 import threading
 import time
-import webbrowser
+import traceback
 
 import typer
 import uvicorn
+from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtWidgets import QApplication, QMainWindow
+from PySide6.QtWebEngineWidgets import QWebEngineView
 
 from config.settings import get_settings
 
@@ -14,7 +17,18 @@ from config.settings import get_settings
 app = typer.Typer(help="启动单机 Web 工作台")
 
 
-def _wait_for_port(host: str, port: int, timeout_seconds: float = 15.0) -> bool:
+def _append_standalone_log(message: str) -> None:
+    try:
+        settings = get_settings()
+        log_path = settings.work_dir / "TaiJianICU.log"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as file:
+            file.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
+    except Exception:
+        pass
+
+
+def _wait_for_port(host: str, port: int, timeout_seconds: float = 45.0) -> bool:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
         try:
@@ -25,16 +39,88 @@ def _wait_for_port(host: str, port: int, timeout_seconds: float = 15.0) -> bool:
     return False
 
 
-def _open_browser_when_ready(url: str, host: str, port: int) -> None:
-    if _wait_for_port(host, port):
-        webbrowser.open(url)
+def _serve_web(host: str, port: int) -> None:
+    _append_standalone_log(f"starting internal server http://{host}:{port}")
+    try:
+        uvicorn.run(
+            "webapp.app:create_app",
+            factory=True,
+            host=host,
+            port=port,
+            reload=False,
+            log_config=None,
+            log_level="warning",
+            access_log=False,
+        )
+    except Exception as exc:
+        _append_standalone_log(f"internal server failed: {exc}")
+        _append_standalone_log(traceback.format_exc())
+        raise
+
+
+def _run_desktop_window(url: str, host: str, port: int) -> None:
+    app = QApplication([])
+    window = QMainWindow()
+    window.setWindowTitle("TaiJianICU")
+    window.resize(1440, 960)
+
+    view = QWebEngineView()
+    view.setHtml(
+        """
+        <!doctype html>
+        <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8">
+            <style>
+              body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+                color: #172033;
+                background: #f5f1e8;
+              }
+              main { text-align: center; }
+              h1 { margin: 0 0 12px; font-size: 28px; font-weight: 650; }
+              p { margin: 0; color: #667085; font-size: 15px; }
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>TaiJianICU 正在启动</h1>
+              <p>首次启动会解压内置运行环境，请稍等片刻。</p>
+            </main>
+          </body>
+        </html>
+        """,
+    )
+    window.setCentralWidget(view)
+    window.show()
+
+    started_waiting = time.monotonic()
+
+    def load_when_ready() -> None:
+        if _wait_for_port(host, port, timeout_seconds=0.2):
+            _append_standalone_log(f"loading desktop window {url}")
+            view.setUrl(QUrl(url))
+            ready_timer.stop()
+        elif time.monotonic() - started_waiting > 180.0:
+            _append_standalone_log("internal server readiness timed out")
+            view.setHtml("<h1>TaiJianICU 启动超时</h1><p>请关闭窗口后重试。</p>")
+            ready_timer.stop()
+
+    ready_timer = QTimer()
+    ready_timer.timeout.connect(load_when_ready)
+    ready_timer.start(500)
+    app.exec()
 
 
 @app.command("standalone")
 def standalone_command(
     host: str | None = typer.Option(None, "--host"),
     port: int | None = typer.Option(None, "--port"),
-    open_browser: bool = typer.Option(True, "--open-browser/--no-open-browser"),
+    server_only: bool = typer.Option(False, "--server-only"),
 ) -> None:
     settings = get_settings()
     resolved_host = host or settings.web_host
@@ -43,21 +129,27 @@ def standalone_command(
 
     typer.echo("TaiJianICU 单机工作台")
     typer.echo(f"数据目录：{settings.work_dir}")
-    typer.echo(f"访问地址：{url}")
-    typer.echo("关闭此窗口即可停止服务。")
+    typer.echo(f"内部地址：{url}")
+    _append_standalone_log(f"standalone command started, url={url}")
 
-    if open_browser:
-        threading.Thread(
-            target=_open_browser_when_ready,
-            args=(url, resolved_host, resolved_port),
-            daemon=True,
-        ).start()
+    if server_only:
+        typer.echo("服务模式启动，关闭此窗口即可停止服务。")
+        _serve_web(resolved_host, resolved_port)
+        return
 
-    uvicorn.run(
-        "webapp.app:create_app",
-        factory=True,
-        host=resolved_host,
-        port=resolved_port,
-        reload=False,
-    )
+    typer.echo("正在打开应用窗口。")
+    threading.Thread(
+        target=_serve_web,
+        args=(resolved_host, resolved_port),
+        daemon=True,
+    ).start()
 
+    try:
+        _run_desktop_window(url, resolved_host, resolved_port)
+    except Exception as exc:
+        _append_standalone_log(f"desktop window failed: {exc}")
+        _append_standalone_log(traceback.format_exc())
+        typer.echo(f"桌面窗口启动失败：{exc}", err=True)
+        typer.echo("已退回服务模式，可在本机浏览器打开上面的内部地址。", err=True)
+        while True:
+            time.sleep(3600)
