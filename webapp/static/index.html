@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="stylesheet" href="/static/styles.css?v=studio-library-v3" />
   </head>
   <body class="studio-body">
     <div
@@ -331,7 +331,7 @@
             </div>
           </section>
 
-          <section id="director" class="workspace-block detail-panel" data-tab-panel="director world characters threads">
+          <section id="director" class="workspace-block detail-panel" data-tab-panel="director">
             <div class="panel-head">
               <p class="section-kicker">创作区</p>
               <h2>阶段导演计划</h2>
@@ -380,7 +380,7 @@
                 <pre id="work-skill-summary">-</pre>
               </article>
               <article class="result-card">
-                <p class="label">世界设定资料</p>
+                <p class="label">世界设定摘录</p>
                 <pre id="world-summary">-</pre>
               </article>
             </div>
@@ -410,6 +410,102 @@
             </div>
           </section>
 
+          <section id="world-library" class="workspace-block detail-panel library-panel" data-tab-panel="world">
+            <div class="panel-head">
+              <p class="section-kicker">资料库</p>
+              <h2>世界观资料</h2>
+              <p class="panel-copy">世界观页只保留会影响续写判断的硬设定、势力、地点、谜团和可扩展槽位。</p>
+            </div>
+            <div class="library-overview-grid">
+              <article class="result-card library-feature">
+                <p class="label">世界摘要</p>
+                <pre id="world-library-summary">-</pre>
+              </article>
+              <article class="result-card">
+                <p class="label">硬设定</p>
+                <div id="canon-fact-list" class="library-list"></div>
+              </article>
+            </div>
+            <div class="result-grid result-grid-triple">
+              <article class="result-card">
+                <p class="label">势力状态</p>
+                <div id="faction-list" class="library-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">地点与风险</p>
+                <div id="location-list" class="library-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">谜团与扩展槽</p>
+                <div id="mystery-list" class="library-list"></div>
+              </article>
+            </div>
+            <article class="result-card">
+              <p class="label">世界观约束</p>
+              <div id="lorebook-library-list" class="library-list"></div>
+            </article>
+          </section>
+
+          <section id="characters-library" class="workspace-block detail-panel library-panel" data-tab-panel="characters">
+            <div class="panel-head">
+              <p class="section-kicker">资料库</p>
+              <h2>人物设定资料</h2>
+              <p class="panel-copy">人物页聚合角色状态、欲望压力、关系禁区和声口规则，用来检查下一章是否写偏。</p>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">主要人物状态</p>
+                <div id="character-state-list" class="library-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">人物声口</p>
+                <div id="character-voice-list" class="library-list"></div>
+              </article>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">关系与禁区</p>
+                <div id="relationship-list" class="library-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">导演人物走向</p>
+                <div id="character-arc-list" class="library-list"></div>
+              </article>
+            </div>
+          </section>
+
+          <section id="threads-library" class="workspace-block detail-panel library-panel" data-tab-panel="threads">
+            <div class="panel-head">
+              <p class="section-kicker">资料库</p>
+              <h2>伏笔资料</h2>
+              <p class="panel-copy">伏笔页按状态呈现待推进、已推进和已闭合线索，帮助导演计划决定收束顺序。</p>
+            </div>
+            <div class="thread-board">
+              <article class="result-card">
+                <p class="label">待推进</p>
+                <div id="open-thread-list" class="library-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">已推进</p>
+                <div id="advanced-thread-list" class="library-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">已闭合</p>
+                <div id="closed-thread-list" class="library-list"></div>
+              </article>
+            </div>
+            <div class="result-grid">
+              <article class="result-card">
+                <p class="label">作品 skill 未收束项</p>
+                <div id="work-skill-thread-list" class="library-list"></div>
+              </article>
+              <article class="result-card">
+                <p class="label">本章一致性反馈</p>
+                <pre id="thread-consistency-summary">-</pre>
+              </article>
+            </div>
+          </section>
+
           <section id="chapters" class="workspace-block detail-panel" data-tab-panel="chapters">
             <div class="panel-head">
               <p class="section-kicker">创作区</p>
@@ -432,7 +528,7 @@
             </article>
           </section>
 
-          <section id="review" class="workspace-block detail-panel" data-tab-panel="review stats threads">
+          <section id="review" class="workspace-block detail-panel" data-tab-panel="review">
             <div class="panel-head">
               <p class="section-kicker">创作区</p>
               <h2>单章评审</h2>
@@ -686,6 +782,6 @@
       </main>
     </div>
 
-    <script src="/static/app.js" defer></script>
+    <script src="/static/app.js?v=studio-library-v3" defer></script>
   </body>
 </html>

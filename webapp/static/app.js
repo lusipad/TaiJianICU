@@ -109,6 +109,21 @@ const elements = {
   workSkillSummary: document.getElementById("work-skill-summary"),
   worldSummary: document.getElementById("world-summary"),
   lorebookSummary: document.getElementById("lorebook-summary"),
+  worldLibrarySummary: document.getElementById("world-library-summary"),
+  canonFactList: document.getElementById("canon-fact-list"),
+  factionList: document.getElementById("faction-list"),
+  locationList: document.getElementById("location-list"),
+  mysteryList: document.getElementById("mystery-list"),
+  lorebookLibraryList: document.getElementById("lorebook-library-list"),
+  characterStateList: document.getElementById("character-state-list"),
+  characterVoiceList: document.getElementById("character-voice-list"),
+  relationshipList: document.getElementById("relationship-list"),
+  characterArcList: document.getElementById("character-arc-list"),
+  openThreadList: document.getElementById("open-thread-list"),
+  advancedThreadList: document.getElementById("advanced-thread-list"),
+  closedThreadList: document.getElementById("closed-thread-list"),
+  workSkillThreadList: document.getElementById("work-skill-thread-list"),
+  threadConsistencySummary: document.getElementById("thread-consistency-summary"),
   goalSummary: document.getElementById("goal-summary"),
   briefSummary: document.getElementById("brief-summary"),
   evaluationSummary: document.getElementById("evaluation-summary"),
@@ -456,6 +471,91 @@ function formatWorldSummary(worldModel) {
     );
   }
   return lines.join("\n\n");
+}
+
+function normalizeLibraryText(value, maxLength = 360) {
+  const normalized = String(value || "")
+    .replace(/\r\n/g, "\n")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return "";
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength).trim()}...`;
+}
+
+function looksLikeSourceExcerpt(value) {
+  const normalized = normalizeLibraryText(value, 900);
+  if (!normalized) return false;
+  return (
+    /^第[一二三四五六七八九十百千\d]+章(?:\s|$)/.test(normalized) ||
+    /(?:^|\s)第[一二三四五六七八九十百千\d]+章\s+#+/.test(normalized) ||
+    /(?:^|\s)一、.+?[，。]/.test(normalized) ||
+    normalized.includes("废弃的三号仓库陷在浓稠的黑暗里")
+  );
+}
+
+function cleanLibraryText(value, maxLength = 280) {
+  if (looksLikeSourceExcerpt(value)) return "";
+  return normalizeLibraryText(value, maxLength);
+}
+
+function pickStructuredSummary(primary, fallback) {
+  const primaryText = normalizeLibraryText(primary);
+  const fallbackText = normalizeLibraryText(fallback);
+  if (!primaryText) return fallbackText;
+  if (looksLikeSourceExcerpt(primary)) return fallbackText;
+  if (primaryText.length > 280 && fallbackText && fallbackText.length < primaryText.length) {
+    return fallbackText;
+  }
+  return primaryText;
+}
+
+function setLibraryList(element, items, emptyLabel) {
+  if (!element) return;
+  if (!items?.length) {
+    element.innerHTML = `<div class="library-item library-item-empty"><strong>${escapeHtml(emptyLabel)}</strong></div>`;
+    return;
+  }
+  element.innerHTML = items.join("");
+}
+
+function renderLibraryItem(title, meta = [], body = "", extra = []) {
+  const cleanMeta = meta.map((item) => cleanLibraryText(item, 80)).filter(Boolean);
+  const metaHtml = cleanMeta.length
+    ? `<div class="chapter-meta">${cleanMeta.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>`
+    : "";
+  const cleanBody = cleanLibraryText(body, 280);
+  const bodyHtml = cleanBody ? `<span>${escapeHtml(cleanBody)}</span>` : "";
+  const extraHtml = extra
+    .map((item) => cleanLibraryText(item, 240))
+    .filter(Boolean)
+    .map((item) => `<span>${escapeHtml(item)}</span>`)
+    .join("");
+  return `
+    <div class="library-item">
+      <strong>${escapeHtml(title || "-")}</strong>
+      ${metaHtml}
+      ${bodyHtml}
+      ${extraHtml}
+    </div>
+  `;
+}
+
+function renderTagLibraryItem(title, tags = [], body = "") {
+  const tagHtml = tags?.length
+    ? `<div class="tag-row">${tags.map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div>`
+    : "";
+  const cleanBody = cleanLibraryText(body, 280);
+  return `
+    <div class="library-item">
+      <strong>${escapeHtml(title || "-")}</strong>
+      ${cleanBody ? `<span>${escapeHtml(cleanBody)}</span>` : ""}
+      ${tagHtml}
+    </div>
+  `;
 }
 
 function formatLorebookSummary(lorebook) {
@@ -1294,6 +1394,230 @@ function renderReferences(references) {
     .join("");
 }
 
+function renderWorldLibrary(run) {
+  const world = run?.world_model || {};
+  const story = run?.story_state || {};
+  const lorebook = run?.lorebook || {};
+  const summaryLines = [];
+  if (world.title || story.title) summaryLines.push(`作品：${world.title || story.title}`);
+  const worldSummary = pickStructuredSummary(world.summary, story.summary);
+  if (worldSummary) summaryLines.push(worldSummary);
+  if (world.last_refreshed_chapter) summaryLines.push(`刷新到第 ${world.last_refreshed_chapter} 章`);
+  if (world.world_tensions?.length) summaryLines.push(`世界张力：${world.world_tensions.join("；")}`);
+  if (story.world_rules?.length) summaryLines.push(`基础规则：\n- ${story.world_rules.join("\n- ")}`);
+  if (elements.worldLibrarySummary) {
+    elements.worldLibrarySummary.textContent = summaryLines.join("\n\n") || "-";
+  }
+
+  setLibraryList(
+    elements.canonFactList,
+    (world.canon_facts || []).map((fact) =>
+      renderLibraryItem(normalizeLibraryText(fact.statement, 180), [fact.category, fact.level, fact.source_chapter ? `第 ${fact.source_chapter} 章` : ""])
+    ),
+    "暂无硬设定"
+  );
+  setLibraryList(
+    elements.factionList,
+    (world.active_factions || []).map((faction) =>
+      renderLibraryItem(
+        faction.name,
+        [faction.threat_level ? `威胁 ${faction.threat_level}` : "", faction.recent_move ? `最近行动：${faction.recent_move}` : ""],
+        faction.public_goal || faction.hidden_goal || "",
+        [
+          faction.hidden_goal ? `暗线目标：${faction.hidden_goal}` : "",
+          faction.current_resources?.length ? `资源：${faction.current_resources.join("；")}` : "",
+          faction.relation_map?.length ? `关系：${faction.relation_map.join("；")}` : "",
+        ]
+      )
+    ),
+    "暂无势力资料"
+  );
+  setLibraryList(
+    elements.locationList,
+    (world.known_locations || []).map((location) =>
+      renderLibraryItem(
+        location.name,
+        [location.location_type, location.importance, location.current_status],
+        location.story_function || "",
+        [
+          location.current_risk?.length ? `风险：${location.current_risk.join("；")}` : "",
+          location.connected_locations?.length ? `关联地点：${location.connected_locations.join("；")}` : "",
+        ]
+      )
+    ),
+    "暂无地点资料"
+  );
+  const mysteries = [
+    ...(world.open_mysteries || []).map((item) => renderLibraryItem(normalizeLibraryText(item, 180), ["未解谜团"])),
+    ...(world.expansion_slots || []).map((slot) =>
+      renderLibraryItem(
+        normalizeLibraryText(slot.description, 180),
+        [slot.slot_type, slot.priority],
+        slot.trigger_hint || "",
+        [slot.slot_id ? `槽位：${slot.slot_id}` : ""]
+      )
+    ),
+  ];
+  setLibraryList(elements.mysteryList, mysteries, "暂无谜团或扩展槽");
+  setLibraryList(
+    elements.lorebookLibraryList,
+    (lorebook.entries || []).map((entry) =>
+      renderTagLibraryItem(
+        `${entry.hard_constraint ? "硬约束" : "参考"} · ${entry.title}`,
+        [entry.entry_type, entry.scope, `优先级 ${entry.priority}`],
+        entry.content
+      )
+    ),
+    "暂无世界观约束"
+  );
+}
+
+function renderCharactersLibrary(run) {
+  const storyCharacters = run?.story_state?.main_characters || [];
+  const worldCharacters = run?.world_model?.main_characters || [];
+  const voiceRules = run?.work_skill?.character_voice_map || [];
+  const relationships = run?.story_state?.major_relationships || [];
+  const selectedArc = run?.selected_arc;
+
+  const characterMap = new Map();
+  for (const character of storyCharacters) {
+    characterMap.set(character.name, {
+      name: character.name,
+      role: character.role,
+      state: character.last_known_state,
+      goals: character.core_goals || [],
+      traits: character.personality_traits || [],
+      speech: character.speech_style,
+    });
+  }
+  for (const character of worldCharacters) {
+    const existing = characterMap.get(character.character_name) || { name: character.character_name };
+    characterMap.set(character.character_name, {
+      ...existing,
+      role: character.role || existing.role,
+      state: character.current_state || existing.state,
+      persona: character.public_persona,
+      goals: character.core_wants?.length ? character.core_wants : existing.goals || [],
+      pressure: character.hidden_pressure || [],
+      recentChange: normalizeLibraryText(character.recent_change, 180),
+      arcDirection: normalizeLibraryText(character.arc_direction, 180),
+      taboos: character.taboos || [],
+      relationships: character.relationship_notes || [],
+    });
+  }
+
+  setLibraryList(
+    elements.characterStateList,
+    Array.from(characterMap.values()).map((character) =>
+      renderLibraryItem(
+        character.name,
+        [character.role, character.persona],
+        pickStructuredSummary(character.state, character.arcDirection || character.speech || ""),
+        [
+          character.goals?.length ? `目标：${character.goals.join("；")}` : "",
+          character.pressure?.length ? `压力：${character.pressure.join("；")}` : "",
+          character.recentChange ? `最近变化：${character.recentChange}` : "",
+        ]
+      )
+    ),
+    "暂无人物状态"
+  );
+  setLibraryList(
+    elements.characterVoiceList,
+    voiceRules.length
+      ? voiceRules.map((rule) =>
+          renderLibraryItem(
+            rule.character_name,
+            [],
+            rule.voice_summary,
+            [
+              rule.diction_rules?.length ? `措辞：${rule.diction_rules.join("；")}` : "",
+              rule.taboo_moves?.length ? `禁区：${rule.taboo_moves.join("；")}` : "",
+            ]
+          )
+        )
+      : storyCharacters.map((character) =>
+          renderTagLibraryItem(character.name, character.personality_traits || [], character.speech_style || "暂无声口规则")
+        ),
+    "暂无人物声口"
+  );
+  const relationItems = [
+    ...relationships.map((item) => renderLibraryItem(item, ["关系"])),
+    ...worldCharacters.flatMap((character) =>
+      (character.relationship_notes || []).map((note) => renderLibraryItem(note, [character.character_name]))
+    ),
+    ...worldCharacters.flatMap((character) =>
+      (character.taboos || []).map((taboo) => renderLibraryItem(taboo, [character.character_name, "禁区"]))
+    ),
+  ];
+  setLibraryList(elements.relationshipList, relationItems, "暂无关系或禁区资料");
+  setLibraryList(
+    elements.characterArcList,
+    (run?.arc_options?.options || []).map((arc) => {
+      const selected = selectedArc?.selected_option_id === arc.id ? "已选择" : "候选";
+      return renderLibraryItem(
+        arc.title,
+        [arc.id, selected, (arc.character_focus || []).join("、")],
+        arc.emotional_direction || "",
+        [
+          arc.must_happen?.length ? `必须发生：${arc.must_happen.join("；")}` : "",
+          arc.must_not_break?.length ? `不可破坏：${arc.must_not_break.join("；")}` : "",
+        ]
+      );
+    }),
+    "暂无导演人物走向"
+  );
+}
+
+function collectThreads(run) {
+  const byKey = new Map();
+  for (const thread of run?.unresolved_threads || []) {
+    byKey.set(thread.id || thread.description, thread);
+  }
+  for (const thread of run?.story_state?.unresolved_threads || []) {
+    byKey.set(thread.id || thread.description, thread);
+  }
+  for (const thread of run?.world_model?.active_threads || []) {
+    byKey.set(thread.id || thread.description, thread);
+  }
+  return Array.from(byKey.values());
+}
+
+function renderThreadLibraryItem(thread) {
+  return renderLibraryItem(
+    thread.id || "未命名伏笔",
+    [thread.status, thread.introduced_at ? `首次：${thread.introduced_at}` : "", thread.last_advanced ? `最近：${thread.last_advanced}` : ""],
+    thread.description || ""
+  );
+}
+
+function renderThreadsLibrary(run) {
+  const threads = collectThreads(run);
+  setLibraryList(
+    elements.openThreadList,
+    threads.filter((thread) => thread.status === "open").map(renderThreadLibraryItem),
+    "暂无待推进伏笔"
+  );
+  setLibraryList(
+    elements.advancedThreadList,
+    threads.filter((thread) => thread.status === "advanced").map(renderThreadLibraryItem),
+    "暂无已推进伏笔"
+  );
+  setLibraryList(
+    elements.closedThreadList,
+    threads.filter((thread) => thread.status === "closed").map(renderThreadLibraryItem),
+    "暂无已闭合伏笔"
+  );
+  setLibraryList(
+    elements.workSkillThreadList,
+    (run?.work_skill?.open_threads || []).map((thread) => renderLibraryItem(thread, ["作品 skill"])),
+    "作品 skill 暂无未收束项"
+  );
+  if (elements.threadConsistencySummary) {
+    elements.threadConsistencySummary.textContent = formatConsistencySummary(run?.latest_consistency_report);
+  }
+}
+
 function renderArcList(run) {
   elements.arcList.innerHTML = "";
   const directorOptions = run.arc_options?.options || [];
@@ -1677,6 +2001,9 @@ function renderRun(run) {
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
   elements.revivalDiagnosisSummary.textContent = formatRevivalDiagnosis(run.revival_diagnosis);
+  renderWorldLibrary(run);
+  renderCharactersLibrary(run);
+  renderThreadsLibrary(run);
   renderSourcePanel(run);
   renderOutputPanel(run);
 
@@ -1686,7 +2013,7 @@ function renderRun(run) {
   renderReferences(run.selected_references);
   renderArcList(run);
   renderBlindChallenge(run);
-  renderThreads(run.unresolved_threads);
+  renderThreads(collectThreads(run));
   renderChapterList(run.chapter_summaries);
   renderLogs(run.log_messages || []);
 

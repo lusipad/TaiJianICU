@@ -839,6 +839,7 @@
 .log-list,
 .thread-list,
 .chapter-list,
+.library-list,
 .path-list,
 .advanced-body {
   display: grid;
@@ -883,6 +884,7 @@
 
 .thread-item,
 .chapter-item,
+.library-item,
 .path-line,
 .run-item,
 .log-line {
@@ -893,6 +895,57 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.026);
+}
+
+.library-panel {
+  gap: 18px;
+}
+
+.library-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 12px;
+}
+
+.library-feature {
+  min-height: 220px;
+}
+
+.library-item {
+  align-content: start;
+}
+
+.library-item-empty {
+  color: rgba(226, 213, 201, 0.5);
+}
+
+.library-item span {
+  color: rgba(226, 213, 201, 0.6);
+  line-height: 1.65;
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-row span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid rgba(212, 160, 121, 0.18);
+  border-radius: 999px;
+  background: rgba(212, 160, 121, 0.06);
+  color: rgba(232, 204, 180, 0.76);
+  font-size: 12px;
+}
+
+.thread-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .run-item {
@@ -1225,6 +1278,8 @@
   .director-lane-grid,
   .director-plan-row,
   .studio-bottom-grid,
+  .library-overview-grid,
+  .thread-board,
   .result-grid,
   .result-grid-triple {
     grid-template-columns: 1fr 1fr;
@@ -1283,6 +1338,8 @@
   .director-plan-editor-head,
   .director-plan-row,
   .studio-bottom-grid,
+  .library-overview-grid,
+  .thread-board,
   .result-grid,
   .result-grid-triple,
   .field-grid,

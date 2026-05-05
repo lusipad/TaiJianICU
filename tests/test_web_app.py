@@ -363,6 +363,26 @@ def test_studio_pages_are_split_by_route() -> None:
     assert client.get("/studio/missing").status_code == 404
 
 
+def test_studio_library_pages_have_distinct_content_surfaces() -> None:
+    app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
+    client = TestClient(app)
+
+    studio = client.get("/studio/world")
+
+    assert studio.status_code == 200
+    assert 'id="world-library"' in studio.text
+    assert 'id="characters-library"' in studio.text
+    assert 'id="threads-library"' in studio.text
+    assert 'id="canon-fact-list"' in studio.text
+    assert 'id="faction-list"' in studio.text
+    assert 'id="character-state-list"' in studio.text
+    assert 'id="character-voice-list"' in studio.text
+    assert 'id="open-thread-list"' in studio.text
+    assert 'id="advanced-thread-list"' in studio.text
+    assert 'data-tab-panel="director world' not in studio.text
+    assert 'data-tab-panel="review stats threads' not in studio.text
+
+
 def test_studio_static_scripts_support_markdown_preview() -> None:
     script = (Path(__file__).resolve().parents[1] / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
 
@@ -378,6 +398,10 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
     assert "/director-plan" in script
     assert "testRuntimeConnection" in script
     assert "/api/runtime/connection-test" in script
+    assert "renderWorldLibrary" in script
+    assert "renderCharactersLibrary" in script
+    assert "renderThreadsLibrary" in script
+    assert "normalizeLibraryText" in script
 
 
 def test_marketing_pages_are_split_by_route() -> None:
