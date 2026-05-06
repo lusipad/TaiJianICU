@@ -423,12 +423,17 @@ def test_studio_static_assets_support_workflow_home() -> None:
     assert "countPresentValues" in script
     assert "emptyStatePageCopy" in script
     assert "applyEmptyStateCopy" in script
+    assert "setWorkspaceTab" not in script
+    assert "workspaceTabs" not in script
     assert "先创建任务，才能制定阶段计划" in script
     assert "资料库会随任务自动生成" in script
     assert 'id="empty-state-title"' in html
     assert 'id="empty-state-next-title"' in html
     assert 'id="empty-state-result-title"' in html
     assert "library-home-grid" in styles
+    assert ".workspace-tab" not in styles
+    assert ".workspace-tabs" not in styles
+    assert ".studio-tabs-row" not in styles
     assert 'data-page-section="overview director chapters review world characters threads stats artifacts"' in html
     assert 'app.js?v=studio-workflow-v4' in html
     assert ".empty-state::before" not in styles

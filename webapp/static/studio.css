@@ -130,7 +130,6 @@
 .studio-project-head,
 .studio-project-actions,
 .progress-stage,
-.studio-tabs-row,
 .story-panel-head,
 .story-panel footer,
 .accept-row,
@@ -446,18 +445,10 @@
   margin-top: 24px;
 }
 
-.studio-tabs-row,
-.workspace-tabs,
 #output-path {
   display: none;
 }
 
-.studio-tabs-row {
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.workspace-tabs,
 .inspector-tabs,
 .story-preview-tabs {
   display: inline-flex;
@@ -469,7 +460,6 @@
   background: rgba(255, 255, 255, 0.035);
 }
 
-.workspace-tab,
 .inspector-tab,
 .story-preview-tab {
   min-height: 38px;
@@ -482,7 +472,6 @@
   font-weight: 700;
 }
 
-.workspace-tab.is-active,
 .inspector-tab.is-active,
 .story-preview-tab.is-active {
   background: rgba(212, 160, 121, 0.18);
@@ -1455,7 +1444,6 @@
 
   .studio-project-head,
   .progress-stage,
-  .studio-tabs-row,
   .accept-row,
   .story-panel-head,
   .story-panel footer {

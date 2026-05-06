@@ -5,7 +5,6 @@ const state = {
   currentStudioPage: "overview",
   activeSourceTab: "excerpt",
   activeOutputTab: "chapter",
-  activeWorkspaceTab: "overview",
   activeSidebarTab: "runs",
   exampleCache: [],
   exampleDetailCache: {},
@@ -149,7 +148,6 @@ const elements = {
   pageTitle: document.getElementById("studio-page-title"),
   studioWorkspace: document.querySelector(".studio-workspace"),
   pageSections: Array.from(document.querySelectorAll("[data-page-section]")),
-  workspaceTabs: Array.from(document.querySelectorAll(".workspace-tab")),
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
   sidebarTabs: Array.from(document.querySelectorAll(".inspector-tab")),
   sidebarPanels: Array.from(document.querySelectorAll("[data-sidebar-panel]")),
@@ -159,16 +157,16 @@ const elements = {
 };
 
 const studioPages = {
-  overview: { title: "工作台", tab: "overview" },
-  director: { title: "阶段导演计划", tab: "director" },
-  chapters: { title: "章节队列", tab: "chapters" },
-  review: { title: "单章评审", tab: "review" },
-  world: { title: "资料库", tab: "world" },
-  characters: { title: "人物设定资料", tab: "characters" },
-  threads: { title: "伏笔资料", tab: "threads" },
-  stats: { title: "统计", tab: "stats" },
-  artifacts: { title: "产物", tab: "artifacts" },
-  settings: { title: "设置", tab: null },
+  overview: { title: "工作台" },
+  director: { title: "阶段导演计划" },
+  chapters: { title: "章节队列" },
+  review: { title: "单章评审" },
+  world: { title: "资料库" },
+  characters: { title: "人物设定资料" },
+  threads: { title: "伏笔资料" },
+  stats: { title: "统计" },
+  artifacts: { title: "产物" },
+  settings: { title: "设置" },
 };
 
 const studioPathPages = {
@@ -864,6 +862,10 @@ function applyStudioPageVisibility() {
     const pages = String(section.dataset.pageSection || "").split(/\s+/);
     section.classList.toggle("page-section-hidden", !pages.includes(state.currentStudioPage));
   }
+  for (const panel of elements.workspacePanels) {
+    const panelTabs = String(panel.dataset.tabPanel || "").split(/\s+/);
+    panel.classList.toggle("hidden", !panelTabs.includes(state.currentStudioPage));
+  }
 }
 
 function resetStudioScrollForPageChange(previousPage) {
@@ -880,9 +882,6 @@ function applyStudioPage({ resetScroll = false } = {}) {
   if (elements.pageTitle) {
     elements.pageTitle.textContent = config.title;
   }
-  if (config.tab) {
-    setWorkspaceTab(config.tab);
-  }
   updateStudioNavActive();
   applyStudioPageVisibility();
   applyEmptyStateCopy();
@@ -895,7 +894,6 @@ function applyStudioHashIntent() {
   if (window.location.pathname.replace(/\/+$/, "") !== "/studio") return;
   const hash = window.location.hash;
   if (hash === "#overview") {
-    setWorkspaceTab("overview");
     scrollStudioWorkspaceTop();
     return;
   }
@@ -908,12 +906,10 @@ function applyStudioHashIntent() {
     return;
   }
   if (hash === "#planning") {
-    setWorkspaceTab("director");
     document.getElementById("director")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   if (hash === "#diagnostics") {
-    setWorkspaceTab("review");
     document.getElementById("review")?.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
@@ -1073,18 +1069,6 @@ async function startExampleRun() {
   } finally {
     setActionBusy(false);
   }
-}
-
-function setWorkspaceTab(tabName) {
-  state.activeWorkspaceTab = tabName;
-  for (const tab of elements.workspaceTabs) {
-    tab.classList.toggle("is-active", tab.dataset.tabTarget === tabName);
-  }
-  for (const panel of elements.workspacePanels) {
-    const panelTabs = String(panel.dataset.tabPanel || "").split(/\s+/);
-    panel.classList.toggle("hidden", !panelTabs.includes(tabName));
-  }
-  updateStudioNavActive();
 }
 
 function updateStudioNavActive() {
@@ -2507,9 +2491,6 @@ elements.form.addEventListener("submit", async (event) => {
 
 window.addEventListener("load", async () => {
   try {
-    for (const tab of elements.workspaceTabs) {
-      tab.addEventListener("click", () => setWorkspaceTab(tab.dataset.tabTarget));
-    }
     for (const tab of elements.sourceTabButtons) {
       tab.addEventListener("click", () => setSourceTab(tab.dataset.sourceTabTarget));
     }
