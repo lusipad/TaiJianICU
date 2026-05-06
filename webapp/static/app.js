@@ -1,50 +1,3 @@
-// ── Onboarding Modal ──
-function initOnboarding() {
-  const modal = document.getElementById("onboarding-modal");
-  if (!modal) return;
-  if (localStorage.getItem("tkOnboardingDone")) return;
-
-  const steps = modal.querySelectorAll(".onboarding-step");
-  const nextBtn = document.getElementById("onboarding-next");
-  const skipBtn = document.getElementById("onboarding-skip");
-  const noShowCheck = document.getElementById("onboarding-no-show");
-  let currentStep = 0;
-
-  function showStep(index) {
-    steps.forEach((step, i) => {
-      step.classList.toggle("hidden", i !== index);
-    });
-    nextBtn.textContent = index < steps.length - 1 ? "下一步" : "开始使用";
-  }
-
-  function closeModal() {
-    if (noShowCheck.checked) {
-      localStorage.setItem("tkOnboardingDone", "1");
-    }
-    modal.classList.add("hidden");
-  }
-
-  nextBtn.addEventListener("click", () => {
-    if (currentStep < steps.length - 1) {
-      currentStep++;
-      showStep(currentStep);
-    } else {
-      closeModal();
-    }
-  });
-
-  skipBtn.addEventListener("click", closeModal);
-
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeModal();
-  });
-
-  showStep(0);
-  setTimeout(() => modal.classList.remove("hidden"), 500);
-}
-
-document.addEventListener("DOMContentLoaded", initOnboarding);
-
 const state = {
   activeRunId: null,
   activeRunDetail: null,
@@ -165,6 +118,13 @@ const elements = {
   directorPlanRefreshButton: document.getElementById("director-plan-refresh-button"),
   directorPlanAddChapterButton: document.getElementById("director-plan-add-chapter-button"),
   directorPlanSaveButton: document.getElementById("director-plan-save-button"),
+  workbenchCurrentTitle: document.getElementById("workbench-current-title"),
+  workbenchCurrentSummary: document.getElementById("workbench-current-summary"),
+  workbenchPrimaryAction: document.getElementById("workbench-primary-action"),
+  workbenchNextStep: document.getElementById("workbench-next-step"),
+  workbenchNextDetail: document.getElementById("workbench-next-detail"),
+  workbenchLatestResult: document.getElementById("workbench-latest-result"),
+  workbenchLatestDetail: document.getElementById("workbench-latest-detail"),
   modelOptions: document.getElementById("model-options"),
   advancedOptionsDetails: document.getElementById("advanced-options"),
   pageTitle: document.getElementById("studio-page-title"),
@@ -180,11 +140,11 @@ const elements = {
 };
 
 const studioPages = {
-  overview: { title: "导演驾驶舱", tab: "overview" },
+  overview: { title: "工作台", tab: "overview" },
   director: { title: "阶段导演计划", tab: "director" },
   chapters: { title: "章节队列", tab: "chapters" },
   review: { title: "单章评审", tab: "review" },
-  world: { title: "世界观资料", tab: "world" },
+  world: { title: "资料库", tab: "world" },
   characters: { title: "人物设定资料", tab: "characters" },
   threads: { title: "伏笔资料", tab: "threads" },
   stats: { title: "统计", tab: "stats" },
@@ -203,6 +163,15 @@ const studioPathPages = {
   "/studio/stats": "stats",
   "/studio/artifacts": "artifacts",
   "/studio/settings": "settings",
+};
+
+const legacyStudioHashRoutes = {
+  "#quickstart-sample": "settings",
+  "#bring-your-own-api": "settings",
+  "#advanced-options": "settings",
+  "#runs": "artifacts",
+  "#planning": "director",
+  "#diagnostics": "review",
 };
 
 function escapeHtml(value) {
@@ -761,23 +730,16 @@ function openAdvancedOptions({ scroll = true } = {}) {
 
 function scrollStudioWorkspaceTop() {
   if (elements.studioWorkspace) {
-    elements.studioWorkspace.scrollTo({ top: 0, behavior: "smooth" });
+    elements.studioWorkspace.scrollTo({ top: 0, behavior: "auto" });
     return;
   }
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 function getStudioPageFromLocation() {
   const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/studio";
   const hash = window.location.hash;
-  if (normalizedPath === "/studio") {
-    if (["#quickstart-sample", "#bring-your-own-api", "#advanced-options"].includes(hash)) {
-      return "settings";
-    }
-    if (hash === "#runs") return "artifacts";
-    if (hash === "#planning") return "director";
-    if (hash === "#diagnostics") return "review";
-  }
+  if (normalizedPath === "/studio" && legacyStudioHashRoutes[hash]) return legacyStudioHashRoutes[hash];
   return studioPathPages[normalizedPath] || "overview";
 }
 
@@ -788,7 +750,14 @@ function applyStudioPageVisibility() {
   }
 }
 
-function applyStudioPage() {
+function resetStudioScrollForPageChange(previousPage) {
+  if (previousPage && previousPage !== state.currentStudioPage) {
+    scrollStudioWorkspaceTop();
+  }
+}
+
+function applyStudioPage({ resetScroll = false } = {}) {
+  const previousPage = state.currentStudioPage;
   state.currentStudioPage = getStudioPageFromLocation();
   const config = studioPages[state.currentStudioPage] || studioPages.overview;
   document.body.dataset.studioPage = state.currentStudioPage;
@@ -800,9 +769,13 @@ function applyStudioPage() {
   }
   updateStudioNavActive();
   applyStudioPageVisibility();
+  if (resetScroll) {
+    resetStudioScrollForPageChange(previousPage);
+  }
 }
 
 function applyStudioHashIntent() {
+  if (window.location.pathname.replace(/\/+$/, "") !== "/studio") return;
   const hash = window.location.hash;
   if (hash === "#overview") {
     setWorkspaceTab("overview");
@@ -1013,6 +986,92 @@ function setSidebarTab(tabName) {
   }
   for (const panel of elements.sidebarPanels) {
     panel.classList.toggle("hidden", panel.dataset.sidebarPanel !== tabName);
+  }
+}
+
+function truncateText(value, maxLength = 96) {
+  const normalized = String(value || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return "";
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 1)}...` : normalized;
+}
+
+function getPrimaryActionForRun(run) {
+  if (!run) {
+    return {
+      label: "开始新任务",
+      href: "/studio/settings",
+      step: "先导入原稿或加载样例",
+      detail: "工作台会在任务创建后自动显示下一步。",
+    };
+  }
+  switch (run.status) {
+    case "awaiting_arc_selection":
+      return {
+        label: "选择人物走向",
+        href: "/studio/director",
+        step: "选择人物走向",
+        detail: "先确定接下来多章的人物压力和走向，再生成正文。",
+      };
+    case "queued":
+    case "running":
+    case "analyzing":
+    case "generating":
+      return {
+        label: "查看进度",
+        href: "/studio/chapters",
+        step: "等待生成完成",
+        detail: run.progress?.message || "系统正在分析原稿、规划章节或生成正文。",
+      };
+    case "completed":
+    case "completed_with_warnings":
+      return {
+        label: "评审最新章节",
+        href: "/studio/review",
+        step: "检查最新结果",
+        detail: "先看原稿/续写对照和质检，再决定是否采用产物。",
+      };
+    case "failed":
+      return {
+        label: "查看错误",
+        href: "/studio/review",
+        step: "处理失败原因",
+        detail: run.error_message || "打开评审页查看日志，再调整设置后重试。",
+      };
+    default:
+      return {
+        label: "查看导演计划",
+        href: "/studio/director",
+        step: "整理下一步",
+        detail: "从导演计划页确认章节目标、人物走向和约束。",
+      };
+  }
+}
+
+function renderWorkbenchHome(run) {
+  const action = getPrimaryActionForRun(run);
+  if (elements.workbenchCurrentTitle) {
+    elements.workbenchCurrentTitle.textContent = run?.session_name || "当前没有任务";
+  }
+  if (elements.workbenchCurrentSummary) {
+    elements.workbenchCurrentSummary.textContent = run
+      ? `状态：${formatRunStatus(run.status)}。${run.progress?.message || "可以继续检查下一步。"}`
+      : "先快速试看样例，或导入自己的原稿开始一轮真实续写。";
+  }
+  if (elements.workbenchPrimaryAction) {
+    elements.workbenchPrimaryAction.textContent = action.label;
+    elements.workbenchPrimaryAction.href = action.href;
+  }
+  if (elements.workbenchNextStep) elements.workbenchNextStep.textContent = action.step;
+  if (elements.workbenchNextDetail) elements.workbenchNextDetail.textContent = action.detail;
+  if (elements.workbenchLatestResult) {
+    const latestGoal = truncateText(run?.latest_chapter_goal, 86);
+    elements.workbenchLatestResult.textContent =
+      latestGoal || formatScore(run?.metrics?.latest_quality_score, run?.metrics?.latest_quality_verdict);
+  }
+  if (elements.workbenchLatestDetail) {
+    elements.workbenchLatestDetail.textContent = run?.output_paths?.length
+      ? "最新正文、报告和候选稿已保存在产物页。"
+      : "生成章节后，这里会提示是否进入单章评审。";
   }
 }
 
@@ -2004,6 +2063,7 @@ function renderRun(run) {
   renderWorldLibrary(run);
   renderCharactersLibrary(run);
   renderThreadsLibrary(run);
+  renderWorkbenchHome(run);
   renderSourcePanel(run);
   renderOutputPanel(run);
 
@@ -2271,7 +2331,7 @@ window.addEventListener("load", async () => {
       elements.directorPlanSaveButton.addEventListener("click", saveDirectorPlan);
     }
     window.addEventListener("hashchange", () => {
-      applyStudioPage();
+      applyStudioPage({ resetScroll: true });
       applyStudioHashIntent();
     });
     applyStudioPage();
@@ -2283,7 +2343,7 @@ window.addEventListener("load", async () => {
     await loadExamples();
     await refreshRuns({ autoSelect: true });
     await refreshBenchmarks();
-    applyStudioPage();
+    applyStudioPage({ resetScroll: true });
     applyStudioHashIntent();
   } catch (error) {
     setFormStatus(`初始化失败：${error.message}`, "tone-error");

@@ -315,12 +315,19 @@ def test_web_health_and_index() -> None:
     studio = client.get("/studio")
     assert studio.status_code == 200
     assert "TaiJianICU Studio" in studio.text
-    assert "创作区" in studio.text
+    assert "工作流" in studio.text
     assert "资料库" in studio.text
+    assert "工作台" in studio.text
+    assert "开始新任务" in studio.text
+    assert "继续当前任务" in studio.text
+    assert "检查最新结果" in studio.text
+    assert 'data-workbench-panel="start"' in studio.text
+    assert 'data-workbench-panel="continue"' in studio.text
+    assert 'data-workbench-panel="review"' in studio.text
     assert "阶段导演计划" in studio.text
     assert "章节队列" in studio.text
     assert "单章评审" in studio.text
-    assert "世界设定" in studio.text
+    assert "世界观资料" in studio.text
     assert "API 配置" in studio.text
     assert "连接测试" in studio.text
     assert "id=\"director-plan-summary\"" in studio.text
@@ -335,6 +342,8 @@ def test_web_health_and_index() -> None:
     assert "第一次用？先免费试看，再决定要不要真跑" in studio.text
     assert "按当前配置试跑样例" in studio.text
     assert "使用自己的 Key，或者直接用本地版本" in studio.text
+    styles = client.get("/static/styles.css")
+    assert "studio.css?v=studio-workflow-v2" in styles.text
     favicon = client.get("/static/favicon.svg")
     assert favicon.status_code == 200
     assert "image/svg+xml" in favicon.headers["content-type"]
@@ -383,6 +392,7 @@ def test_studio_library_pages_have_distinct_content_surfaces() -> None:
     assert 'id="advanced-thread-list"' in studio.text
     assert 'data-tab-panel="director world' not in studio.text
     assert 'data-tab-panel="review stats threads' not in studio.text
+    assert 'id="run-form" class="config-panel page-section" data-page-section="settings"' in studio.text
 
 
 def test_studio_static_scripts_support_markdown_preview() -> None:
@@ -390,6 +400,20 @@ def test_studio_static_scripts_support_markdown_preview() -> None:
 
     assert "renderFencedCodeBlock" in script
     assert "markdown-preview-code" in script
+
+
+def test_studio_static_assets_support_workflow_home() -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = (root / "webapp" / "static" / "app.js").read_text(encoding="utf-8")
+    styles = (root / "webapp" / "static" / "studio.css").read_text(encoding="utf-8")
+    html = (root / "webapp" / "static" / "index.html").read_text(encoding="utf-8")
+
+    assert "resetStudioScrollForPageChange" in script
+    assert "legacyStudioHashRoutes" in script
+    assert "getPrimaryActionForRun" in script
+    assert ".empty-state::before" not in styles
+    assert ".empty-state::after" not in styles
+    assert "onboarding-overlay" not in html
 
 
 def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:

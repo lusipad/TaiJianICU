@@ -11,81 +11,9 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=studio-library-v3" />
+    <link rel="stylesheet" href="/static/styles.css?v=studio-workflow-v2" />
   </head>
   <body class="studio-body">
-    <div
-      id="onboarding-modal"
-      class="onboarding-overlay hidden"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="onboarding-title"
-    >
-      <div class="onboarding-panel">
-        <div class="onboarding-steps">
-          <div class="onboarding-step" data-step="1">
-            <div class="onboarding-visual onboarding-visual-studio" aria-hidden="true">
-              <div class="onboarding-visual-side">
-                <strong>TaiJianICU Studio</strong>
-                <span class="is-active">工作台</span>
-                <span>作品库</span>
-                <span>世界观</span>
-              </div>
-              <div class="onboarding-visual-main">
-                <p>运行中</p>
-                <strong>月夜之诗 · 示例项目</strong>
-                <div class="onboarding-visual-metrics">
-                  <span>3 / 6</span>
-                  <span>12 万</span>
-                  <span>122,026</span>
-                </div>
-              </div>
-            </div>
-            <p class="onboarding-step-num">1 / 3</p>
-            <h2 id="onboarding-title" class="onboarding-title">这是什么？</h2>
-            <p class="onboarding-body">
-              TaiJianICU 是一个 AI 续写工作台。它先读懂原著风格和故事状态，再生成续写章节，并附带质量对比和过程信息。
-            </p>
-          </div>
-
-          <div class="onboarding-step hidden" data-step="2">
-            <div class="onboarding-icon-wrap" aria-hidden="true">TXT</div>
-            <p class="onboarding-step-num">2 / 3</p>
-            <h2 class="onboarding-title">你要准备什么？</h2>
-            <p class="onboarding-body">
-              一个 <strong>.txt 格式的小说文本</strong>就够了。支持 UTF-8、GBK、GB18030，上传后自动处理。其他参数都有默认值。
-            </p>
-            <p class="onboarding-note">第一次建议先快速试看内置原创样例；如果要长期使用，也支持自带 Key 或本地版本。</p>
-          </div>
-
-          <div class="onboarding-step hidden" data-step="3">
-            <div class="onboarding-visual onboarding-visual-quickstart" aria-hidden="true">
-              <p>免费试看</p>
-              <strong>第一次用？先免费试看</strong>
-              <span>快速试看原创样例</span>
-            </div>
-            <p class="onboarding-step-num">3 / 3</p>
-            <h2 class="onboarding-title">怎么开始？</h2>
-            <p class="onboarding-body">
-              先点 <strong>「快速试看原创样例」</strong> 看固定结果；如果觉得效果对，再上传自己的原著。
-            </p>
-            <p class="onboarding-note">右侧切换「总览 / 规划 / 诊断」查看不同层级的结果。</p>
-          </div>
-        </div>
-
-        <div class="onboarding-footer">
-          <label class="onboarding-skip-check">
-            <input type="checkbox" id="onboarding-no-show" />
-            <span>不再显示</span>
-          </label>
-          <div class="onboarding-nav">
-            <button type="button" id="onboarding-skip" class="utility-button">跳过</button>
-            <button type="button" id="onboarding-next">下一步</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="studio-app-shell">
       <aside class="studio-sidebar">
         <a class="studio-sidebar-brand" href="/">
@@ -93,19 +21,19 @@
         </a>
         <nav class="studio-menu" aria-label="Studio 主导航">
           <div class="studio-nav-group">
-            <p class="studio-nav-heading">创作区</p>
-            <a class="is-active" href="/studio" data-nav-icon="⌂" data-studio-page-link="overview">总览</a>
+            <p class="studio-nav-heading">工作流</p>
+            <a class="is-active" href="/studio" data-nav-icon="⌂" data-studio-page-link="overview">工作台</a>
             <a href="/studio/director" data-nav-icon="◇" data-studio-page-link="director">导演计划</a>
             <a href="/studio/chapters" data-nav-icon="▦" data-studio-page-link="chapters">章节队列</a>
             <a href="/studio/review" data-nav-icon="◉" data-studio-page-link="review">单章评审</a>
           </div>
           <div class="studio-nav-group">
             <p class="studio-nav-heading">资料库</p>
-            <a href="/studio/world" data-nav-icon="◎" data-studio-page-link="world">世界观</a>
-            <a href="/studio/characters" data-nav-icon="♙" data-studio-page-link="characters">人物设定</a>
-            <a href="/studio/threads" data-nav-icon="⌁" data-studio-page-link="threads">伏笔</a>
-            <a href="/studio/stats" data-nav-icon="▥" data-studio-page-link="stats">统计</a>
-            <a href="/studio/artifacts" data-nav-icon="▤" data-studio-page-link="artifacts">产物</a>
+            <a href="/studio/world" data-nav-icon="◎" data-studio-page-link="world">资料库</a>
+            <a class="studio-sub-link" href="/studio/characters" data-nav-icon="♙" data-studio-page-link="characters">人物设定</a>
+            <a class="studio-sub-link" href="/studio/threads" data-nav-icon="⌁" data-studio-page-link="threads">伏笔</a>
+            <a class="studio-sub-link" href="/studio/stats" data-nav-icon="▥" data-studio-page-link="stats">统计</a>
+            <a class="studio-sub-link" href="/studio/artifacts" data-nav-icon="▤" data-studio-page-link="artifacts">产物</a>
           </div>
           <div class="studio-nav-group">
             <p class="studio-nav-heading">运行配置</p>
@@ -121,7 +49,7 @@
       <main class="studio-workspace">
         <header class="studio-project-head">
           <div>
-            <h1 id="studio-page-title">导演驾驶舱</h1>
+            <h1 id="studio-page-title">工作台</h1>
           </div>
           <div class="studio-project-actions">
             <a class="utility-button studio-top-action" href="/">← 返回首页</a>
@@ -129,46 +57,28 @@
           </div>
         </header>
 
-        <section class="progress-stage page-section" data-page-section="overview" aria-label="任务进度">
-          <span class="is-done"><b aria-hidden="true">✓</b>上传原稿</span>
-          <span class="is-done"><b aria-hidden="true">✓</b>理解设定</span>
-          <span class="is-active"><b aria-hidden="true">3</b>导演多章计划</span>
-          <span><b aria-hidden="true">4</b>评审与反馈</span>
-        </section>
-
-        <section class="studio-metric-grid page-section" data-page-section="overview" aria-label="项目指标">
-          <article>
-            <p>累计字数</p>
-            <strong id="metric-tokens">0</strong>
-            <span>字</span>
-          </article>
-          <article>
-            <p>完成章节</p>
-            <strong id="metric-chapters">0 / 0</strong>
-            <span>章</span>
-          </article>
-          <article>
-            <p>预计剩余时间</p>
-            <strong id="metric-time">约 12</strong>
-            <span>分钟</span>
-          </article>
-          <article>
-            <p>当前状态</p>
-            <strong id="run-status">-</strong>
-            <span id="progress-count">0/0</span>
-          </article>
-        </section>
-
-        <section id="empty-state" class="empty-state page-section" data-page-section="overview">
-          <div class="empty-state-icon" aria-hidden="true">羽</div>
-          <p class="empty-state-title">还没有选中任务</p>
-          <p>第一次用？先免费试看，再决定要不要真跑。也可以上传自己的 `.txt`，开始一轮真实续写。</p>
-          <div class="empty-state-actions">
-            <div class="dual-action-row">
+        <section id="empty-state" class="workbench-home page-section" data-page-section="overview" aria-label="工作台首页">
+          <article class="workbench-hero" data-workbench-panel="start">
+            <p class="section-kicker">开始新任务</p>
+            <h2>先跑一轮，再决定怎么续写</h2>
+            <p>第一次用？先免费试看，再决定要不要真跑。确认效果后，再导入自己的 `.txt` 原稿。</p>
+            <div class="empty-state-actions dual-action-row">
               <button id="empty-example-button" type="button">快速试看原创样例</button>
-              <button id="empty-fill-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
+              <a class="utility-button" href="/studio/settings">导入原稿</a>
             </div>
-          </div>
+          </article>
+          <article class="workbench-card" data-workbench-panel="continue">
+            <p class="label">继续当前任务</p>
+            <strong>还没有选中任务</strong>
+            <span>加载样例或导入原稿后，这里会显示当前状态和下一步动作。</span>
+            <button id="empty-fill-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
+          </article>
+          <article class="workbench-card" data-workbench-panel="review">
+            <p class="label">检查最新结果</p>
+            <strong>等待生成章节</strong>
+            <span>生成完成后再进入单章评审、资料库或产物页，避免一开始就被细节淹没。</span>
+            <a class="utility-button" href="/studio/settings#bring-your-own-api">查看 API 连接状态</a>
+          </article>
         </section>
 
         <div
@@ -178,25 +88,44 @@
         >
           <div id="error-banner" class="status-banner hidden"></div>
 
-          <div class="studio-tabs-row">
-            <nav class="workspace-tabs" aria-label="工作台分区">
-              <button type="button" class="workspace-tab is-active" data-tab-target="overview">总览</button>
-              <button type="button" class="workspace-tab" data-tab-target="director">导演计划</button>
-              <button type="button" class="workspace-tab" data-tab-target="chapters">章节队列</button>
-              <button type="button" class="workspace-tab" data-tab-target="review">单章评审</button>
-            </nav>
-            <div class="progress-wrap">
-              <div class="progress-bar">
-                <div id="progress-fill" class="progress-fill"></div>
+          <section class="workbench-home workbench-home-active" data-tab-panel="overview" aria-label="当前任务工作台">
+            <article class="workbench-hero" data-workbench-panel="start">
+              <p class="section-kicker">当前任务</p>
+              <h2 id="workbench-current-title">正在读取任务</h2>
+              <p id="workbench-current-summary">加载最近任务后，这里会只显示当前状态和下一步动作。</p>
+              <div class="workbench-primary-actions">
+                <a id="workbench-primary-action" class="utility-button workbench-primary-action" href="/studio/director">查看导演计划</a>
+                <a class="utility-button" href="/studio/settings">开始新任务</a>
               </div>
-              <div class="progress-meta">
-                <span id="progress-message">等待开始</span>
-                <span id="progress-percent">0%</span>
+            </article>
+            <article class="workbench-card" data-workbench-panel="continue">
+              <p class="label">下一步</p>
+              <strong id="workbench-next-step">-</strong>
+              <span id="workbench-next-detail">-</span>
+              <div class="progress-wrap workbench-progress">
+                <div class="progress-bar">
+                  <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <div class="progress-meta">
+                  <span id="progress-message">等待开始</span>
+                  <span id="progress-percent">0%</span>
+                </div>
               </div>
-            </div>
-          </div>
+            </article>
+            <article class="workbench-card" data-workbench-panel="review">
+              <p class="label">最近结果</p>
+              <strong id="workbench-latest-result">-</strong>
+              <span id="workbench-latest-detail">-</span>
+              <div class="workbench-compact-metrics">
+                <span><b id="metric-chapters">0 / 0</b>章节</span>
+                <span><b id="metric-tokens">0</b>字</span>
+                <span><b id="metric-time">约 0</b>分钟</span>
+                <span><b id="run-status">-</b><small id="progress-count">0/0</small></span>
+              </div>
+            </article>
+          </section>
 
-          <section class="workspace-block director-dashboard" data-tab-panel="overview">
+          <section class="workspace-block director-dashboard hidden" data-tab-panel="support">
             <div class="panel-head">
               <p class="section-kicker">创作区</p>
               <h2>从作品全局进入下一段创作</h2>
@@ -308,7 +237,7 @@
             </div>
           </section>
 
-          <section class="workspace-block detail-panel" data-tab-panel="overview artifacts">
+          <section class="workspace-block detail-panel" data-tab-panel="artifacts">
             <div class="result-grid result-grid-emphasis">
               <article class="result-card result-card-feature">
                 <p class="label">风格摘要</p>
@@ -611,33 +540,42 @@
               </div>
             </section>
 
-            <label class="field upload-field">
-              <span>原著文本</span>
-              <div class="upload-box">
-                <div class="upload-file-action" aria-hidden="true">
-                  <span class="upload-trigger">选择文件</span>
-                  <span class="upload-inline-note">点击选择 `.txt`，或先用内置样例</span>
+            <section class="start-task-panel">
+              <div class="quickstart-panel-head">
+                <div>
+                  <p class="label">开始任务</p>
+                  <strong>上传原稿并设定本轮续写目标</strong>
                 </div>
-                <input id="file-input" name="file" type="file" accept=".txt,text/plain" required />
-                <strong id="selected-file-name">选择一个 `.txt` 文件</strong>
-                <small>支持 UTF-8 / UTF-8-SIG / GB18030 / GBK，上传后统一转为 UTF-8。</small>
               </div>
-            </label>
 
-            <div class="field-grid">
-              <label class="field">
-                <span>续写章节数</span>
-                <input name="chapters" type="number" min="1" max="20" value="1" required />
+              <label class="field upload-field">
+                <span>原著文本</span>
+                <div class="upload-box">
+                  <div class="upload-file-action" aria-hidden="true">
+                    <span class="upload-trigger">选择文件</span>
+                    <span class="upload-inline-note">点击选择 `.txt`，或先用内置样例</span>
+                  </div>
+                  <input id="file-input" name="file" type="file" accept=".txt,text/plain" required />
+                  <strong id="selected-file-name">选择一个 `.txt` 文件</strong>
+                  <small>支持 UTF-8 / UTF-8-SIG / GB18030 / GBK，上传后统一转为 UTF-8。</small>
+                </div>
               </label>
-              <label class="field">
-                <span>起始章节</span>
-                <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
-              </label>
-              <label class="field">
-                <span>章节目标提示</span>
-                <textarea name="goal_hint" rows="2" placeholder="可选：回收伏笔、推进冲突等"></textarea>
-              </label>
-            </div>
+
+              <div class="field-grid">
+                <label class="field">
+                  <span>续写章节数</span>
+                  <input name="chapters" type="number" min="1" max="20" value="1" required />
+                </label>
+                <label class="field">
+                  <span>起始章节</span>
+                  <input name="start_chapter" type="number" min="1" max="9999" value="1" required />
+                </label>
+                <label class="field">
+                  <span>章节目标提示</span>
+                  <textarea name="goal_hint" rows="2" placeholder="可选：回收伏笔、推进冲突等"></textarea>
+                </label>
+              </div>
+            </section>
 
             <section id="bring-your-own-api" class="api-panel anchor-target">
               <div class="quickstart-panel-head">
@@ -782,6 +720,6 @@
       </main>
     </div>
 
-    <script src="/static/app.js?v=studio-library-v3" defer></script>
+    <script src="/static/app.js?v=studio-workflow-v2" defer></script>
   </body>
 </html>

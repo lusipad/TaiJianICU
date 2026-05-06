@@ -84,6 +84,20 @@
   color: #f3d9bf;
 }
 
+.studio-menu a.studio-sub-link {
+  min-height: 36px;
+  margin-left: 18px;
+  padding-left: 14px;
+  color: rgba(231, 215, 200, 0.6);
+  font-size: 13px;
+}
+
+.studio-menu a.studio-sub-link::before {
+  width: 18px;
+  margin-right: 8px;
+  opacity: 0.72;
+}
+
 .sidebar-quote {
   display: grid;
   gap: 18px;
@@ -328,64 +342,102 @@
   color: var(--danger);
 }
 
-.empty-state {
+.workbench-home {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-  gap: 26px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.82fr) minmax(260px, 0.82fr);
+  gap: 18px;
   margin-top: 24px;
+}
+
+.workbench-home-active {
+  margin-top: 0;
+}
+
+.workbench-hero,
+.workbench-card {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
+}
+
+.workbench-hero {
+  border-color: rgba(212, 160, 121, 0.22);
+  background:
+    linear-gradient(135deg, rgba(212, 160, 121, 0.12), rgba(255, 255, 255, 0.026)),
+    rgba(0, 0, 0, 0.12);
+}
+
+.workbench-hero h2 {
+  margin: 0;
+  color: #f1dfcf;
+  font-size: clamp(27px, 2.8vw, 38px);
+  line-height: 1.18;
+}
+
+.workbench-hero p,
+.workbench-card span {
+  margin: 0;
+  color: rgba(226, 213, 201, 0.68);
+  line-height: 1.7;
+}
+
+.workbench-card strong {
+  color: #f1dfcf;
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.workbench-primary-actions,
+.workbench-compact-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.workbench-primary-action {
+  border-color: rgba(212, 160, 121, 0.42);
+  background: rgba(212, 160, 121, 0.18);
+  color: #f4d7bd;
+}
+
+.workbench-progress {
+  min-width: 0;
+  width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
-  text-align: left;
 }
 
-.empty-state-icon {
-  display: none;
-}
-
-.empty-state-title {
-  margin: 0;
-  color: #f0dccc;
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.empty-state p {
-  max-width: none;
-  margin: 0;
-  color: rgba(226, 213, 201, 0.68);
-}
-
-.empty-state::before,
-.empty-state::after {
-  min-height: 300px;
-  display: block;
-  padding: 24px;
+.workbench-compact-metrics span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018));
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
-  color: rgba(226, 213, 201, 0.72);
-  font-family: var(--font-display);
-  font-size: 16px;
-  line-height: 1.9;
-  white-space: pre-wrap;
+  border-radius: 10px;
+  color: rgba(226, 213, 201, 0.58);
+  background: rgba(0, 0, 0, 0.14);
+  font-size: 12px;
 }
 
-.empty-state::before {
-  content: "原稿片段\a 当前还没有选中任务。\a\a 夜色如墨，风从窗棂的缝隙里钻进来，带着潮湿的草木气息。\a\a 先选择样例，或导入自己的原稿。";
+.workbench-compact-metrics b {
+  color: #f1dfcf;
+  font-family: var(--font-mono);
+  font-size: 13px;
 }
 
-.empty-state::after {
-  content: "续写预览\a AI 生成 · 约 800 字\a\a 选择任务后，这里会展示续写章节。\a\a 当前页只预览和评估，不会直接改写原稿。";
-}
-
-.empty-state > .empty-state-title,
-.empty-state > p,
-.empty-state > .empty-state-actions {
-  display: none;
+.workbench-compact-metrics small {
+  color: rgba(226, 213, 201, 0.52);
+  font-size: 11px;
 }
 
 .run-view {
@@ -395,7 +447,7 @@
 }
 
 .studio-tabs-row,
-.story-preview-tabs,
+.workspace-tabs,
 #output-path {
   display: none;
 }
@@ -1003,6 +1055,15 @@
   max-width: 920px;
 }
 
+.start-task-panel {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.026);
+}
+
 .studio-body[data-studio-page="overview"] .run-view,
 .studio-body[data-studio-page="director"] .run-view,
 .studio-body[data-studio-page="chapters"] .run-view,
@@ -1274,6 +1335,7 @@
   }
 
   .studio-metric-grid,
+  .workbench-home,
   .story-duo,
   .director-lane-grid,
   .director-plan-row,
@@ -1303,7 +1365,10 @@
   .studio-sidebar {
     position: relative;
     height: auto;
-    padding: 22px;
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 14px;
+    padding: 18px 16px;
     background:
       linear-gradient(180deg, rgba(10, 11, 13, 0.88), rgba(10, 11, 13, 0.9)),
       url("/static/design/sidebar-books.png") right bottom / 280px auto no-repeat;
@@ -1315,7 +1380,34 @@
   }
 
   .studio-menu {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    gap: 8px;
+    margin-top: 0;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .studio-nav-group {
+    min-width: max-content;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .studio-nav-heading {
+    display: none;
+  }
+
+  .studio-menu a,
+  .studio-menu a.studio-sub-link {
+    min-height: 38px;
+    margin-left: 0;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  .studio-menu a::before {
+    margin-right: 8px;
   }
 
   .sidebar-quote {
@@ -1333,6 +1425,7 @@
   }
 
   .studio-metric-grid,
+  .workbench-home,
   .story-duo,
   .director-lane-grid,
   .director-plan-editor-head,
@@ -1369,6 +1462,10 @@
 @media (max-width: 620px) {
   .studio-workspace {
     padding: 22px 16px 34px;
+  }
+
+  .workbench-home {
+    grid-template-columns: 1fr;
   }
 
   .studio-menu,
