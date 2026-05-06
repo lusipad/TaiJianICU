@@ -953,6 +953,44 @@
   gap: 18px;
 }
 
+.library-home-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.library-home-card {
+  min-width: 0;
+  min-height: 172px;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(212, 160, 121, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.026);
+  color: rgba(226, 213, 201, 0.72);
+}
+
+.library-home-card strong {
+  color: #f2d6bd;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.library-home-card p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+.library-card-count {
+  color: #d4a079;
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+}
+
 .library-overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
@@ -1340,6 +1378,7 @@
   .director-lane-grid,
   .director-plan-row,
   .studio-bottom-grid,
+  .library-home-grid,
   .library-overview-grid,
   .thread-board,
   .result-grid,
@@ -1431,6 +1470,7 @@
   .director-plan-editor-head,
   .director-plan-row,
   .studio-bottom-grid,
+  .library-home-grid,
   .library-overview-grid,
   .thread-board,
   .result-grid,

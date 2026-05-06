@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=studio-workflow-v2" />
+    <link rel="stylesheet" href="/static/styles.css?v=studio-workflow-v3" />
   </head>
   <body class="studio-body">
     <div class="studio-app-shell">
@@ -57,7 +57,12 @@
           </div>
         </header>
 
-        <section id="empty-state" class="workbench-home page-section" data-page-section="overview" aria-label="工作台首页">
+        <section
+          id="empty-state"
+          class="workbench-home page-section"
+          data-page-section="overview director chapters review world characters threads stats artifacts"
+          aria-label="工作台首页"
+        >
           <article class="workbench-hero" data-workbench-panel="start">
             <p class="section-kicker">开始新任务</p>
             <h2>先跑一轮，再决定怎么续写</h2>
@@ -336,6 +341,46 @@
                 <p class="label">章节评测</p>
                 <pre id="evaluation-summary">-</pre>
               </article>
+            </div>
+          </section>
+
+          <section
+            id="library-overview"
+            class="workspace-block detail-panel library-panel library-home"
+            data-tab-panel="world"
+            data-library-panel="overview"
+          >
+            <div class="panel-head">
+              <p class="section-kicker">资料库</p>
+              <h2>资料库总览</h2>
+              <p class="panel-copy">这里是只读资料入口，用来检查世界观、人物、伏笔、统计和产物，不承担创作动作。</p>
+            </div>
+            <div class="library-home-grid">
+              <a class="library-home-card" href="#world-library" data-library-card="world">
+                <span id="library-world-count" class="library-card-count">-</span>
+                <strong>世界观</strong>
+                <p id="library-world-summary">硬设定、势力、地点、谜团与世界观约束。</p>
+              </a>
+              <a class="library-home-card" href="/studio/characters" data-library-card="characters">
+                <span id="library-characters-count" class="library-card-count">-</span>
+                <strong>人物设定</strong>
+                <p id="library-characters-summary">角色状态、声口规则、关系禁区和人物走向。</p>
+              </a>
+              <a class="library-home-card" href="/studio/threads" data-library-card="threads">
+                <span id="library-threads-count" class="library-card-count">-</span>
+                <strong>伏笔</strong>
+                <p id="library-threads-summary">待推进、已推进、已闭合线索与未收束问题。</p>
+              </a>
+              <a class="library-home-card" href="/studio/stats" data-library-card="stats">
+                <span id="library-stats-count" class="library-card-count">-</span>
+                <strong>统计</strong>
+                <p id="library-stats-summary">调用、成本、章节进度和质量趋势。</p>
+              </a>
+              <a class="library-home-card" href="/studio/artifacts" data-library-card="artifacts">
+                <span id="library-artifacts-count" class="library-card-count">-</span>
+                <strong>产物</strong>
+                <p id="library-artifacts-summary">输出章节、报告、索引和运行文件路径。</p>
+              </a>
             </div>
           </section>
 
@@ -720,6 +765,6 @@
       </main>
     </div>
 
-    <script src="/static/app.js?v=studio-workflow-v2" defer></script>
+    <script src="/static/app.js?v=studio-workflow-v3" defer></script>
   </body>
 </html>

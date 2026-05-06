@@ -327,6 +327,7 @@ def test_web_health_and_index() -> None:
     assert "阶段导演计划" in studio.text
     assert "章节队列" in studio.text
     assert "单章评审" in studio.text
+    assert "资料库总览" in studio.text
     assert "世界观资料" in studio.text
     assert "API 配置" in studio.text
     assert "连接测试" in studio.text
@@ -343,7 +344,7 @@ def test_web_health_and_index() -> None:
     assert "按当前配置试跑样例" in studio.text
     assert "使用自己的 Key，或者直接用本地版本" in studio.text
     styles = client.get("/static/styles.css")
-    assert "studio.css?v=studio-workflow-v2" in styles.text
+    assert "studio.css?v=studio-workflow-v3" in styles.text
     favicon = client.get("/static/favicon.svg")
     assert favicon.status_code == 200
     assert "image/svg+xml" in favicon.headers["content-type"]
@@ -382,6 +383,13 @@ def test_studio_library_pages_have_distinct_content_surfaces() -> None:
 
     assert studio.status_code == 200
     assert 'id="world-library"' in studio.text
+    assert 'id="library-overview"' in studio.text
+    assert 'data-library-panel="overview"' in studio.text
+    assert 'data-library-card="world"' in studio.text
+    assert 'data-library-card="characters"' in studio.text
+    assert 'data-library-card="threads"' in studio.text
+    assert 'data-library-card="stats"' in studio.text
+    assert 'data-library-card="artifacts"' in studio.text
     assert 'id="characters-library"' in studio.text
     assert 'id="threads-library"' in studio.text
     assert 'id="canon-fact-list"' in studio.text
@@ -411,6 +419,11 @@ def test_studio_static_assets_support_workflow_home() -> None:
     assert "resetStudioScrollForPageChange" in script
     assert "legacyStudioHashRoutes" in script
     assert "getPrimaryActionForRun" in script
+    assert "renderLibraryOverview" in script
+    assert "countPresentValues" in script
+    assert "library-home-grid" in styles
+    assert 'data-page-section="overview director chapters review world characters threads stats artifacts"' in html
+    assert 'app.js?v=studio-workflow-v3' in html
     assert ".empty-state::before" not in styles
     assert ".empty-state::after" not in styles
     assert "onboarding-overlay" not in html

@@ -125,6 +125,16 @@ const elements = {
   workbenchNextDetail: document.getElementById("workbench-next-detail"),
   workbenchLatestResult: document.getElementById("workbench-latest-result"),
   workbenchLatestDetail: document.getElementById("workbench-latest-detail"),
+  libraryWorldCount: document.getElementById("library-world-count"),
+  libraryWorldSummary: document.getElementById("library-world-summary"),
+  libraryCharactersCount: document.getElementById("library-characters-count"),
+  libraryCharactersSummary: document.getElementById("library-characters-summary"),
+  libraryThreadsCount: document.getElementById("library-threads-count"),
+  libraryThreadsSummary: document.getElementById("library-threads-summary"),
+  libraryStatsCount: document.getElementById("library-stats-count"),
+  libraryStatsSummary: document.getElementById("library-stats-summary"),
+  libraryArtifactsCount: document.getElementById("library-artifacts-count"),
+  libraryArtifactsSummary: document.getElementById("library-artifacts-summary"),
   modelOptions: document.getElementById("model-options"),
   advancedOptionsDetails: document.getElementById("advanced-options"),
   pageTitle: document.getElementById("studio-page-title"),
@@ -525,6 +535,103 @@ function renderTagLibraryItem(title, tags = [], body = "") {
       ${tagHtml}
     </div>
   `;
+}
+
+function countObjectItems(value, keys) {
+  if (!value) return 0;
+  return keys.reduce((total, key) => {
+    const item = value[key];
+    return total + (Array.isArray(item) ? item.length : 0);
+  }, 0);
+}
+
+function countPresentValues(value, keys) {
+  if (!value) return 0;
+  return keys.reduce((total, key) => total + (value[key] ? 1 : 0), 0);
+}
+
+function setLibraryOverviewCard(countElement, summaryElement, count, fallbackSummary, summary = "") {
+  if (countElement) countElement.textContent = String(count);
+  if (summaryElement) summaryElement.textContent = summary || fallbackSummary;
+}
+
+function renderLibraryOverview(run) {
+  const world = run?.world_model || {};
+  const story = run?.story_state || {};
+  const worldCount =
+    countObjectItems(world, [
+      "canon_facts",
+      "active_factions",
+      "known_locations",
+      "open_mysteries",
+      "expansion_slots",
+    ]) + countObjectItems(run?.lorebook, ["entries"]);
+  setLibraryOverviewCard(
+    elements.libraryWorldCount,
+    elements.libraryWorldSummary,
+    worldCount,
+    "硬设定、势力、地点、谜团与世界观约束。",
+    pickStructuredSummary(world.summary, story.summary)
+  );
+
+  const characterCount =
+    countObjectItems(story, ["main_characters", "major_relationships"]) +
+    countObjectItems(world, ["main_characters"]) +
+    countObjectItems(run?.work_skill, ["character_voice_map"]);
+  setLibraryOverviewCard(
+    elements.libraryCharactersCount,
+    elements.libraryCharactersSummary,
+    characterCount,
+    "角色状态、声口规则、关系禁区和人物走向。",
+    story.main_characters?.length ? `已识别 ${story.main_characters.length} 个主要人物。` : ""
+  );
+
+  const threads = collectThreads(run);
+  setLibraryOverviewCard(
+    elements.libraryThreadsCount,
+    elements.libraryThreadsSummary,
+    threads.length + countObjectItems(run?.work_skill, ["open_threads"]),
+    "待推进、已推进、已闭合线索与未收束问题。",
+    threads.length ? `${threads.filter((thread) => thread.status === "open").length} 条伏笔待推进。` : ""
+  );
+
+  const completed = run?.metrics?.completed_chapters || 0;
+  const chapterCount = run?.metrics?.chapter_count || 0;
+  setLibraryOverviewCard(
+    elements.libraryStatsCount,
+    elements.libraryStatsSummary,
+    chapterCount,
+    "调用、成本、章节进度和质量趋势。",
+    chapterCount ? `章节进度 ${completed}/${chapterCount}，最新质量 ${formatScore(run?.metrics?.latest_quality_score, run?.metrics?.latest_quality_verdict)}。` : ""
+  );
+
+  const artifactCount = countPresentValues(run?.artifact_paths, [
+    "manifest",
+    "stage1_snapshot",
+    "world_model",
+    "lorebook",
+    "selected_references",
+    "director_plan",
+    "revival_workspace",
+    "work_skill",
+    "arc_options",
+    "selected_arc",
+    "revival_diagnosis",
+    "blind_challenge",
+    "latest_skeleton",
+    "latest_chapter_brief",
+    "latest_chapter_evaluation",
+    "latest_draft",
+    "latest_output",
+    "story_graph",
+  ]);
+  setLibraryOverviewCard(
+    elements.libraryArtifactsCount,
+    elements.libraryArtifactsSummary,
+    artifactCount,
+    "输出章节、报告、索引和运行文件路径。",
+    artifactCount ? `已有 ${artifactCount} 个可查产物路径。` : ""
+  );
 }
 
 function formatLorebookSummary(lorebook) {
@@ -2060,6 +2167,7 @@ function renderRun(run) {
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
   elements.revivalDiagnosisSummary.textContent = formatRevivalDiagnosis(run.revival_diagnosis);
+  renderLibraryOverview(run);
   renderWorldLibrary(run);
   renderCharactersLibrary(run);
   renderThreadsLibrary(run);
