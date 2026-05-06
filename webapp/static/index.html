@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=studio-workflow-v3" />
+    <link rel="stylesheet" href="/static/styles.css?v=studio-workflow-v4" />
   </head>
   <body class="studio-body">
     <div class="studio-app-shell">
@@ -64,24 +64,24 @@
           aria-label="工作台首页"
         >
           <article class="workbench-hero" data-workbench-panel="start">
-            <p class="section-kicker">开始新任务</p>
-            <h2>先跑一轮，再决定怎么续写</h2>
-            <p>第一次用？先免费试看，再决定要不要真跑。确认效果后，再导入自己的 `.txt` 原稿。</p>
+            <p id="empty-state-kicker" class="section-kicker">开始新任务</p>
+            <h2 id="empty-state-title">先跑一轮，再决定怎么续写</h2>
+            <p id="empty-state-copy">第一次用？先免费试看，再决定要不要真跑。确认效果后，再导入自己的 `.txt` 原稿。</p>
             <div class="empty-state-actions dual-action-row">
               <button id="empty-example-button" type="button">快速试看原创样例</button>
               <a class="utility-button" href="/studio/settings">导入原稿</a>
             </div>
           </article>
           <article class="workbench-card" data-workbench-panel="continue">
-            <p class="label">继续当前任务</p>
-            <strong>还没有选中任务</strong>
-            <span>加载样例或导入原稿后，这里会显示当前状态和下一步动作。</span>
+            <p id="empty-state-next-label" class="label">继续当前任务</p>
+            <strong id="empty-state-next-title">还没有选中任务</strong>
+            <span id="empty-state-next-copy">加载样例或导入原稿后，这里会显示当前状态和下一步动作。</span>
             <button id="empty-fill-example-button" class="utility-button" type="button">按当前配置试跑样例</button>
           </article>
           <article class="workbench-card" data-workbench-panel="review">
-            <p class="label">检查最新结果</p>
-            <strong>等待生成章节</strong>
-            <span>生成完成后再进入单章评审、资料库或产物页，避免一开始就被细节淹没。</span>
+            <p id="empty-state-result-label" class="label">检查最新结果</p>
+            <strong id="empty-state-result-title">等待生成章节</strong>
+            <span id="empty-state-result-copy">生成完成后再进入单章评审、资料库或产物页，避免一开始就被细节淹没。</span>
             <a class="utility-button" href="/studio/settings#bring-your-own-api">查看 API 连接状态</a>
           </article>
         </section>
@@ -765,6 +765,6 @@
       </main>
     </div>
 
-    <script src="/static/app.js?v=studio-workflow-v3" defer></script>
+    <script src="/static/app.js?v=studio-workflow-v4" defer></script>
   </body>
 </html>

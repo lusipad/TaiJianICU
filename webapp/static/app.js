@@ -27,6 +27,15 @@ const elements = {
   loadExampleButton: document.getElementById("load-example-button"),
   emptyExampleButton: document.getElementById("empty-example-button"),
   emptyFillExampleButton: document.getElementById("empty-fill-example-button"),
+  emptyStateKicker: document.getElementById("empty-state-kicker"),
+  emptyStateTitle: document.getElementById("empty-state-title"),
+  emptyStateCopy: document.getElementById("empty-state-copy"),
+  emptyStateNextLabel: document.getElementById("empty-state-next-label"),
+  emptyStateNextTitle: document.getElementById("empty-state-next-title"),
+  emptyStateNextCopy: document.getElementById("empty-state-next-copy"),
+  emptyStateResultLabel: document.getElementById("empty-state-result-label"),
+  emptyStateResultTitle: document.getElementById("empty-state-result-title"),
+  emptyStateResultCopy: document.getElementById("empty-state-result-copy"),
   exampleDescription: document.getElementById("example-description"),
   resetModelsButton: document.getElementById("reset-models-button"),
   clearApiConfigButton: document.getElementById("clear-api-config-button"),
@@ -876,6 +885,7 @@ function applyStudioPage({ resetScroll = false } = {}) {
   }
   updateStudioNavActive();
   applyStudioPageVisibility();
+  applyEmptyStateCopy();
   if (resetScroll) {
     resetStudioScrollForPageChange(previousPage);
   }
@@ -1084,6 +1094,121 @@ function updateStudioNavActive() {
     link.classList.toggle("is-active", isActive);
     if (isActive) matched = true;
   }
+}
+
+const emptyStatePageCopy = {
+  overview: {
+    kicker: "开始新任务",
+    title: "先跑一轮，再决定怎么续写",
+    copy: "第一次用？先免费试看，再决定要不要真跑。确认效果后，再导入自己的 `.txt` 原稿。",
+    nextLabel: "继续当前任务",
+    nextTitle: "还没有选中任务",
+    nextCopy: "加载样例或导入原稿后，这里会显示当前状态和下一步动作。",
+    resultLabel: "检查最新结果",
+    resultTitle: "等待生成章节",
+    resultCopy: "生成完成后再进入单章评审、资料库或产物页，避免一开始就被细节淹没。",
+  },
+  director: {
+    kicker: "导演计划",
+    title: "先创建任务，才能制定阶段计划",
+    copy: "导演计划依赖原稿分析、人物走向和章节目标；先快速试看或导入原稿，系统会自动生成可保存的推进表。",
+    nextLabel: "下一步",
+    nextTitle: "导入原稿或加载样例",
+    nextCopy: "任务创建后，这里会直接进入阶段目标、章节推进表和人物走向。",
+    resultLabel: "当前状态",
+    resultTitle: "没有可读取的导演计划",
+    resultCopy: "不用先填复杂设置；样例预览可以先帮你看到完整流程。",
+  },
+  chapters: {
+    kicker: "章节队列",
+    title: "先有任务，才会生成章节队列",
+    copy: "章节队列只显示提纲候选、正文候选和章节结果；没有任务时，最短路径是先加载样例或导入原稿。",
+    nextLabel: "下一步",
+    nextTitle: "启动一轮续写",
+    nextCopy: "生成开始后，这里会显示每章目标、候选稿和结果文件。",
+    resultLabel: "当前状态",
+    resultTitle: "暂无章节产物",
+    resultCopy: "完成后再回来检查队列，比一开始看空列表更稳。",
+  },
+  review: {
+    kicker: "单章评审",
+    title: "先生成章节，再做单章评审",
+    copy: "评审页用来对照原稿、续写、质检和盲看结果；没有章节时，先从样例或原稿开始。",
+    nextLabel: "下一步",
+    nextTitle: "生成一章可评审内容",
+    nextCopy: "任务完成后，这里会显示原稿/续写对照、一致性和未收束问题。",
+    resultLabel: "当前状态",
+    resultTitle: "还没有最新章节",
+    resultCopy: "如果只是想检查 API，先去设置页做连接测试。",
+  },
+  world: {
+    kicker: "资料库",
+    title: "资料库会随任务自动生成",
+    copy: "世界观、人物、伏笔、统计和产物都来自一次运行结果；先创建任务，再回到这里查资料。",
+    nextLabel: "资料入口",
+    nextTitle: "等待世界观和人物资料",
+    nextCopy: "任务生成后，资料库会变成只读总览，不抢创作主线。",
+    resultLabel: "当前状态",
+    resultTitle: "暂无资料可查",
+    resultCopy: "快速试看会直接加载一套完整资料，适合先熟悉页面。",
+  },
+  characters: {
+    kicker: "人物设定",
+    title: "人物资料来自原稿分析",
+    copy: "人物状态、声口、关系和禁区需要先读取原稿；先启动任务，再回来检查是否写偏。",
+    nextLabel: "下一步",
+    nextTitle: "导入原稿或加载样例",
+    nextCopy: "生成后这里会聚合主要人物、声口规则和人物走向。",
+    resultLabel: "当前状态",
+    resultTitle: "暂无人物资料",
+    resultCopy: "人物资料只读展示，不会把设置和创作动作混进来。",
+  },
+  threads: {
+    kicker: "伏笔资料",
+    title: "伏笔要等任务分析后再查看",
+    copy: "伏笔页按待推进、已推进、已闭合组织线索；先跑任务，再决定后续收束顺序。",
+    nextLabel: "下一步",
+    nextTitle: "生成可分析的故事状态",
+    nextCopy: "完成后这里会列出未收束问题和一致性反馈。",
+    resultLabel: "当前状态",
+    resultTitle: "暂无伏笔资料",
+    resultCopy: "如果要先看效果，加载样例最快。",
+  },
+  stats: {
+    kicker: "统计",
+    title: "统计会在运行后出现",
+    copy: "调用、成本、章节进度和质量趋势都依赖运行记录；没有任务时先从样例或原稿开始。",
+    nextLabel: "下一步",
+    nextTitle: "创建一条运行记录",
+    nextCopy: "任务开始后，这里会只展示表现数据，不干扰创作。",
+    resultLabel: "当前状态",
+    resultTitle: "暂无统计",
+    resultCopy: "API 连接状态可以先在设置页检查。",
+  },
+  artifacts: {
+    kicker: "产物",
+    title: "产物会在生成后归档",
+    copy: "正文、候选稿、报告和索引路径都在任务完成后出现；先创建任务，再回来取文件。",
+    nextLabel: "下一步",
+    nextTitle: "生成第一批产物",
+    nextCopy: "完成后这里会显示最新输出正文、报告和候选稿路径。",
+    resultLabel: "当前状态",
+    resultTitle: "暂无产物",
+    resultCopy: "想先看完整产物结构，可以加载预计算样例。",
+  },
+};
+
+function applyEmptyStateCopy() {
+  const copy = emptyStatePageCopy[state.currentStudioPage] || emptyStatePageCopy.overview;
+  if (elements.emptyStateKicker) elements.emptyStateKicker.textContent = copy.kicker;
+  if (elements.emptyStateTitle) elements.emptyStateTitle.textContent = copy.title;
+  if (elements.emptyStateCopy) elements.emptyStateCopy.textContent = copy.copy;
+  if (elements.emptyStateNextLabel) elements.emptyStateNextLabel.textContent = copy.nextLabel;
+  if (elements.emptyStateNextTitle) elements.emptyStateNextTitle.textContent = copy.nextTitle;
+  if (elements.emptyStateNextCopy) elements.emptyStateNextCopy.textContent = copy.nextCopy;
+  if (elements.emptyStateResultLabel) elements.emptyStateResultLabel.textContent = copy.resultLabel;
+  if (elements.emptyStateResultTitle) elements.emptyStateResultTitle.textContent = copy.resultTitle;
+  if (elements.emptyStateResultCopy) elements.emptyStateResultCopy.textContent = copy.resultCopy;
 }
 
 function setSidebarTab(tabName) {
