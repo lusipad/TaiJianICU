@@ -559,7 +559,7 @@ function countPresentValues(value, keys) {
 
 function setLibraryOverviewCard(countElement, summaryElement, count, fallbackSummary, summary = "") {
   if (countElement) countElement.textContent = String(count);
-  if (summaryElement) summaryElement.textContent = summary || fallbackSummary;
+  if (summaryElement) summaryElement.textContent = truncateText(summary || fallbackSummary, 92);
 }
 
 function renderLibraryOverview(run) {
@@ -885,6 +885,7 @@ function applyStudioPage({ resetScroll = false } = {}) {
   updateStudioNavActive();
   applyStudioPageVisibility();
   applyEmptyStateCopy();
+  scrollActiveStudioNavIntoView();
   if (resetScroll) {
     resetStudioScrollForPageChange(previousPage);
   }
@@ -1078,6 +1079,16 @@ function updateStudioNavActive() {
     link.classList.toggle("is-active", isActive);
     if (isActive) matched = true;
   }
+}
+
+function scrollActiveStudioNavIntoView() {
+  const activeLink = elements.studioNavLinks.find((link) => link.classList.contains("is-active"));
+  const menu = activeLink?.closest(".studio-menu");
+  if (!activeLink || !menu || menu.scrollWidth <= menu.clientWidth) return;
+  const menuRect = menu.getBoundingClientRect();
+  const linkRect = activeLink.getBoundingClientRect();
+  const offset = linkRect.left - menuRect.left - (menu.clientWidth - linkRect.width) / 2;
+  menu.scrollTo({ left: menu.scrollLeft + offset, behavior: "auto" });
 }
 
 const emptyStatePageCopy = {
