@@ -309,9 +309,13 @@ def test_web_health_and_index() -> None:
     assert "TaiJianICU" in response.text
     assert "让<span>故事</span>" in response.text
     assert "开始免费试用" in response.text
-    assert "下载单机版" in response.text
+    assert "下载 Windows 版" in response.text
+    assert "下载 Mac 版" in response.text
     assert "https://github.com/lusipad/TaiJianICU/releases/latest" in response.text
-    assert "TaiJianICU-windows-standalone" in response.text
+    assert "TaiJianICU-windows-x64.zip" in response.text
+    assert "TaiJianICU-macos-arm64.zip" in response.text
+    assert "TaiJianICU-macos-x64.zip" in response.text
+    assert "TaiJianICU.app" in response.text
     assert "红楼梦第120回" not in response.text
     studio = client.get("/studio")
     assert studio.status_code == 200
@@ -498,7 +502,7 @@ def test_marketing_pages_are_split_by_route() -> None:
     assert client.get("/pricing").status_code == 404
 
 
-def test_docs_page_explains_windows_standalone_artifact() -> None:
+def test_docs_page_explains_standalone_release_downloads() -> None:
     app = create_app(settings=AppSettings(), run_manager=FakeRunManager())
     client = TestClient(app)
 
@@ -506,10 +510,43 @@ def test_docs_page_explains_windows_standalone_artifact() -> None:
 
     assert response.status_code == 200
     assert 'id="standalone-download"' in response.text
-    assert "Build Windows Standalone" in response.text
-    assert "TaiJianICU-windows-standalone" in response.text
+    assert "TaiJianICU-windows-x64.zip" in response.text
+    assert "TaiJianICU-macos-arm64.zip" in response.text
+    assert "TaiJianICU-macos-x64.zip" in response.text
     assert "TaiJianICU.exe" in response.text
+    assert "TaiJianICU.app" in response.text
     assert "DEEPSEEK_API_KEY" in response.text
+
+
+def test_standalone_release_workflow_builds_windows_and_macos_assets() -> None:
+    workflow = (Path(__file__).resolve().parents[1] / ".github" / "workflows" / "release-standalone.yml").read_text(
+        encoding="utf-8"
+    )
+    build_script = (Path(__file__).resolve().parents[1] / "scripts" / "build_standalone.py").read_text(encoding="utf-8")
+
+    assert "windows-latest" in workflow
+    assert "macos-15" in workflow
+    assert "macos-15-intel" in workflow
+    assert "asset_name: TaiJianICU-windows-x64" in workflow
+    assert "asset_name: TaiJianICU-macos-arm64" in workflow
+    assert "asset_name: TaiJianICU-macos-x64" in workflow
+    assert "${{ matrix.asset_name }}.zip" in workflow
+    assert "gh release create" in workflow
+    assert "gh release upload" in workflow
+    assert "python scripts/build_standalone.py --python python" in workflow
+    assert "dist/TaiJianICU.app" in workflow
+    assert "shutil.make_archive" in workflow
+    assert 'sys.platform == "win32"' in build_script
+    assert 'else ":"' in build_script
+    assert "PyInstaller" in build_script
+
+
+def test_windows_standalone_doc_points_to_release_asset() -> None:
+    doc = (Path(__file__).resolve().parents[1] / "docs" / "standalone-windows.md").read_text(encoding="utf-8")
+
+    assert "TaiJianICU-windows-x64.zip" in doc
+    assert "TaiJianICU.exe" in doc
+    assert "GitHub 最新 Release" in doc
 
 
 def test_web_requires_basic_auth_when_password_configured() -> None:

@@ -4,7 +4,7 @@
 
 ## 用户使用方式
 
-把下面两个文件放在同一个目录：
+普通用户优先从 GitHub 最新 Release 下载 `TaiJianICU-windows-x64.zip`。解压后，把下面两个文件放在同一个目录：
 
 - `TaiJianICU.exe`
 - `.env`

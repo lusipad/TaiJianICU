@@ -377,6 +377,12 @@
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
 }
 
+.standalone-download-actions {
+  min-width: 220px;
+  display: grid;
+  gap: 10px;
+}
+
 .standalone-callout h2,
 .standalone-doc-card h2 {
   margin: 8px 0 0;
@@ -797,6 +803,25 @@
   line-height: 1.7;
 }
 
+.standalone-doc-links {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.standalone-doc-links a {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid rgba(220, 168, 124, 0.24);
+  border-radius: 8px;
+  color: #e7d1bb;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .docs-list span:last-child {
   color: rgba(232, 220, 208, 0.45);
 }
@@ -1061,7 +1086,8 @@
 
   .landing-nav-actions,
   .hero-actions,
-  .cta-actions {
+  .cta-actions,
+  .standalone-download-actions {
     align-items: stretch;
     flex-direction: column;
   }

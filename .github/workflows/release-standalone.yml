@@ -1,0 +1,83 @@
+name: Release Standalone Apps
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset_name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-latest
+            asset_name: TaiJianICU-windows-x64
+            executable_path: dist/TaiJianICU.exe
+            smoke_command: dist/TaiJianICU.exe --help
+          - runner: macos-15
+            asset_name: TaiJianICU-macos-arm64
+            executable_path: dist/TaiJianICU
+            smoke_command: dist/TaiJianICU --help
+          - runner: macos-15-intel
+            asset_name: TaiJianICU-macos-x64
+            executable_path: dist/TaiJianICU
+            smoke_command: dist/TaiJianICU --help
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Build standalone executable
+        run: python scripts/build_standalone.py --python python
+
+      - name: Smoke standalone executable
+        shell: bash
+        run: ${{ matrix.smoke_command }}
+
+      - name: Create release folder
+        shell: bash
+        run: |
+          mkdir -p "release/${{ matrix.asset_name }}"
+          cp "${{ matrix.executable_path }}" "release/${{ matrix.asset_name }}/"
+          if [ -d "dist/TaiJianICU.app" ]; then
+            cp -R "dist/TaiJianICU.app" "release/${{ matrix.asset_name }}/"
+          fi
+          cp ".env.example" "release/${{ matrix.asset_name }}/"
+
+      - name: Archive release asset
+        shell: bash
+        run: python -c "import shutil; shutil.make_archive('${{ matrix.asset_name }}', 'zip', 'release/${{ matrix.asset_name }}')"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload GitHub Release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes "TaiJianICU desktop release" \
+              || gh release view "${GITHUB_REF_NAME}" >/dev/null
+          fi
+          gh release upload "${GITHUB_REF_NAME}" "${{ matrix.asset_name }}.zip" --clobber

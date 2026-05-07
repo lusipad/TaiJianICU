@@ -66,25 +66,37 @@
                 <p>解答使用过程中遇到的常见问题。</p>
               </article>
             </div>
-            <section id="standalone-download" class="standalone-doc-card" aria-label="Windows 单机版下载">
+            <section id="standalone-download" class="standalone-doc-card" aria-label="桌面版下载">
               <div>
                 <p class="section-kicker">单机版交付</p>
-                <h2>Windows 用户下载一个 exe，双击进入桌面工作台。</h2>
+                <h2>Windows 和 Mac 用户都可以下载桌面版。</h2>
                 <p>
-                  每次推送后，GitHub Actions 会打包 `TaiJianICU-windows-standalone` artifact。
-                  下载并解压后，把 `.env.example` 复制成 `.env`，填好 `DEEPSEEK_API_KEY`，再双击
-                  `TaiJianICU.exe`。端口被占用时程序会自动换到空闲本机端口。
+                  最新 Release 会提供 `TaiJianICU-windows-x64.zip`、`TaiJianICU-macos-arm64.zip`
+                  和 `TaiJianICU-macos-x64.zip`。下载并解压后，把 `.env.example` 复制成 `.env`，
+                  填好 `DEEPSEEK_API_KEY`，再双击 `TaiJianICU.exe` 或 `TaiJianICU.app`。
+                  端口被占用时程序会自动换到空闲本机端口。
                 </p>
               </div>
               <ol>
-                <li>打开本仓库 GitHub 页面，进入 Actions。</li>
-                <li>选择最新的 Build Windows Standalone 运行记录。</li>
-                <li>下载 `TaiJianICU-windows-standalone` artifact 并解压。</li>
-                <li>配置 `.env` 后双击 `TaiJianICU.exe`。</li>
+                <li>Windows x64：下载 `TaiJianICU-windows-x64.zip`。</li>
+                <li>Mac Apple Silicon：下载 `TaiJianICU-macos-arm64.zip`。</li>
+                <li>Mac Intel：下载 `TaiJianICU-macos-x64.zip`。</li>
+                <li>配置 `.env` 后双击 `TaiJianICU.exe` 或 `TaiJianICU.app`。</li>
               </ol>
+              <div class="standalone-doc-links" aria-label="桌面版下载链接">
+                <a href="https://github.com/lusipad/TaiJianICU/releases/latest/download/TaiJianICU-windows-x64.zip">
+                  Windows x64
+                </a>
+                <a href="https://github.com/lusipad/TaiJianICU/releases/latest/download/TaiJianICU-macos-arm64.zip">
+                  macOS Apple Silicon
+                </a>
+                <a href="https://github.com/lusipad/TaiJianICU/releases/latest/download/TaiJianICU-macos-x64.zip">
+                  macOS Intel
+                </a>
+              </div>
             </section>
             <div class="docs-list" aria-label="热门文档">
-              <a href="#standalone-download"><span>Windows 单机版下载与配置</span><span>2026-05-05</span></a>
+              <a href="#standalone-download"><span>桌面版下载与配置</span><span>2026-05-08</span></a>
               <a href="/studio/start#quickstart-sample"><span>如何开始你的第一个项目</span><span>2026-05-04</span></a>
               <a href="/studio"><span>文档协作与团队管理</span><span>2026-05-04</span></a>
               <a href="/product"><span>AI 助手使用指南</span><span>2026-05-04</span></a>
