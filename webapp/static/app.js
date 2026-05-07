@@ -146,6 +146,7 @@ const elements = {
   modelOptions: document.getElementById("model-options"),
   advancedOptionsDetails: document.getElementById("advanced-options"),
   pageTitle: document.getElementById("studio-page-title"),
+  contextAction: document.getElementById("studio-context-action"),
   studioWorkspace: document.querySelector(".studio-workspace"),
   pageSections: Array.from(document.querySelectorAll("[data-page-section]")),
   workspacePanels: Array.from(document.querySelectorAll("[data-tab-panel]")),
@@ -158,6 +159,7 @@ const elements = {
 
 const studioPages = {
   overview: { title: "工作台" },
+  start: { title: "开始任务" },
   director: { title: "阶段导演计划" },
   chapters: { title: "章节队列" },
   review: { title: "单章评审" },
@@ -171,6 +173,7 @@ const studioPages = {
 
 const studioPathPages = {
   "/studio": "overview",
+  "/studio/start": "start",
   "/studio/director": "director",
   "/studio/chapters": "chapters",
   "/studio/review": "review",
@@ -183,7 +186,7 @@ const studioPathPages = {
 };
 
 const legacyStudioHashRoutes = {
-  "#quickstart-sample": "settings",
+  "#quickstart-sample": "start",
   "#bring-your-own-api": "settings",
   "#advanced-options": "settings",
   "#runs": "artifacts",
@@ -882,6 +885,11 @@ function applyStudioPage({ resetScroll = false } = {}) {
   if (elements.pageTitle) {
     elements.pageTitle.textContent = config.title;
   }
+  if (elements.contextAction) {
+    const isStartPage = state.currentStudioPage === "start";
+    elements.contextAction.textContent = isStartPage ? "设置 API" : "开始任务";
+    elements.contextAction.href = isStartPage ? "/studio/settings#bring-your-own-api" : "/studio/start";
+  }
   updateStudioNavActive();
   applyStudioPageVisibility();
   applyEmptyStateCopy();
@@ -892,10 +900,14 @@ function applyStudioPage({ resetScroll = false } = {}) {
 }
 
 function applyStudioHashIntent() {
-  if (window.location.pathname.replace(/\/+$/, "") !== "/studio") return;
+  const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/studio";
+  if (!["/studio", "/studio/start", "/studio/settings"].includes(normalizedPath)) return;
   const hash = window.location.hash;
   if (hash === "#overview") {
     scrollStudioWorkspaceTop();
+    return;
+  }
+  if (normalizedPath !== "/studio" && !["#quickstart-sample", "#bring-your-own-api", "#advanced-options"].includes(hash)) {
     return;
   }
   if (hash === "#runs") {
@@ -1226,7 +1238,7 @@ function getPrimaryActionForRun(run) {
   if (!run) {
     return {
       label: "开始新任务",
-      href: "/studio/settings",
+      href: "/studio/start",
       step: "先导入原稿或加载样例",
       detail: "工作台会在任务创建后自动显示下一步。",
     };
@@ -2558,6 +2570,9 @@ window.addEventListener("load", async () => {
     window.addEventListener("hashchange", () => {
       applyStudioPage({ resetScroll: true });
       applyStudioHashIntent();
+    });
+    window.addEventListener("resize", () => {
+      window.requestAnimationFrame(scrollActiveStudioNavIntoView);
     });
     applyStudioPage();
     setSourceTab(state.activeSourceTab);

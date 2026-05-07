@@ -38,6 +38,7 @@ _AUTH_EXEMPT_PATHS = frozenset({"/health", "/ready"})
 _STUDIO_PAGES = frozenset(
     {
         "director",
+        "start",
         "chapters",
         "review",
         "world",

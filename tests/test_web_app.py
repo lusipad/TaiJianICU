@@ -343,8 +343,9 @@ def test_web_health_and_index() -> None:
     assert "第一次用？先免费试看，再决定要不要真跑" in studio.text
     assert "按当前配置试跑样例" in studio.text
     assert "使用自己的 Key，或者直接用本地版本" in studio.text
+    assert "这里只配置 API、模型路由、预算和索引复用" in studio.text
     styles = client.get("/static/styles.css")
-    assert "studio.css?v=studio-workflow-v5" in styles.text
+    assert "studio.css?v=studio-workflow-v6" in styles.text
     favicon = client.get("/static/favicon.svg")
     assert favicon.status_code == 200
     assert "image/svg+xml" in favicon.headers["content-type"]
@@ -356,6 +357,7 @@ def test_studio_pages_are_split_by_route() -> None:
 
     expected_pages = {
         "/studio": "data-studio-page-link=\"overview\"",
+        "/studio/start": "data-studio-page-link=\"start\"",
         "/studio/director": "data-studio-page-link=\"director\"",
         "/studio/chapters": "data-studio-page-link=\"chapters\"",
         "/studio/review": "data-studio-page-link=\"review\"",
@@ -400,7 +402,7 @@ def test_studio_library_pages_have_distinct_content_surfaces() -> None:
     assert 'id="advanced-thread-list"' in studio.text
     assert 'data-tab-panel="director world' not in studio.text
     assert 'data-tab-panel="review stats threads' not in studio.text
-    assert 'id="run-form" class="config-panel page-section" data-page-section="settings"' in studio.text
+    assert 'id="run-form" class="config-panel page-section" data-page-section="start settings"' in studio.text
 
 
 def test_studio_static_scripts_support_markdown_preview() -> None:
@@ -418,6 +420,8 @@ def test_studio_static_assets_support_workflow_home() -> None:
 
     assert "resetStudioScrollForPageChange" in script
     assert "legacyStudioHashRoutes" in script
+    assert '"#quickstart-sample": "start"' in script
+    assert '"/studio/start": "start"' in script
     assert "getPrimaryActionForRun" in script
     assert "renderLibraryOverview" in script
     assert "countPresentValues" in script
@@ -425,6 +429,7 @@ def test_studio_static_assets_support_workflow_home() -> None:
     assert "emptyStatePageCopy" in script
     assert "applyEmptyStateCopy" in script
     assert "scrollActiveStudioNavIntoView" in script
+    assert 'window.addEventListener("resize"' in script
     assert "setWorkspaceTab" not in script
     assert "workspaceTabs" not in script
     assert "先创建任务，才能制定阶段计划" in script
@@ -443,7 +448,12 @@ def test_studio_static_assets_support_workflow_home() -> None:
     assert ".workspace-tabs" not in styles
     assert ".studio-tabs-row" not in styles
     assert 'data-page-section="overview director chapters review world characters threads stats artifacts"' in html
-    assert 'app.js?v=studio-workflow-v5' in html
+    assert 'data-studio-page-link="start"' in html
+    assert 'id="quickstart-sample"' in html
+    assert 'data-page-section="start"' in html
+    assert 'id="bring-your-own-api"' in html
+    assert 'data-page-section="settings"' in html
+    assert 'app.js?v=studio-workflow-v6' in html
     assert ".empty-state::before" not in styles
     assert ".empty-state::after" not in styles
     assert "onboarding-overlay" not in html
@@ -481,6 +491,7 @@ def test_marketing_pages_are_split_by_route() -> None:
         assert "browser-chrome" not in response.text
         assert "/pricing" not in response.text
         assert "/studio#quickstart-sample" not in response.text
+        assert "/studio/settings#quickstart-sample" not in response.text
         assert "定价" not in response.text
 
     assert client.get("/pricing").status_code == 404

@@ -1083,6 +1083,7 @@
 }
 
 .studio-body[data-studio-page="artifacts"] .studio-bottom-grid,
+.studio-body[data-studio-page="start"] .studio-bottom-grid,
 .studio-body[data-studio-page="settings"] .studio-bottom-grid {
   grid-template-columns: minmax(0, 920px);
   max-width: 920px;
@@ -1106,6 +1107,7 @@
 .studio-body[data-studio-page="threads"] .run-view,
 .studio-body[data-studio-page="stats"] .run-view,
 .studio-body[data-studio-page="artifacts"] .studio-bottom-grid,
+.studio-body[data-studio-page="start"] .studio-bottom-grid,
 .studio-body[data-studio-page="settings"] .studio-bottom-grid {
   animation: studioPageEnter 260ms ease both;
 }

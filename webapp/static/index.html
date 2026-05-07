@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/static/styles.css?v=studio-workflow-v5" />
+    <link rel="stylesheet" href="/static/styles.css?v=studio-workflow-v6" />
   </head>
   <body class="studio-body">
     <div class="studio-app-shell">
@@ -23,6 +23,7 @@
           <div class="studio-nav-group">
             <p class="studio-nav-heading">工作流</p>
             <a class="is-active" href="/studio" data-nav-icon="⌂" data-studio-page-link="overview">工作台</a>
+            <a href="/studio/start" data-nav-icon="＋" data-studio-page-link="start">开始任务</a>
             <a href="/studio/director" data-nav-icon="◇" data-studio-page-link="director">导演计划</a>
             <a href="/studio/chapters" data-nav-icon="▦" data-studio-page-link="chapters">章节队列</a>
             <a href="/studio/review" data-nav-icon="◉" data-studio-page-link="review">单章评审</a>
@@ -53,7 +54,7 @@
           </div>
           <div class="studio-project-actions">
             <a class="utility-button studio-top-action" href="/">← 返回首页</a>
-            <a class="utility-button studio-top-action upload-top-action" href="/studio/settings">导入原稿</a>
+            <a id="studio-context-action" class="utility-button studio-top-action upload-top-action" href="/studio/start">开始任务</a>
           </div>
         </header>
 
@@ -69,7 +70,7 @@
             <p id="empty-state-copy">第一次用？先免费试看，再决定要不要真跑。确认效果后，再导入自己的 `.txt` 原稿。</p>
             <div class="empty-state-actions dual-action-row">
               <button id="empty-example-button" type="button">快速试看原创样例</button>
-              <a class="utility-button" href="/studio/settings">导入原稿</a>
+              <a class="utility-button" href="/studio/start">导入原稿</a>
             </div>
           </article>
           <article class="workbench-card" data-workbench-panel="continue">
@@ -100,7 +101,7 @@
               <p id="workbench-current-summary">加载最近任务后，这里会只显示当前状态和下一步动作。</p>
               <div class="workbench-primary-actions">
                 <a id="workbench-primary-action" class="utility-button workbench-primary-action" href="/studio/director">查看导演计划</a>
-                <a class="utility-button" href="/studio/settings">开始新任务</a>
+                <a class="utility-button" href="/studio/start">开始新任务</a>
               </div>
             </article>
             <article class="workbench-card" data-workbench-panel="continue">
@@ -541,7 +542,7 @@
           </section>
         </div>
 
-        <section class="studio-bottom-grid page-section" data-page-section="artifacts settings">
+        <section class="studio-bottom-grid page-section" data-page-section="artifacts start settings">
           <aside id="runs" class="recent-panel page-section" data-page-section="artifacts">
             <div class="panel-head panel-head-compact">
               <p class="section-kicker">资料库</p>
@@ -568,14 +569,24 @@
             </section>
           </aside>
 
-          <form id="run-form" class="config-panel page-section" data-page-section="settings">
-            <div class="panel-head">
-              <p class="section-kicker">运行配置</p>
-              <h2>设置</h2>
-              <p class="panel-copy">免费试看确认效果以后，再上传自己的文本。默认走平台当前配置；高级选项可以继续细调。</p>
+          <form id="run-form" class="config-panel page-section" data-page-section="start settings">
+            <div class="panel-head page-section" data-page-section="start">
+              <p class="section-kicker">开始任务</p>
+              <h2>开始任务</h2>
+              <p class="panel-copy">先快速试看确认效果；准备真实续写时，上传 `.txt` 原稿并设定本轮目标。</p>
             </div>
 
-            <section id="quickstart-sample" class="quickstart-panel quickstart-panel-primary anchor-target">
+            <div class="panel-head page-section" data-page-section="settings">
+              <p class="section-kicker">运行配置</p>
+              <h2>设置</h2>
+              <p class="panel-copy">这里只配置 API、模型路由、预算和索引复用；开始新任务请回到“开始任务”。</p>
+            </div>
+
+            <section
+              id="quickstart-sample"
+              class="quickstart-panel quickstart-panel-primary anchor-target page-section"
+              data-page-section="start"
+            >
               <p class="label">免费试看</p>
               <strong>第一次用？先免费试看，再决定要不要真跑</strong>
               <p id="example-description" class="hint">正在加载示例信息...</p>
@@ -585,7 +596,7 @@
               </div>
             </section>
 
-            <section class="start-task-panel">
+            <section class="start-task-panel page-section" data-page-section="start">
               <div class="quickstart-panel-head">
                 <div>
                   <p class="label">开始任务</p>
@@ -622,7 +633,11 @@
               </div>
             </section>
 
-            <section id="bring-your-own-api" class="api-panel anchor-target">
+            <section
+              id="bring-your-own-api"
+              class="api-panel anchor-target page-section"
+              data-page-section="settings"
+            >
               <div class="quickstart-panel-head">
                 <div>
                   <p class="label">API 配置</p>
@@ -672,7 +687,7 @@
               </div>
             </section>
 
-            <details id="advanced-options" class="advanced-panel anchor-target">
+            <details id="advanced-options" class="advanced-panel anchor-target page-section" data-page-section="settings">
               <summary>
                 <span>
                   <p class="section-kicker">高级选项</p>
@@ -756,7 +771,7 @@
               </div>
             </details>
 
-            <div class="action-row">
+            <div class="action-row page-section" data-page-section="start">
               <button id="submit-button" type="submit">开始分析并续写</button>
               <p id="form-status" class="hint">提交后会自动轮询任务进度。</p>
             </div>
@@ -765,6 +780,6 @@
       </main>
     </div>
 
-    <script src="/static/app.js?v=studio-workflow-v5" defer></script>
+    <script src="/static/app.js?v=studio-workflow-v6" defer></script>
   </body>
 </html>
