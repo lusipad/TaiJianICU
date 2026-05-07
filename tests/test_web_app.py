@@ -310,6 +310,7 @@ def test_web_health_and_index() -> None:
     assert "让<span>故事</span>" in response.text
     assert "开始免费试用" in response.text
     assert "下载单机版" in response.text
+    assert "https://github.com/lusipad/TaiJianICU/releases/latest" in response.text
     assert "TaiJianICU-windows-standalone" in response.text
     assert "红楼梦第120回" not in response.text
     studio = client.get("/studio")
