@@ -40,7 +40,7 @@ def build_usage(*, calls: int, total_tokens: int, total_cost_usd: float) -> LLMU
         total_tokens=total_tokens,
         total_cost_usd=total_cost_usd,
         by_model={
-            "deepseek/deepseek-chat": {
+            "deepseek/deepseek-v4-flash": {
                 "calls": calls,
                 "prompt_tokens": total_tokens // 2,
                 "completion_tokens": total_tokens - total_tokens // 2,

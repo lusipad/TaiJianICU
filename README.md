@@ -56,10 +56,10 @@ Studio 的主线按创作下一步组织：
 最小配置是 `DEEPSEEK_API_KEY`。默认模型路由使用 DeepSeek：
 
 ```env
-TAIJIAN_PLOT_MODEL=deepseek/deepseek-chat
-TAIJIAN_DRAFT_MODEL=deepseek/deepseek-chat
-TAIJIAN_STYLE_MODEL=deepseek/deepseek-chat
-TAIJIAN_QUALITY_MODEL=deepseek/deepseek-chat
+TAIJIAN_PLOT_MODEL=deepseek/deepseek-v4-flash
+TAIJIAN_DRAFT_MODEL=deepseek/deepseek-v4-flash
+TAIJIAN_STYLE_MODEL=deepseek/deepseek-v4-flash
+TAIJIAN_QUALITY_MODEL=deepseek/deepseek-v4-flash
 TAIJIAN_EMBEDDING_BACKEND=local-hash
 ```
 

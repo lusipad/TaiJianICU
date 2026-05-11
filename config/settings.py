@@ -30,12 +30,12 @@ DOTENV_PATH = APP_DIR / ".env" if getattr(sys, "frozen", False) else ROOT_DIR / 
 
 
 class ModelRoutes(BaseModel):
-    plot_model: str = "deepseek/deepseek-chat"
-    draft_model: str = "deepseek/deepseek-chat"
-    style_model: str = "deepseek/deepseek-chat"
-    quality_model: str = "deepseek/deepseek-chat"
-    lightrag_model_name: str = "deepseek-chat"
-    deepseek_model_name: str = "deepseek-chat"
+    plot_model: str = "deepseek/deepseek-v4-flash"
+    draft_model: str = "deepseek/deepseek-v4-flash"
+    style_model: str = "deepseek/deepseek-v4-flash"
+    quality_model: str = "deepseek/deepseek-v4-flash"
+    lightrag_model_name: str = "deepseek-v4-flash"
+    deepseek_model_name: str = "deepseek-v4-flash"
     deepseek_base_url: str = "https://api.deepseek.com"
     max_tokens: int = 4096
     chapter_max_tokens: int = 6144

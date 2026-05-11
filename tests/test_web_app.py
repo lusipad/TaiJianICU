@@ -63,16 +63,16 @@ class FakeRunManager:
 
     def get_runtime_config(self):
         return {
-            "style_model": "deepseek/deepseek-chat",
-            "plot_model": "deepseek/deepseek-chat",
-            "draft_model": "deepseek/deepseek-chat",
-            "quality_model": "deepseek/deepseek-chat",
-            "lightrag_model_name": "deepseek-chat",
+            "style_model": "deepseek/deepseek-v4-flash",
+            "plot_model": "deepseek/deepseek-v4-flash",
+            "draft_model": "deepseek/deepseek-v4-flash",
+            "quality_model": "deepseek/deepseek-v4-flash",
+            "lightrag_model_name": "deepseek-v4-flash",
             "api_base_url": "https://api.deepseek.com",
             "wire_api": "chat",
             "model_options": [
-                "deepseek/deepseek-chat",
-                "deepseek/deepseek-reasoner",
+                "deepseek/deepseek-v4-flash",
+                "deepseek/deepseek-v4-pro",
                 "openai/gpt-4.1-mini",
             ],
         }
@@ -230,7 +230,7 @@ class FakeRunManager:
         self.last_request = request
         return WebRuntimeConnectionTestResult(
             ok=True,
-            model=request.model or "deepseek/deepseek-chat",
+            model=request.model or "deepseek/deepseek-v4-flash",
             wire_api=request.wire_api or "chat",
             response_preview="连接成功",
         )
@@ -575,6 +575,20 @@ def test_readme_describes_web_studio_and_desktop_as_delivery_options() -> None:
     assert "当前产品形态以桌面版和 Studio 工作台为主" not in readme
 
 
+def test_deepseek_defaults_use_current_v4_model_names() -> None:
+    settings = AppSettings()
+    env_example = (Path(__file__).resolve().parents[1] / ".env.example").read_text(encoding="utf-8")
+
+    assert settings.models.style_model == "deepseek/deepseek-v4-flash"
+    assert settings.models.plot_model == "deepseek/deepseek-v4-flash"
+    assert settings.models.draft_model == "deepseek/deepseek-v4-flash"
+    assert settings.models.quality_model == "deepseek/deepseek-v4-flash"
+    assert settings.models.lightrag_model_name == "deepseek-v4-flash"
+    assert "deepseek/deepseek-v4-pro" in env_example
+    assert "deepseek-chat" not in env_example
+    assert "deepseek-reasoner" not in env_example
+
+
 def test_web_requires_basic_auth_when_password_configured() -> None:
     settings = AppSettings(TAIJIAN_WEB_PASSWORD="secret123")
     app = create_app(settings=settings, run_manager=FakeRunManager())
@@ -644,8 +658,8 @@ def test_create_run_accepts_txt_upload() -> None:
             "draft_candidates": "3",
             "style_model": "openai/gpt-4.1-mini",
             "plot_model": "openai/gpt-4.1-mini",
-            "draft_model": "deepseek/deepseek-chat",
-            "quality_model": "deepseek/deepseek-chat",
+            "draft_model": "deepseek/deepseek-v4-flash",
+            "quality_model": "deepseek/deepseek-v4-flash",
             "lightrag_model_name": "openai/gpt-4.1-mini",
             "api_base_url": "https://openrouter.ai/api/v1",
             "api_key": "sk-demo",
@@ -746,7 +760,7 @@ def test_get_runtime_config_endpoint() -> None:
     response = client.get("/api/config")
 
     assert response.status_code == 200
-    assert response.json()["style_model"] == "deepseek/deepseek-chat"
+    assert response.json()["style_model"] == "deepseek/deepseek-v4-flash"
     assert response.json()["api_base_url"] == "https://api.deepseek.com"
     assert response.json()["wire_api"] == "chat"
     assert "openai/gpt-4.1-mini" in response.json()["model_options"]
@@ -887,7 +901,7 @@ def test_create_example_run_endpoint() -> None:
         data={
             "chapters": "1",
             "start_chapter": "1",
-            "draft_model": "deepseek/deepseek-chat",
+            "draft_model": "deepseek/deepseek-v4-flash",
             "api_base_url": "https://openrouter.ai/api/v1",
             "api_key": "sk-demo",
             "wire_api": "responses",
@@ -897,7 +911,7 @@ def test_create_example_run_endpoint() -> None:
     assert response.status_code == 201
     assert response.json()["id"] == "run-1"
     assert manager.start_calls == 1
-    assert manager.last_request.draft_model == "deepseek/deepseek-chat"
+    assert manager.last_request.draft_model == "deepseek/deepseek-v4-flash"
     assert manager.last_runtime_api_override == WebRuntimeApiOverride(
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",

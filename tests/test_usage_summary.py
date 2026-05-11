@@ -18,13 +18,13 @@ def test_usage_summary_aggregates_records() -> None:
             prompt_tokens_details=SimpleNamespace(cached_tokens=2),
         )
     )
-    service._record_response(operation="unit", model="deepseek/deepseek-chat", response=response)
+    service._record_response(operation="unit", model="deepseek/deepseek-v4-flash", response=response)
     summary = service.usage_summary()
 
     assert summary.calls == 1
     assert summary.prompt_tokens == 10
     assert summary.cached_tokens == 2
-    assert "deepseek/deepseek-chat" in summary.by_model
+    assert "deepseek/deepseek-v4-flash" in summary.by_model
 
 
 class ServerDisconnectedError(Exception):
@@ -61,7 +61,7 @@ async def test_complete_text_retries_transient_errors(monkeypatch: pytest.Monkey
     )
 
     response = await service.complete_text(
-        model="deepseek/deepseek-chat",
+        model="deepseek/deepseek-v4-flash",
         messages=[{"role": "user", "content": "test"}],
     )
 

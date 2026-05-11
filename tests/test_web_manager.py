@@ -657,14 +657,14 @@ def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:
 
 def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
-    settings.web_model_options = "deepseek/deepseek-chat,openai/gpt-4.1-mini"
+    settings.web_model_options = "deepseek/deepseek-v4-flash,openai/gpt-4.1-mini"
     manager = WebRunManager(settings)
 
     request = WebRunRequest(
         style_model="openai/gpt-4.1-mini",
         plot_model="openai/gpt-4.1-mini",
-        draft_model="deepseek/deepseek-chat",
-        quality_model="deepseek/deepseek-chat",
+        draft_model="deepseek/deepseek-v4-flash",
+        quality_model="deepseek/deepseek-v4-flash",
         lightrag_model_name="openai/gpt-4.1-mini",
     )
 
@@ -687,7 +687,7 @@ def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path
     assert run_settings.runtime_api_base_url == "https://openrouter.ai/api/v1"
     assert run_settings.runtime_api_key == "sk-demo"
     assert run_settings.runtime_wire_api == "responses"
-    assert settings.models.style_model == "deepseek/deepseek-chat"
+    assert settings.models.style_model == "deepseek/deepseek-v4-flash"
     assert settings.runtime_api_key is None
 
 
