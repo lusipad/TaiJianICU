@@ -1,5 +1,7 @@
 # TaiJianICU V2 整体设计
 
+> 历史归档：本文档记录旧 V2 设计，相关能力已降级为辅助层。当前主线见 [复活路线图](../product/revival-roadmap.md)。
+
 ## 1. 文档目标
 
 本文档定义 `TaiJianICU V2` 的整体设计，作为当前 V1/MVP 之后的下一阶段架构基线。

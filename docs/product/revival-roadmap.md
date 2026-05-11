@@ -75,9 +75,4 @@
 - 至少一个真实文本样本。
 - 明确失败样本与下一轮修正依据。
 
-当前可复现验证：
-
-- `.\.venv\Scripts\python -m pytest`：`129 passed, 3 warnings`。
-- 第 120 回验证 session：`hongloumeng-front80-verify120-stylefix-20260502`。
-- 第 120 回输出：`data\output\hongloumeng-front80-verify120-stylefix-20260502\chapter_120.md`，`SourceVoiceGate passed=True`。
-- 第 115-120 回连续 smoke：`hongloumeng-front80-verify115-120-repetitionguard-20260503`，重复开头已能被标记为 warning，但初版修订没有稳定修掉；当前下一步是重跑 115-120 验证增强后的定向修订。
+当前可复现验证不放在路线图里滚动维护，避免路线图变成运行日志。最新命令、样本和缺口见 [当前验证状态](../engineering/revival-validation-status.md)。

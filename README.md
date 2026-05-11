@@ -112,14 +112,15 @@ taijianicu benchmark --dataset sanguo --prefix-chapters 50 --target-chapter 51
 
 ## 文档
 
-- [桌面版打包说明](docs/standalone-windows.md)
-- [作者复活引擎设计](docs/author-revival-engine-design.md)
-- [当前验证状态](docs/revival-validation-status.md)
-- [复活路线图](ROADMAP_REVIVAL.md)
+- [文档地图](docs/README.md)
+- [桌面版下载与打包](docs/user/desktop-release.md)
+- [复活路线图](docs/product/revival-roadmap.md)
+- [作者复活引擎设计](docs/product/author-revival-engine-design.md)
+- [当前验证状态](docs/engineering/revival-validation-status.md)
 
 ## 当前边界
 
 - TaiJianICU 仍处于快速实验阶段，适合创作辅助和质量评审，不应把输出直接当成最终稿。
 - 真实续写需要可用的模型 API Key；桌面版不是离线大模型。
 - 公开部署适合演示，不适合长期保存用户作品。
-- 详细验证命令、质量门结果和已知缺口请看 [当前验证状态](docs/revival-validation-status.md)。
+- 详细验证命令、质量门结果和已知缺口请看 [当前验证状态](docs/engineering/revival-validation-status.md)。

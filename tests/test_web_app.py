@@ -541,12 +541,28 @@ def test_standalone_release_workflow_builds_windows_and_macos_assets() -> None:
     assert "PyInstaller" in build_script
 
 
-def test_windows_standalone_doc_points_to_release_asset() -> None:
-    doc = (Path(__file__).resolve().parents[1] / "docs" / "standalone-windows.md").read_text(encoding="utf-8")
+def test_desktop_release_doc_points_to_release_assets() -> None:
+    doc = (Path(__file__).resolve().parents[1] / "docs" / "user" / "desktop-release.md").read_text(encoding="utf-8")
 
     assert "TaiJianICU-windows-x64.zip" in doc
+    assert "TaiJianICU-macos-arm64.zip" in doc
+    assert "TaiJianICU-macos-x64.zip" in doc
     assert "TaiJianICU.exe" in doc
+    assert "TaiJianICU.app" in doc
     assert "GitHub 最新 Release" in doc
+
+
+def test_docs_readme_groups_public_docs_by_audience() -> None:
+    docs_index = (Path(__file__).resolve().parents[1] / "docs" / "README.md").read_text(encoding="utf-8")
+
+    assert "用户与发布" in docs_index
+    assert "产品方向" in docs_index
+    assert "工程与验证" in docs_index
+    assert "历史归档" in docs_index
+    assert "user/desktop-release.md" in docs_index
+    assert "product/revival-roadmap.md" in docs_index
+    assert "engineering/revival-validation-status.md" in docs_index
+    assert "archive/DESIGN_V2.md" in docs_index
 
 
 def test_web_requires_basic_auth_when_password_configured() -> None:

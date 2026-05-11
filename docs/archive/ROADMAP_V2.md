@@ -1,5 +1,7 @@
 # TaiJianICU V2 实施路线图
 
+> 历史归档：本文档记录旧 V2 实施计划，不再定义当前成功标准。当前主线见 [复活路线图](../product/revival-roadmap.md)。
+
 ## 1. 目标
 
 本文档把 [DESIGN_V2.md](DESIGN_V2.md) 拆成可执行的开发路线图，目标是把 V2 从设计稿完整落地为可运行、可验证、可交付的系统。
@@ -113,8 +115,8 @@ V2 按七个大里程碑推进：
 
 建议重构：
 
-- [orchestrator.py](orchestrator.py)
-- [core/storage/session_store.py](core/storage/session_store.py)
+- [orchestrator.py](../../orchestrator.py)
+- [core/storage/session_store.py](../../core/storage/session_store.py)
 
 建议新增服务目录：
 
@@ -164,7 +166,7 @@ V2 按七个大里程碑推进：
 
 建议升级：
 
-- [pipeline/stage1_extraction/style_analyzer.py](pipeline/stage1_extraction/style_analyzer.py)
+- [pipeline/stage1_extraction/style_analyzer.py](../../pipeline/stage1_extraction/style_analyzer.py)
 
 ### 6.5 关键能力
 
@@ -217,7 +219,7 @@ V2 按七个大里程碑推进：
 
 建议重构：
 
-- [orchestrator.py](orchestrator.py)
+- [orchestrator.py](../../orchestrator.py)
 
 ### 7.5 关键能力
 
@@ -310,10 +312,10 @@ V2 按七个大里程碑推进：
 
 建议升级：
 
-- [pipeline/stage2_plot/debate_graph.py](pipeline/stage2_plot/debate_graph.py)
-- [pipeline/stage2_plot/agent_nodes.py](pipeline/stage2_plot/agent_nodes.py)
-- [pipeline/stage3_generation/chapter_generator.py](pipeline/stage3_generation/chapter_generator.py)
-- [pipeline/stage3_generation/quality_checker.py](pipeline/stage3_generation/quality_checker.py)
+- [pipeline/stage2_plot/debate_graph.py](../../pipeline/stage2_plot/debate_graph.py)
+- [pipeline/stage2_plot/agent_nodes.py](../../pipeline/stage2_plot/agent_nodes.py)
+- [pipeline/stage3_generation/chapter_generator.py](../../pipeline/stage3_generation/chapter_generator.py)
+- [pipeline/stage3_generation/quality_checker.py](../../pipeline/stage3_generation/quality_checker.py)
 
 建议新增：
 
@@ -377,12 +379,12 @@ V2 按七个大里程碑推进：
 
 建议升级：
 
-- [webapp/app.py](webapp/app.py)
-- [webapp/manager.py](webapp/manager.py)
-- [webapp/models.py](webapp/models.py)
-- [webapp/static/index.html](webapp/static/index.html)
-- [webapp/static/styles.css](webapp/static/styles.css)
-- [webapp/static/app.js](webapp/static/app.js)
+- [webapp/app.py](../../webapp/app.py)
+- [webapp/manager.py](../../webapp/manager.py)
+- [webapp/models.py](../../webapp/models.py)
+- [webapp/static/index.html](../../webapp/static/index.html)
+- [webapp/static/styles.css](../../webapp/static/styles.css)
+- [webapp/static/app.js](../../webapp/static/app.js)
 
 ### 10.5 页面结构
 

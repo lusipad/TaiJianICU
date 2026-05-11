@@ -103,10 +103,10 @@ taijianicu run --input data\input\hongloumeng_front80_pg24264.txt --chapters 6 -
 ## 当前测试基线
 
 ```powershell
-.\.venv\Scripts\python -m pytest
+.\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前结果：`129 passed, 3 warnings`。
+当前结果：`147 passed, 3 warnings`。
 
 ## 已知缺口
 
