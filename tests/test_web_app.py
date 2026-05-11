@@ -565,6 +565,16 @@ def test_docs_readme_groups_public_docs_by_audience() -> None:
     assert "archive/DESIGN_V2.md" in docs_index
 
 
+def test_readme_describes_web_studio_and_desktop_as_delivery_options() -> None:
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+
+    assert "作为网站运行" in readme
+    assert "打包成 Windows / macOS 桌面应用" in readme
+    assert "网站版" in readme
+    assert "桌面版下载" in readme
+    assert "当前产品形态以桌面版和 Studio 工作台为主" not in readme
+
+
 def test_web_requires_basic_auth_when_password_configured() -> None:
     settings = AppSettings(TAIJIAN_WEB_PASSWORD="secret123")
     app = create_app(settings=settings, run_manager=FakeRunManager())
