@@ -60,7 +60,7 @@
 from litellm import completion, acompletion
 
 # 切换模型只改字符串，接口完全一致
-resp = await acompletion(model="deepseek/deepseek-chat", messages=[...])
+resp = await acompletion(model="deepseek/deepseek-v4-flash", messages=[...])
 resp = await acompletion(model="gemini/gemini-2.5-pro", messages=[...])
 resp = await acompletion(model="anthropic/claude-sonnet-4-6", messages=[...])
 
@@ -117,7 +117,7 @@ class ChapterSkeleton(BaseModel):
 # 直接得到类型安全的 ChapterSkeleton，失败自动重试
 client = instructor.from_litellm(completion)
 skeleton = client.chat.completions.create(
-    model="deepseek/deepseek-chat",
+    model="deepseek/deepseek-v4-flash",
     response_model=ChapterSkeleton,
     messages=[{"role": "user", "content": debate_result}],
 )

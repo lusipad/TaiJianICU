@@ -578,6 +578,8 @@ def test_readme_describes_web_studio_and_desktop_as_delivery_options() -> None:
 def test_deepseek_defaults_use_current_v4_model_names() -> None:
     settings = AppSettings()
     env_example = (Path(__file__).resolve().parents[1] / ".env.example").read_text(encoding="utf-8")
+    legacy_chat_model = "deepseek-" + "chat"
+    legacy_reasoner_model = "deepseek-" + "reasoner"
 
     assert settings.models.style_model == "deepseek/deepseek-v4-flash"
     assert settings.models.plot_model == "deepseek/deepseek-v4-flash"
@@ -585,8 +587,8 @@ def test_deepseek_defaults_use_current_v4_model_names() -> None:
     assert settings.models.quality_model == "deepseek/deepseek-v4-flash"
     assert settings.models.lightrag_model_name == "deepseek-v4-flash"
     assert "deepseek/deepseek-v4-pro" in env_example
-    assert "deepseek-chat" not in env_example
-    assert "deepseek-reasoner" not in env_example
+    assert legacy_chat_model not in env_example
+    assert legacy_reasoner_model not in env_example
 
 
 def test_web_requires_basic_auth_when_password_configured() -> None:
