@@ -408,6 +408,16 @@ def create_app(
     ) -> WebRunDetail:
         return app.state.run_manager.save_trust_revision_notes(run_id, request)
 
+    @app.post(
+        "/api/revival/runs/{run_id}/trust-report/revision-run",
+        response_model=WebRunSummary,
+    )
+    async def restart_revival_from_trust_revision_notes(
+        run_id: str,
+        request: WebTrustRevisionNotesUpdate,
+    ) -> WebRunSummary:
+        return app.state.run_manager.restart_revival_generation_from_revision_notes(run_id, request)
+
     @app.post("/api/revival/runs/{run_id}/blind-challenge", response_model=WebRunDetail)
     async def save_revival_blind_challenge(
         run_id: str,

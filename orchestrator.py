@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from config.settings import AppSettings, get_settings
 from core.llm.litellm_client import LLMUsageSummary, LiteLLMService
 from core.models.arc_outline import ArcOutline
-from core.models.chapter_brief import ChapterBrief, ExpansionBudget
+from core.models.chapter_brief import ChapterBrief, ChapterConstraint, ExpansionBudget
 from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
@@ -1048,6 +1048,32 @@ class TaiJianOrchestrator:
             }
         )
 
+    @staticmethod
+    def _apply_revision_notes_to_brief(
+        *,
+        chapter_brief: ChapterBrief,
+        revision_notes: list[str] | None,
+    ) -> ChapterBrief:
+        notes = list(dict.fromkeys(note.strip() for note in (revision_notes or []) if note.strip()))
+        if not notes:
+            return chapter_brief
+        note_text = "；".join(notes[:6])
+        chapter_note = "\n".join(
+            item for item in [chapter_brief.chapter_note, f"可信报告修订提示：{note_text}"] if item
+        )
+        existing_contents = {constraint.content for constraint in chapter_brief.constraints}
+        revision_constraints = [
+            ChapterConstraint(label="可信报告修订提示", content=note, priority="hard")
+            for note in notes
+            if note not in existing_contents
+        ]
+        return chapter_brief.model_copy(
+            update={
+                "chapter_note": chapter_note,
+                "constraints": [*chapter_brief.constraints, *revision_constraints],
+            }
+        )
+
     async def run_revival_generation(
         self,
         *,
@@ -1063,6 +1089,7 @@ class TaiJianOrchestrator:
         use_existing_index: bool = True,
         overwrite: bool = False,
         start_chapter: int = 1,
+        revision_notes: list[str] | None = None,
         progress_callback: Callable[[str], None] | None = None,
     ) -> PipelineRunResult:
         selected_arc = self.session_store.load_model(
@@ -1165,6 +1192,10 @@ class TaiJianOrchestrator:
             intervention_must_happen=intervention_config.must_happen,
             intervention_notes=intervention_config.notes,
             goal_hint=goal_hint,
+        )
+        chapter_brief = self._apply_revision_notes_to_brief(
+            chapter_brief=chapter_brief,
+            revision_notes=revision_notes,
         )
         self.session_store.save_model(
             self.session_store.chapter_brief_path(session_name, chapter_number),

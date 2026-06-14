@@ -59,6 +59,7 @@ class FakeRunManager:
         self.director_constraints_get_calls = 0
         self.director_constraints_save_calls = 0
         self.trust_revision_notes_save_calls = 0
+        self.trust_revision_run_calls = 0
         self.connection_test_calls = 0
         self.last_request = None
         self.last_runtime_api_override = None
@@ -261,6 +262,18 @@ class FakeRunManager:
             update={"trust_report": report.model_copy(update={"revision_notes": request.revision_notes})}
         )
         return self.detail
+
+    def restart_revival_generation_from_revision_notes(self, run_id: str, request: WebTrustRevisionNotesUpdate):
+        assert run_id == "run-1"
+        self.trust_revision_run_calls += 1
+        self.last_request = request
+        self.detail = self.detail.model_copy(
+            update={
+                "status": "generating",
+                "progress": self.detail.progress.model_copy(update={"message": "已保存修订提示，开始重新生成"}),
+            }
+        )
+        return WebRunSummary.model_validate(self.detail.model_dump(mode="json"))
 
     async def test_runtime_connection(self, request: WebRuntimeConnectionTestRequest):
         self.connection_test_calls += 1
@@ -514,7 +527,9 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
     assert "trust-report-hero" in script
     assert "trust-revision-notes" in script
     assert "saveTrustRevisionNotes" in script
+    assert "runTrustRevision" in script
     assert "/trust-report/revision-notes" in script
+    assert "/trust-report/revision-run" in script
     assert "loadDirectorConstraints" in script
     assert "saveDirectorConstraints" in script
     assert "collectDirectorConstraints" in script
@@ -963,6 +978,23 @@ def test_trust_revision_notes_endpoint() -> None:
     assert response.status_code == 200
     assert response.json()["trust_report"]["revision_notes"] == ["补足章节长度。", "增加短句对白。"]
     assert manager.trust_revision_notes_save_calls == 1
+    assert manager.last_request.revision_notes == ["补足章节长度。", "增加短句对白。"]
+
+
+def test_trust_revision_run_endpoint() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/revival/runs/run-1/trust-report/revision-run",
+        json={"revision_notes": ["补足章节长度。", "增加短句对白。"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "generating"
+    assert response.json()["progress"]["message"] == "已保存修订提示，开始重新生成"
+    assert manager.trust_revision_run_calls == 1
     assert manager.last_request.revision_notes == ["补足章节长度。", "增加短句对白。"]
 
 

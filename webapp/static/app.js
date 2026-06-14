@@ -933,7 +933,10 @@ function renderTrustReport(report) {
       <section class="trust-revision-panel">
         <div class="trust-report-section-head">
           <strong>修订提示草稿</strong>
-          <button id="trust-revision-save-button" type="button" class="utility-button">保存草稿</button>
+          <div class="trust-revision-actions">
+            <button id="trust-revision-save-button" type="button" class="utility-button">保存草稿</button>
+            <button id="trust-revision-run-button" type="button">保存并再生成</button>
+          </div>
         </div>
         <p>可编辑后保存回可信报告，后续可粘入导演备注或修订提示。</p>
         <textarea id="trust-revision-notes" rows="6" spellcheck="false">${escapeHtml(revisionNotes.join("\n"))}</textarea>
@@ -999,6 +1002,38 @@ async function saveTrustRevisionNotes() {
   state.activeRunDetail = detail;
   renderRun(detail);
   setFormStatus("修订提示草稿已保存。", "tone-success");
+}
+
+async function runTrustRevision() {
+  if (!state.activeRunId) {
+    setFormStatus("请先选择一个任务。", "tone-error");
+    return;
+  }
+  const textarea = document.getElementById("trust-revision-notes");
+  if (!textarea) {
+    setFormStatus("当前没有可用于再生成的修订提示。", "tone-error");
+    return;
+  }
+  const revisionNotes = textarea.value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!revisionNotes.length) {
+    setFormStatus("请先填写至少一条修订提示。", "tone-error");
+    return;
+  }
+  const summary = await fetchJson(
+    `/api/revival/runs/${encodeURIComponent(state.activeRunId)}/trust-report/revision-run`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision_notes: revisionNotes }),
+    }
+  );
+  setFormStatus("已按修订提示重新开始生成。");
+  state.activeRunId = summary.id;
+  await refreshRuns();
+  startPolling(summary.id);
 }
 
 function formatModelSummary(request) {
@@ -2856,10 +2891,14 @@ if (elements.blindChallenge) {
 
 if (elements.trustReportSummary) {
   elements.trustReportSummary.addEventListener("click", async (event) => {
-    if (event.target.id !== "trust-revision-save-button") return;
+    if (!["trust-revision-save-button", "trust-revision-run-button"].includes(event.target.id)) return;
     event.target.disabled = true;
     try {
-      await saveTrustRevisionNotes();
+      if (event.target.id === "trust-revision-run-button") {
+        await runTrustRevision();
+      } else {
+        await saveTrustRevisionNotes();
+      }
     } catch (error) {
       setFormStatus(`保存修订提示失败：${error.message}`, "tone-error");
       event.target.disabled = false;

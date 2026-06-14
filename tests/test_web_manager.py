@@ -27,6 +27,7 @@ from core.models.revival import (
     DirectorIntentTranslation,
     RevivalTrustCheck,
     RevivalTrustReport,
+    SelectedArc,
     WorkSkill,
 )
 from core.models.story_state import StoryWorldState
@@ -729,6 +730,55 @@ def test_web_run_manager_saves_trust_revision_notes(tmp_path: Path) -> None:
         (session_dir / "trust_report.json").read_text(encoding="utf-8")
     )
     assert stored.revision_notes == ["补足章节长度。", "增加短句对白。"]
+
+
+def test_web_run_manager_restarts_generation_from_revision_notes(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    now = datetime.now(timezone.utc)
+    session_dir = settings.sessions_dir / "revival-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    selected_arc = SelectedArc(
+        selected_option_id="arc_a",
+        selected_at=now,
+        arc_options_digest="digest",
+        user_note="稳住声口",
+    )
+    report = RevivalTrustReport(
+        status="warning",
+        summary="需要修订。",
+        generated_at=now,
+        revision_notes=["旧提示"],
+    )
+    manager._runs["run-1"] = WebRunDetail(
+        id="run-1",
+        status="completed_with_warnings",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=4, completed_steps=4),
+        input_path="demo.txt",
+        selected_arc=selected_arc,
+        trust_report=report,
+    )
+    scheduled: list[str] = []
+    manager._schedule_revival_generation = lambda run_id, run_settings=None: scheduled.append(run_id)  # type: ignore[method-assign]
+
+    summary = manager.restart_revival_generation_from_revision_notes(
+        "run-1",
+        WebTrustRevisionNotesUpdate(revision_notes=["补足章节长度。", "增加短句对白。"]),
+    )
+
+    assert summary.status == "generating"
+    assert scheduled == ["run-1"]
+    detail = manager.get_run("run-1")
+    assert detail.trust_report is not None
+    assert detail.trust_report.revision_notes == ["补足章节长度。", "增加短句对白。"]
+    assert detail.progress.message == "已保存修订提示，开始重新生成"
+    assert (session_dir / "selected_arc.json").exists()
+    assert (session_dir / "trust_report.json").exists()
 
 
 def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:

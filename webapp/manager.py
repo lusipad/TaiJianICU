@@ -1580,6 +1580,68 @@ class WebRunManager:
             self._persist(updated)
         return updated
 
+    def restart_revival_generation_from_revision_notes(
+        self,
+        run_id: str,
+        request: WebTrustRevisionNotesUpdate,
+    ) -> WebRunSummary:
+        current = self.get_run(run_id)
+        if current.status in {"queued", "running", "analyzing", "generating"}:
+            raise ApiError("当前任务仍在运行，不能同时发起修订生成。", 409, "Conflict")
+        session_dir = self._session_dir(current.session_name)
+        session_dir.mkdir(parents=True, exist_ok=True)
+        selected_arc = current.selected_arc or self._load_json_model(
+            session_dir / "selected_arc.json",
+            SelectedArc,
+        )
+        if not isinstance(selected_arc, SelectedArc):
+            raise ApiError("当前任务还没有锁定人物走向，不能直接修订生成。", 409, "Conflict")
+        trust_report = current.trust_report or self._load_or_build_trust_report(session_dir=session_dir)
+        if not isinstance(trust_report, RevivalTrustReport):
+            raise ApiError("当前任务还没有可信报告，生成章节后再发起修订。", 409, "Conflict")
+        requested_notes = [note.strip() for note in request.revision_notes if note.strip()]
+        revision_notes = list(dict.fromkeys(requested_notes or trust_report.revision_notes))
+        if not revision_notes:
+            raise ApiError("请先保存至少一条修订提示。", 422, "Invalid Input")
+
+        selected_arc_path = session_dir / "selected_arc.json"
+        if not selected_arc_path.exists():
+            selected_arc_path.write_text(selected_arc.model_dump_json(indent=2), encoding="utf-8")
+        trust_report_path = self._trust_report_path(current.session_name)
+        updated_report = trust_report.model_copy(update={"revision_notes": revision_notes})
+        trust_report_path.write_text(updated_report.model_dump_json(indent=2), encoding="utf-8")
+        updated = current.model_copy(
+            update={
+                "status": "generating",
+                "error_message": None,
+                "selected_arc": selected_arc,
+                "trust_report": updated_report,
+                "artifact_paths": current.artifact_paths.model_copy(
+                    update={
+                        "selected_arc": str(selected_arc_path),
+                        "trust_report": str(trust_report_path),
+                    }
+                ),
+                "progress": current.progress.model_copy(
+                    update={"completed_steps": 0, "message": "已保存修订提示，开始重新生成"}
+                ),
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+        with self._lock:
+            self._runs[run_id] = updated
+            self._persist(updated)
+        try:
+            self._schedule_revival_generation(run_id, self._settings_for_request(updated.request))
+        except Exception as exc:
+            self._update_run(
+                run_id,
+                status="failed",
+                error_message=f"任务调度失败：{exc}",
+                progress=updated.progress.model_copy(update={"message": "运行失败"}),
+            )
+        return WebRunSummary.model_validate(self.get_run(run_id).model_dump(mode="json"))
+
     def save_blind_challenge_rating(
         self,
         run_id: str,
@@ -1753,6 +1815,7 @@ class WebRunManager:
                 use_existing_index=True,
                 overwrite=current.request.overwrite,
                 start_chapter=current.request.start_chapter,
+                revision_notes=current.trust_report.revision_notes if current.trust_report else None,
                 progress_callback=lambda message: self._append_log(run_id, message),
             )
             self._populate_outputs(run_id, result)

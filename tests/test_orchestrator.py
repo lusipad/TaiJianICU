@@ -442,6 +442,27 @@ def test_apply_selected_arc_to_chapter_brief() -> None:
     assert merged.must_not_break == ["黑玉不能完整出现", "不能直接揭底"]
 
 
+def test_apply_revision_notes_to_chapter_brief() -> None:
+    orchestrator = TaiJianOrchestrator.__new__(TaiJianOrchestrator)
+    brief = ChapterBrief(
+        chapter_number=1,
+        chapter_goal="推进主线",
+        chapter_note="保持慢热",
+    )
+
+    merged = orchestrator._apply_revision_notes_to_brief(
+        chapter_brief=brief,
+        revision_notes=["补足章节长度。", "", "补足章节长度。", "增加短句对白。"],
+    )
+
+    assert "可信报告修订提示：补足章节长度。；增加短句对白。" in merged.chapter_note
+    assert [constraint.content for constraint in merged.constraints] == [
+        "补足章节长度。",
+        "增加短句对白。",
+    ]
+    assert all(constraint.priority == "hard" for constraint in merged.constraints)
+
+
 async def test_finalize_output_revises_source_voice_gate_failures(tmp_path) -> None:
     settings = AppSettings(
         output_dir=tmp_path / "output",

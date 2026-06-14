@@ -1041,6 +1041,13 @@
   line-height: 1.6;
 }
 
+.trust-revision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .trust-revision-panel textarea {
   width: 100%;
   min-height: 142px;
