@@ -31,6 +31,7 @@
 - 对“对白比例偏离原文”这类声口问题，修订提示会按当前/基线比例选择增补短句往来或删减连续对白。
 - 合并 `run_manifest.json` 时，如果任一章节为 `completed_with_warnings` 或失败，顶层 `status` 会同步反映。
 - `TrustReportBuilder` 的顶层状态不使用百分制总分：`pass` 只表示关键 gate 全过且无章节 warning；`warning` 表示已生成但仍有短章、重复、质量 issue、盲测缺口或人工低分；`fail` 表示生成失败、clean/source voice 最终不过、盲测最终失败或 manifest failed；`not_ready` 表示仅完成分析。
+- `trust_report.json` 同步生成 `revision_notes`：把 warning/fail 检查项归纳成可编辑修订提示，Studio 单章评审会展示为“修订提示草稿”，方便粘入下一轮导演备注或修订提示。
 - `benchmark-multi` 继续作为连续章节回归入口，JSON/Markdown 现在包含每章 Revival gate 摘要和 `revival_status`，不新增专用命令。
 
 ## 红楼 81-120 回验证

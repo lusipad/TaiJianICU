@@ -1055,11 +1055,13 @@ class TrustReportBuilder:
             for check in checks
             if check.status in {"warning", "fail"} and check.recommended_action
         ]
+        revision_notes = self._revision_notes(checks)
         return RevivalTrustReport(
             status=status,
             summary=self._summary_for_status(status),
             checks=checks,
             recommended_actions=list(dict.fromkeys(recommended_actions)),
+            revision_notes=revision_notes,
             generated_at=datetime.now(timezone.utc),
             chapter_number=chapter_number,
         )
@@ -1267,6 +1269,26 @@ class TrustReportBuilder:
         if any(check.status in {"warning", "not_ready"} for check in checks):
             return "warning"
         return "pass"
+
+    @staticmethod
+    def _revision_notes(checks: list[RevivalTrustCheck]) -> list[str]:
+        notes: list[str] = []
+        priority = {"fail": 0, "warning": 1}
+        risky_checks = sorted(
+            [check for check in checks if check.status in priority],
+            key=lambda check: (priority[check.status], check.id),
+        )
+        if not risky_checks:
+            return notes
+        notes.append("只输出修订后的正文，不要解释你做了什么。")
+        notes.append("保留已锁定的人物走向和章节事实，只修 warning/fail 对应的问题。")
+        for check in risky_checks:
+            evidence = "；".join(item for item in check.evidence[:3] if item)
+            parts = [f"{check.label}：{check.recommended_action or check.observed or '按该项证据修订。'}"]
+            if evidence:
+                parts.append(f"证据：{evidence}")
+            notes.append("".join(parts))
+        return list(dict.fromkeys(notes))
 
     @staticmethod
     def _summary_for_status(status: str) -> str:

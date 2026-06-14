@@ -215,6 +215,9 @@ def test_trust_report_builder_marks_pass_warning_and_fail() -> None:
     assert pass_report.status == "pass"
     assert warning_report.status == "warning"
     assert fail_report.status == "fail"
+    assert pass_report.revision_notes == []
+    assert any("章节质量" in note for note in warning_report.revision_notes)
+    assert any("作者声口" in note for note in fail_report.revision_notes)
     assert any(check.id == "quality_report" for check in warning_report.checks)
 
 

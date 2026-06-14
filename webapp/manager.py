@@ -1095,6 +1095,10 @@ class WebRunManager:
                 )
             ],
             recommended_actions=["查看运行日志和错误信息，修复后重新生成。"],
+            revision_notes=[
+                "不要沿用失败产物。",
+                "先查看运行日志和错误信息，修复生成链路后重新生成章节。",
+            ],
             generated_at=datetime.now(timezone.utc),
             chapter_number=run.request.start_chapter,
         )

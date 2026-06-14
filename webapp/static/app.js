@@ -482,6 +482,26 @@ function sortTrustChecks(checks) {
   });
 }
 
+function buildTrustRevisionNotes(report, checks) {
+  if (Array.isArray(report?.revision_notes) && report.revision_notes.length) {
+    return report.revision_notes.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+  const risky = (checks || []).filter((check) => ["fail", "warning"].includes(check.status));
+  if (!risky.length) return [];
+  const notes = [
+    "只输出修订后的正文，不要解释你做了什么。",
+    "保留已锁定的人物走向和章节事实，只修 warning/fail 对应的问题。",
+  ];
+  for (const check of risky) {
+    const action = check.recommended_action || check.observed || "按该项证据修订。";
+    const evidence = Array.isArray(check.evidence)
+      ? check.evidence.map(formatTrustEvidenceItem).filter(Boolean).slice(0, 3).join("；")
+      : "";
+    notes.push(`${check.label || check.id}：${action}${evidence ? ` 证据：${evidence}` : ""}`);
+  }
+  return [...new Set(notes)];
+}
+
 function renderTrustCheck(check, { compact = false } = {}) {
   const evidence = Array.isArray(check.evidence)
     ? check.evidence.map(formatTrustEvidenceItem).filter(Boolean).slice(0, compact ? 3 : 5)
@@ -883,6 +903,7 @@ function renderTrustReport(report) {
   const readyChecks = checks.filter((check) => check.status !== "not_ready").length;
   const passChecks = checks.filter((check) => check.status === "pass").length;
   const primaryAction = priorityChecks[0]?.recommended_action || report.recommended_actions?.[0] || "";
+  const revisionNotes = buildTrustRevisionNotes(report, checks);
   const checkHtml = checks.length
     ? checks.map((check) => renderTrustCheck(check)).join("")
     : '<div class="trust-report-empty"><span>暂无检查项</span></div>';
@@ -907,6 +928,17 @@ function renderTrustReport(report) {
       </div>
     `
     : "";
+  const revisionNotesHtml = revisionNotes.length
+    ? `
+      <section class="trust-revision-panel">
+        <div class="trust-report-section-head">
+          <strong>修订提示草稿</strong>
+          <span>可编辑后粘入下一轮导演备注或修订提示</span>
+        </div>
+        <textarea id="trust-revision-notes" rows="6" spellcheck="false">${escapeHtml(revisionNotes.join("\n"))}</textarea>
+      </section>
+    `
+    : "";
   elements.trustReportSummary.innerHTML = `
     <div class="trust-report-board">
       <section class="trust-report-hero ${escapeHtml(trustStatusClass(report.status))}">
@@ -929,6 +961,7 @@ function renderTrustReport(report) {
         <div class="trust-check-grid">${priorityHtml}</div>
       </section>
       ${actions}
+      ${revisionNotesHtml}
       <section class="trust-report-section">
         <div class="trust-report-section-head">
           <strong>检查明细</strong>

@@ -205,5 +205,6 @@ class RevivalTrustReport(_StrictModel):
     summary: str = ""
     checks: list[RevivalTrustCheck] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
+    revision_notes: list[str] = Field(default_factory=list)
     generated_at: datetime
     chapter_number: int | None = Field(default=None, ge=1)

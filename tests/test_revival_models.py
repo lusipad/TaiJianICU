@@ -72,6 +72,7 @@ def test_revival_artifacts_validate_expected_shape() -> None:
             )
         ],
         recommended_actions=["重写该句"],
+        revision_notes=["只输出修订后的正文。", "clean prose：重写该句"],
     )
     challenge = BlindChallenge(excerpt_text="沈照站在雨里。", excerpt_char_count=7)
     decision = BlindJudgeDecision(suspected_excerpt_id="A", confidence=0.8)
@@ -116,6 +117,7 @@ def test_revival_artifacts_validate_expected_shape() -> None:
     assert selected.director_constraints is not None
     assert trust_report.status == "warning"
     assert trust_report.checks[0].recommended_action == "重写该句"
+    assert trust_report.revision_notes[1] == "clean prose：重写该句"
     assert challenge.source_label_hidden is True
     assert judge_report.rounds[0].decision.suspected_excerpt_id == "A"
     assert artifacts.chapters[0].chapter_number == 80
