@@ -402,6 +402,116 @@ function formatTrustStatus(value) {
   }
 }
 
+function trustStatusClass(value) {
+  switch (value) {
+    case "pass":
+      return "trust-status-pass";
+    case "warning":
+      return "trust-status-warning";
+    case "fail":
+      return "trust-status-fail";
+    case "not_ready":
+      return "trust-status-not-ready";
+    default:
+      return "trust-status-unknown";
+  }
+}
+
+function trustStatusRank(value) {
+  switch (value) {
+    case "fail":
+      return 0;
+    case "warning":
+      return 1;
+    case "not_ready":
+      return 2;
+    case "pass":
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+const TRUST_CHECK_ORDER = {
+  revival_diagnosis: 0,
+  blind_judge: 1,
+  quality_report: 2,
+  human_blind_rating: 3,
+  run_manifest: 4,
+};
+
+const TRUST_EVIDENCE_LABELS = {
+  overall_below_threshold: "连续回归：整体贴合低于阈值",
+  candidate_too_short: "连续回归：章节明显偏短",
+  rhythm_drift: "连续回归：叙述节奏偏离参考章节",
+  dialogue_ratio_drift: "连续回归：对白比例偏离参考章节",
+  high_repetition: "连续回归：近章重复偏高",
+  clean_gate_hits: "命中说明性或现代化污染词",
+};
+
+function formatTrustEvidenceItem(item) {
+  const value = String(item || "").trim();
+  if (!value) return "";
+  if (TRUST_EVIDENCE_LABELS[value]) return TRUST_EVIDENCE_LABELS[value];
+  if (value.startsWith("verdict=")) return `质量结论：${value.slice("verdict=".length) || "-"}`;
+  if (value.startsWith("score=")) return `质量模型原始值：${value.slice("score=".length)}（仅作分项证据）`;
+  if (value.startsWith("status=")) return `检查状态：${value.slice("status=".length) || "-"}`;
+  if (value.startsWith("retry_count=")) return `自动重试次数：${value.slice("retry_count=".length) || "0"}`;
+  if (value.startsWith("confidence=")) return `盲测置信度：${value.slice("confidence=".length) || "-"}`;
+  if (value.startsWith("run_status=")) return `运行状态：${formatRunStatus(value.slice("run_status=".length))}`;
+  if (value.startsWith("chapter_status=")) return `章节状态：${formatRunStatus(value.slice("chapter_status=".length))}`;
+  if (value.startsWith("scores=")) return `人工评分：${value.slice("scores=".length) || "-"}`;
+  return value;
+}
+
+function describeTrustCheck(check) {
+  if (!check) return "";
+  const status = check.status || "";
+  const label = check.label || check.id || "检查项";
+  if (status === "fail") return `${label}没有通过，先修这里再考虑交付。`;
+  if (status === "warning") return `${label}存在风险，建议修订或补验后再采用。`;
+  if (status === "not_ready") return `${label}还缺少产物，完成生成后再判断。`;
+  return `${label}未发现阻断风险。`;
+}
+
+function sortTrustChecks(checks) {
+  return [...(checks || [])].sort((left, right) => {
+    const statusDelta = trustStatusRank(left.status) - trustStatusRank(right.status);
+    if (statusDelta !== 0) return statusDelta;
+    return (TRUST_CHECK_ORDER[left.id] ?? 99) - (TRUST_CHECK_ORDER[right.id] ?? 99);
+  });
+}
+
+function renderTrustCheck(check, { compact = false } = {}) {
+  const evidence = Array.isArray(check.evidence)
+    ? check.evidence.map(formatTrustEvidenceItem).filter(Boolean).slice(0, compact ? 3 : 5)
+    : [];
+  const evidenceHtml = evidence.length
+    ? `<ul class="trust-evidence-list">${evidence.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+    : "";
+  const action = check.recommended_action
+    ? `<p class="trust-check-action">建议：${escapeHtml(check.recommended_action)}</p>`
+    : "";
+  const expected = !compact && check.expected
+    ? `<p class="trust-check-expected">期望：${escapeHtml(check.expected)}</p>`
+    : "";
+  return `
+    <div class="trust-check ${escapeHtml(trustStatusClass(check.status))}">
+      <div class="trust-check-head">
+        <strong>${escapeHtml(check.label || check.id || "检查项")}</strong>
+        <span class="trust-status-badge ${escapeHtml(trustStatusClass(check.status))}">
+          ${escapeHtml(formatTrustStatus(check.status))}
+        </span>
+      </div>
+      <p>${escapeHtml(describeTrustCheck(check))}</p>
+      <p>${escapeHtml(check.observed || "-")}</p>
+      ${expected}
+      ${evidenceHtml}
+      ${action}
+    </div>
+  `;
+}
+
 function isLiveRunStatus(status) {
   return ["queued", "running", "analyzing", "generating"].includes(status);
 }
@@ -760,41 +870,73 @@ function formatRevivalDiagnosis(diagnosis) {
 function renderTrustReport(report) {
   if (!elements.trustReportSummary) return;
   if (!report) {
-    elements.trustReportSummary.innerHTML = '<div class="thread-item"><strong>生成章节后出现可信报告</strong></div>';
+    elements.trustReportSummary.innerHTML = `
+      <div class="trust-report-empty">
+        <strong>生成章节后出现可信报告</strong>
+        <span>这里会汇总质量、声口、盲测和运行状态，告诉你是否可以采用这一章。</span>
+      </div>
+    `;
     return;
   }
-  const checks = Array.isArray(report.checks) ? report.checks : [];
+  const checks = sortTrustChecks(Array.isArray(report.checks) ? report.checks : []);
+  const priorityChecks = checks.filter((check) => ["fail", "warning"].includes(check.status)).slice(0, 3);
+  const readyChecks = checks.filter((check) => check.status !== "not_ready").length;
+  const passChecks = checks.filter((check) => check.status === "pass").length;
+  const primaryAction = priorityChecks[0]?.recommended_action || report.recommended_actions?.[0] || "";
   const checkHtml = checks.length
-    ? checks
-        .map((check) => {
-          const evidence = Array.isArray(check.evidence) && check.evidence.length
-            ? `<span>${escapeHtml(check.evidence.slice(0, 4).join("；"))}</span>`
-            : "";
-          const action = check.recommended_action
-            ? `<span>建议：${escapeHtml(check.recommended_action)}</span>`
-            : "";
-          return `
-            <div class="thread-item">
-              <strong>${escapeHtml(check.label || check.id)} · ${escapeHtml(formatTrustStatus(check.status))}</strong>
-              <span>${escapeHtml(check.observed || "-")}</span>
-              ${evidence}
-              ${action}
-            </div>
-          `;
-        })
-        .join("")
-    : '<div class="thread-item"><span>暂无检查项</span></div>';
+    ? checks.map((check) => renderTrustCheck(check)).join("")
+    : '<div class="trust-report-empty"><span>暂无检查项</span></div>';
+  const priorityHtml = priorityChecks.length
+    ? priorityChecks.map((check) => renderTrustCheck(check, { compact: true })).join("")
+    : `
+      <div class="trust-check trust-status-pass">
+        <div class="trust-check-head">
+          <strong>没有优先阻断项</strong>
+          <span class="trust-status-badge trust-status-pass">可继续</span>
+        </div>
+        <p>仍建议人工抽读关键段落，再决定是否采用。</p>
+      </div>
+    `;
   const actions = Array.isArray(report.recommended_actions) && report.recommended_actions.length
-    ? `<div class="thread-item"><strong>建议动作</strong><span>${escapeHtml(report.recommended_actions.join("；"))}</span></div>`
+    ? `
+      <div class="trust-action-list">
+        ${report.recommended_actions
+          .slice(0, 4)
+          .map((action) => `<span>${escapeHtml(action)}</span>`)
+          .join("")}
+      </div>
+    `
     : "";
   elements.trustReportSummary.innerHTML = `
-    <div class="thread-item">
-      <strong>${escapeHtml(formatTrustStatus(report.status))}</strong>
-      <span>${escapeHtml(report.summary || "-")}</span>
-      ${report.chapter_number ? `<span>章节：${escapeHtml(report.chapter_number)}</span>` : ""}
+    <div class="trust-report-board">
+      <section class="trust-report-hero ${escapeHtml(trustStatusClass(report.status))}">
+        <div>
+          <p class="label">总状态</p>
+          <h3>${escapeHtml(formatTrustStatus(report.status))}</h3>
+          <p>${escapeHtml(report.summary || "-")}</p>
+        </div>
+        <div class="trust-report-meta">
+          ${report.chapter_number ? `<span>章节 ${escapeHtml(report.chapter_number)}</span>` : ""}
+          <span>${escapeHtml(passChecks)} / ${escapeHtml(readyChecks || checks.length)} 项已通过</span>
+        </div>
+      </section>
+      ${primaryAction ? `<section class="trust-next-action"><strong>下一步</strong><span>${escapeHtml(primaryAction)}</span></section>` : ""}
+      <section class="trust-report-section">
+        <div class="trust-report-section-head">
+          <strong>优先处理</strong>
+          <span>${priorityChecks.length ? "先修这些，再看其他细节" : "当前没有 warning/fail"}</span>
+        </div>
+        <div class="trust-check-grid">${priorityHtml}</div>
+      </section>
+      ${actions}
+      <section class="trust-report-section">
+        <div class="trust-report-section-head">
+          <strong>检查明细</strong>
+          <span>按风险排序，保留证据和期望状态</span>
+        </div>
+        <div class="trust-check-grid">${checkHtml}</div>
+      </section>
     </div>
-    ${checkHtml}
-    ${actions}
   `;
 }
 

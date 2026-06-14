@@ -130,7 +130,7 @@ taijianicu benchmark-multi --dataset hongloumeng-111-120-revival-trust --source-
 .\.venv\Scripts\taijianicu.exe benchmark-multi --dataset hongloumeng-115-fixture-smoke --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 115 --chapter-count 1 --candidate-dir data\output\hongloumeng-front80-verify115-120-repetitionguard-20260503
 ```
 
-当前结果：`revival_status=warning`，`revival_issues=["chapter_115:overall_below_threshold", "chapter_115:dialogue_ratio_drift"]`。报告落在 `data\benchmarks\hongloumeng-115-fixture-smoke\cases\80_to_115_1ch\multi_report\`。
+当前结果：`revival_status=warning`，`revival_issues=["chapter_115:overall_below_threshold", "chapter_115:candidate_too_short", "chapter_115:rhythm_drift", "chapter_115:dialogue_ratio_drift"]`。报告落在 `data\benchmarks\hongloumeng-115-fixture-smoke\cases\80_to_115_1ch\multi_report\`。
 
 ## 已知缺口
 

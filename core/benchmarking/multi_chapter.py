@@ -374,8 +374,12 @@ class MultiChapterBenchmarkRunner:
             issues.append("overall_below_threshold")
         if candidate_metrics.clean_gate_hits:
             issues.append("clean_gate_hits")
-        if candidate_metrics.chinese_char_count < reference_metrics.chinese_char_count * 0.5:
+        if candidate_metrics.chinese_char_count < reference_metrics.chinese_char_count * 0.65:
             issues.append("candidate_too_short")
+        if candidate_metrics.avg_sentence_length > 0 and reference_metrics.avg_sentence_length > 0:
+            rhythm_delta = abs(candidate_metrics.avg_sentence_length - reference_metrics.avg_sentence_length)
+            if rhythm_delta / reference_metrics.avg_sentence_length > 0.45:
+                issues.append("rhythm_drift")
         if candidate_metrics.repetition_ratio > 0.08:
             issues.append("high_repetition")
         if abs(candidate_metrics.dialogue_ratio - reference_metrics.dialogue_ratio) > 0.25:

@@ -938,6 +938,168 @@
   background: rgba(255, 255, 255, 0.026);
 }
 
+.trust-report-board {
+  display: grid;
+  gap: 14px;
+}
+
+.trust-report-empty,
+.trust-report-hero,
+.trust-next-action,
+.trust-check,
+.trust-action-list {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.026);
+}
+
+.trust-report-empty {
+  display: grid;
+  gap: 8px;
+}
+
+.trust-report-empty span {
+  color: rgba(226, 213, 201, 0.62);
+}
+
+.trust-report-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.trust-report-hero h3 {
+  margin-top: 6px;
+  color: #f3dfcf;
+  font-size: 28px;
+}
+
+.trust-report-hero p {
+  margin: 8px 0 0;
+  max-width: 760px;
+  color: rgba(226, 213, 201, 0.68);
+  line-height: 1.65;
+}
+
+.trust-report-meta,
+.trust-action-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trust-report-meta {
+  justify-content: flex-end;
+}
+
+.trust-report-meta span,
+.trust-action-list span,
+.trust-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: rgba(226, 213, 201, 0.7);
+  font-size: 12px;
+}
+
+.trust-next-action {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border-color: rgba(212, 160, 121, 0.22);
+  background: rgba(212, 160, 121, 0.06);
+}
+
+.trust-next-action span {
+  color: rgba(241, 223, 207, 0.76);
+  line-height: 1.6;
+}
+
+.trust-report-section {
+  display: grid;
+  gap: 10px;
+}
+
+.trust-report-section-head,
+.trust-check-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.trust-report-section-head span {
+  color: rgba(226, 213, 201, 0.56);
+  font-size: 13px;
+}
+
+.trust-check-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.trust-check {
+  display: grid;
+  gap: 8px;
+}
+
+.trust-check p {
+  margin: 0;
+  color: rgba(226, 213, 201, 0.62);
+  line-height: 1.6;
+}
+
+.trust-check-expected,
+.trust-check-action {
+  color: rgba(241, 223, 207, 0.74) !important;
+}
+
+.trust-evidence-list {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(226, 213, 201, 0.62);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.trust-status-pass {
+  border-color: rgba(107, 207, 142, 0.26);
+}
+
+.trust-status-warning {
+  border-color: rgba(212, 160, 121, 0.34);
+  background: rgba(212, 160, 121, 0.06);
+}
+
+.trust-status-fail {
+  border-color: rgba(223, 127, 114, 0.34);
+  background: rgba(223, 127, 114, 0.07);
+}
+
+.trust-status-not-ready,
+.trust-status-unknown {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.trust-status-badge.trust-status-pass {
+  color: var(--success);
+}
+
+.trust-status-badge.trust-status-warning {
+  color: #e6ba98;
+}
+
+.trust-status-badge.trust-status-fail {
+  color: var(--danger);
+}
+
 .library-panel {
   gap: 18px;
 }

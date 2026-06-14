@@ -491,6 +491,10 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
     assert "loadDirectorPlan" in script
     assert "saveDirectorPlan" in script
     assert "renderTrustReport" in script
+    assert "trustStatusClass" in script
+    assert "sortTrustChecks" in script
+    assert "TRUST_EVIDENCE_LABELS" in script
+    assert "trust-report-hero" in script
     assert "loadDirectorConstraints" in script
     assert "saveDirectorConstraints" in script
     assert "collectDirectorConstraints" in script

@@ -33,7 +33,8 @@
 11. 近章重复护栏：连续章节若复用相同开头或转场，写回前进入最多 3 轮定向修订；修订提示必须要求重写当前章前两段并换入场焦点。
 12. `trust_report.json`：一等可信报告，只展示总状态和分项证据，不生成百分制总分。
 13. `director_constraints.json`：导演意图内部化，优先 LLM 结构化转换，失败时规则兜底，Studio 可编辑并在选择人物走向时锁定快照。
-14. `benchmark-multi` 连续可信回归：每章输出长度、对白比例、clean prose、重复和 overall issue 摘要，并给出 `revival_status`。
+14. `benchmark-multi` 连续可信回归：每章输出长度、叙述节奏、对白比例、clean prose、重复和 overall issue 摘要，并给出 `revival_status`。
+15. Studio 单章评审：可信报告按 `fail -> warning -> not_ready -> pass` 排序，把“优先处理”“检查明细”和下一步修订动作分开展示。
 
 ## 4. 旧 V2 的处理
 
