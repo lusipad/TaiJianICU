@@ -6,6 +6,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config.settings import AppSettings
+from core.benchmarking.multi_chapter import (
+    ChapterBaselineMetrics,
+    ChapterBaselineScore,
+    ChapterRevivalGateSummary,
+    MultiChapterBenchmarkReport,
+)
 from core.benchmarking.runner import BenchmarkReport, CandidateReport, CandidateScore, PairwiseJudgement
 from core.llm.litellm_client import LLMUsageSummary
 from core.models.arc_outline import ArcOutline
@@ -18,6 +24,8 @@ from core.models.revival import (
     BlindChallengeExcerpt,
     DirectorArcOption,
     DirectorArcOptions,
+    DirectorIntentTranslation,
+    RevivalTrustReport,
     WorkSkill,
 )
 from core.models.story_state import StoryWorldState
@@ -359,6 +367,24 @@ def test_web_run_manager_populates_revival_analysis_artifacts(tmp_path: Path) ->
         ).model_dump_json(indent=2),
         encoding="utf-8",
     )
+    (session_dir / "director_constraints.json").write_text(
+        DirectorIntentTranslation(
+            raw_intent="推进关系变化",
+            internalized_actions=["旧物触发言语有异"],
+            scene_constraints=["不可直写解释"],
+            forbidden_leaks=["关系变化"],
+            status="generated",
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    (session_dir / "trust_report.json").write_text(
+        RevivalTrustReport(
+            status="not_ready",
+            summary="尚未生成章节。",
+            generated_at=now,
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
     run = WebRunDetail(
         id="run-1",
         status="analyzing",
@@ -392,8 +418,14 @@ def test_web_run_manager_populates_revival_analysis_artifacts(tmp_path: Path) ->
     assert detail.arc_options is not None
     assert detail.arc_options_digest == digest_payload(detail.arc_options.model_dump(mode="json"))
     assert len(detail.arc_options.options) == 3
+    assert detail.director_constraints is not None
+    assert detail.director_constraints.status == "generated"
+    assert detail.trust_report is not None
+    assert detail.trust_report.status == "not_ready"
     assert detail.artifact_paths.work_skill and detail.artifact_paths.work_skill.endswith("work_skill.json")
     assert detail.artifact_paths.arc_options and detail.artifact_paths.arc_options.endswith("arc_options.json")
+    assert detail.artifact_paths.director_constraints and detail.artifact_paths.director_constraints.endswith("director_constraints.json")
+    assert detail.artifact_paths.trust_report and detail.artifact_paths.trust_report.endswith("trust_report.json")
     assert detail.artifact_paths.revival_workspace and detail.artifact_paths.revival_workspace.endswith("revival_workspace.json")
 
 
@@ -430,7 +462,17 @@ def test_web_run_manager_selects_revival_arc(tmp_path: Path) -> None:
 
     summary = manager.select_revival_arc(
         "run-1",
-        WebArcSelectionRequest(selected_option_id="arc_a", user_note="稳住声口"),
+        WebArcSelectionRequest(
+            selected_option_id="arc_a",
+            user_note="稳住声口",
+            director_constraints=DirectorIntentTranslation(
+                raw_intent="推进关系变化",
+                internalized_actions=["让旧物引出旁人传话"],
+                scene_constraints=["不可直写解释"],
+                forbidden_leaks=["关系变化"],
+                status="generated",
+            ),
+        ),
     )
 
     assert summary.status == "generating"
@@ -438,7 +480,12 @@ def test_web_run_manager_selects_revival_arc(tmp_path: Path) -> None:
     detail = manager.get_run("run-1")
     assert detail.selected_arc is not None
     assert detail.selected_arc.selected_option_id == "arc_a"
+    assert detail.selected_arc.director_constraints is not None
+    assert "让旧物引出旁人传话" in detail.selected_arc.locked_constraints
+    assert detail.director_constraints is not None
+    assert detail.director_constraints.status == "user_edited"
     assert (session_dir / "selected_arc.json").exists()
+    assert (session_dir / "director_constraints.json").exists()
 
     duplicate_summary = manager.select_revival_arc(
         "run-1",
@@ -529,6 +576,42 @@ def test_web_run_manager_rejects_stale_revival_arc_digest(tmp_path: Path) -> Non
         raise AssertionError("stale arc digest should fail")
 
 
+def test_web_run_manager_gets_and_saves_director_constraints(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    now = datetime.now(timezone.utc)
+    manager._runs["run-1"] = WebRunDetail(
+        id="run-1",
+        status="awaiting_arc_selection",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1, goal_hint="推进人物弧光"),
+        progress=WebRunProgress(total_steps=4, completed_steps=4),
+        input_path="demo.txt",
+        work_skill=WorkSkill(source_digest="abc123", generated_at=now, voice_rules=["话少"]),
+    )
+
+    fallback = manager.get_director_constraints("run-1")
+    saved = manager.save_director_constraints(
+        "run-1",
+        fallback.model_copy(
+            update={
+                "internalized_actions": ["旧物触发言语有异"],
+                "scene_constraints": ["不可直写解释"],
+            }
+        ),
+    )
+
+    assert fallback.status == "fallback"
+    assert saved.status == "user_edited"
+    assert (settings.sessions_dir / "revival-session" / "director_constraints.json").exists()
+    detail = manager.get_run("run-1")
+    assert detail.director_constraints is not None
+    assert detail.director_constraints.internalized_actions == ["旧物触发言语有异"]
+
+
 def test_web_run_manager_saves_blind_challenge_rating(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
     manager = WebRunManager(settings)
@@ -588,6 +671,8 @@ def test_web_run_manager_saves_blind_challenge_rating(tmp_path: Path) -> None:
     assert "excerpt_text" not in payload
     assert all("source_note" not in item for item in payload["excerpts"])
     assert "blind_challenge.json" in (detail.artifact_paths.blind_challenge or "")
+    assert detail.trust_report is not None
+    assert "trust_report.json" in (detail.artifact_paths.trust_report or "")
 
 
 def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:
@@ -653,6 +738,67 @@ def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:
     assert detail.system_strengths == ["剧情推进稳"]
     assert detail.baseline_weaknesses == ["偏离原著"]
     assert detail.pairwise_reasoning == ["更稳", "更像原著"]
+
+
+def test_web_run_manager_reads_multi_chapter_benchmark_detail(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    report_dir = settings.benchmarks_dir / "demo" / "cases" / "2_to_3_1ch" / "multi_report"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    metrics = ChapterBaselineMetrics(
+        chapter_number=3,
+        chinese_char_count=100,
+        dialogue_ratio=0.1,
+        clean_gate_hits=1,
+        repetition_ratio=0.12,
+    )
+    report = MultiChapterBenchmarkReport(
+        dataset_name="demo",
+        case_name="2_to_3_1ch",
+        source_path="source.txt",
+        candidate_dir="candidates",
+        target_start_chapter=3,
+        chapter_count=1,
+        overall=0.5,
+        drift=0.0,
+        revival_status="warning",
+        revival_issues=["chapter_3:clean_gate_hits"],
+        chapter_scores=[
+            ChapterBaselineScore(
+                chapter_number=3,
+                candidate_path="chapter_3.md",
+                overall=0.5,
+                length_score=0.5,
+                rhythm_score=0.5,
+                dialogue_score=0.5,
+                marker_score=0.5,
+                clean_score=0.5,
+                repetition_score=0.5,
+                reference_metrics=metrics,
+                candidate_metrics=metrics,
+                revival_gate_summary=ChapterRevivalGateSummary(
+                    chinese_char_count=100,
+                    dialogue_ratio=0.1,
+                    clean_prose_status="fail",
+                    clean_gate_hits=1,
+                    repetition_ratio=0.12,
+                    overall_issue="clean_gate_hits",
+                ),
+                issues=["clean_gate_hits"],
+            )
+        ],
+        report_json_path=str(report_dir / "multi_chapter_report.json"),
+        report_markdown_path=str(report_dir / "multi_chapter_report.md"),
+    )
+    (report_dir / "multi_chapter_report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
+
+    summaries = manager.list_benchmarks()
+    detail = manager.get_benchmark("demo", "2_to_3_1ch")
+
+    assert summaries[0].winner == "warning"
+    assert detail.revival_status == "warning"
+    assert detail.revival_issues == ["第3章：clean_gate_hits"]
+    assert detail.multi_chapter_scores[0]["revival_gate_summary"]["clean_prose_status"] == "fail"
 
 
 def test_web_run_manager_builds_run_settings_with_model_overrides(tmp_path: Path) -> None:

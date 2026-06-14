@@ -15,7 +15,17 @@ from core.models.chapter_brief import ChapterBrief, ExpansionBudget
 from core.models.evaluation import ChapterEvaluation
 from core.models.lorebook import LorebookBundle
 from core.models.reference_profile import ReferenceProfile
-from core.models.revival import DirectorArcOptions, RevivalWorkspaceArtifacts, SelectedArc
+from core.models.revival import (
+    BlindChallenge,
+    BlindJudgeReport,
+    CleanProseGateResult,
+    DirectorArcOptions,
+    DirectorIntentTranslation,
+    RevivalDiagnosis,
+    RevivalTrustReport,
+    RevivalWorkspaceArtifacts,
+    SelectedArc,
+)
 from core.models.skeleton import ChapterSkeleton
 from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
@@ -39,10 +49,12 @@ from pipeline.revival import (
     BlindChallengeBuilder,
     BlindJudge,
     CleanProseGate,
+    DirectorIntentInternalizer,
     RevivalArcPlanner,
     RevivalDiagnosisBuilder,
     RevivalWorkspaceBuilder,
     SourceVoiceGate,
+    TrustReportBuilder,
     WorkSkillBuilder,
 )
 
@@ -158,6 +170,11 @@ class TaiJianOrchestrator:
         self.revival_diagnosis_builder = RevivalDiagnosisBuilder()
         self.blind_challenge_builder = BlindChallengeBuilder()
         self.blind_judge = BlindJudge(self.settings, self.llm_service)
+        self.director_intent_internalizer = DirectorIntentInternalizer(
+            self.settings,
+            self.llm_service,
+        )
+        self.trust_report_builder = TrustReportBuilder()
         self.intervention = InterventionManager(self.session_store)
 
     @staticmethod
@@ -190,6 +207,48 @@ class TaiJianOrchestrator:
         if not source_text:
             return None
         return SourceVoiceGate.from_source_text(source_text)
+
+    def _load_director_constraints(self, session_name: str) -> DirectorIntentTranslation | None:
+        loaded = self.session_store.load_model(
+            self.session_store.director_constraints_path(session_name),
+            DirectorIntentTranslation,
+        )
+        return loaded if isinstance(loaded, DirectorIntentTranslation) else None
+
+    def _save_trust_report(
+        self,
+        *,
+        session_name: str,
+        manifest: PipelineRunResult | None = None,
+        diagnosis: RevivalDiagnosis | None = None,
+        blind_judge_report: BlindJudgeReport | None = None,
+        chapter_number: int | None = None,
+    ) -> RevivalTrustReport:
+        if diagnosis is None:
+            diagnosis = self.session_store.load_model(
+                self.session_store.revival_diagnosis_path(session_name),
+                RevivalDiagnosis,
+            )
+        if blind_judge_report is None:
+            blind_judge_report = self.session_store.load_model(
+                self.session_store.blind_judge_report_path(session_name),
+                BlindJudgeReport,
+            )
+        blind_challenge = self.session_store.load_model(
+            self.session_store.blind_challenge_path(session_name),
+            BlindChallenge,
+        )
+        report = self.trust_report_builder.build(
+            manifest=manifest,
+            diagnosis=diagnosis,
+            blind_judge_report=blind_judge_report
+            if isinstance(blind_judge_report, BlindJudgeReport)
+            else None,
+            blind_challenge=blind_challenge if isinstance(blind_challenge, BlindChallenge) else None,
+            chapter_number=chapter_number,
+        )
+        self.session_store.save_model(self.session_store.trust_report_path(session_name), report)
+        return report
 
     @staticmethod
     def _gate_revision_issues(gate_result: CleanProseGateResult) -> list[str]:
@@ -869,6 +928,7 @@ class TaiJianOrchestrator:
         *,
         input_path: Path,
         session_name: str | None = None,
+        goal_hint: str | None = None,
         planning_mode: str = "balanced",
         new_character_budget: int | None = None,
         new_location_budget: int | None = None,
@@ -919,6 +979,16 @@ class TaiJianOrchestrator:
         )
         arc_options_path = self.session_store.arc_options_path(session_name)
         self.session_store.save_model(arc_options_path, arc_options)
+        director_constraints = await self.director_intent_internalizer.internalize(
+            raw_intent=goal_hint or "",
+            work_skill=work_skill,
+            selected_option=None,
+        )
+        self.session_store.save_model(
+            self.session_store.director_constraints_path(session_name),
+            director_constraints,
+        )
+        self._save_trust_report(session_name=session_name, manifest=None)
         self._emit(progress_callback, "复活分析：已生成作品 skill 与人物弧线")
         return RevivalAnalysisResult(
             session_name=session_name,
@@ -940,6 +1010,7 @@ class TaiJianOrchestrator:
         *,
         chapter_brief: ChapterBrief,
         selected_option,
+        director_constraints: DirectorIntentTranslation | None = None,
     ) -> ChapterBrief:
         note = "；".join(
             item
@@ -947,17 +1018,32 @@ class TaiJianOrchestrator:
                 chapter_brief.chapter_note,
                 f"导演弧线：{selected_option.title}",
                 selected_option.emotional_direction,
+                "；".join(director_constraints.style_register[:3]) if director_constraints else "",
             ]
             if item
         )
+        internalized_actions = director_constraints.internalized_actions if director_constraints else []
+        scene_constraints = director_constraints.scene_constraints if director_constraints else []
         return chapter_brief.model_copy(
             update={
                 "chapter_note": note,
                 "must_happen": list(
-                    dict.fromkeys([*chapter_brief.must_happen, *selected_option.must_happen])
+                    dict.fromkeys(
+                        [
+                            *chapter_brief.must_happen,
+                            *selected_option.must_happen,
+                            *internalized_actions,
+                        ]
+                    )
                 ),
                 "must_not_break": list(
-                    dict.fromkeys([*chapter_brief.must_not_break, *selected_option.must_not_break])
+                    dict.fromkeys(
+                        [
+                            *chapter_brief.must_not_break,
+                            *selected_option.must_not_break,
+                            *scene_constraints,
+                        ]
+                    )
                 ),
             }
         )
@@ -997,6 +1083,18 @@ class TaiJianOrchestrator:
         )
         if selected_option is None:
             raise ValueError("已选择的人物走向不在当前选项中，请重新分析。")
+        director_constraints = (
+            selected_arc.director_constraints
+            or self._load_director_constraints(session_name)
+            or DirectorIntentInternalizer.fallback(
+                raw_intent=goal_hint or selected_arc.user_note,
+                selected_option=selected_option,
+            )
+        )
+        self.session_store.save_model(
+            self.session_store.director_constraints_path(session_name),
+            director_constraints,
+        )
 
         run_started_at = datetime.now(timezone.utc)
         overall_usage_mark = self.llm_service.usage_mark()
@@ -1060,6 +1158,7 @@ class TaiJianOrchestrator:
         chapter_brief = self._apply_selected_arc_to_brief(
             chapter_brief=chapter_brief,
             selected_option=selected_option,
+            director_constraints=director_constraints,
         )
         chapter_brief = self._apply_chapter_brief_overrides(
             chapter_brief=chapter_brief,
@@ -1198,6 +1297,12 @@ class TaiJianOrchestrator:
             self.session_store.save_model(
                 self.session_store.run_manifest_path(session_name),
                 session_manifest,
+            )
+            self._save_trust_report(
+                session_name=session_name,
+                manifest=session_manifest,
+                diagnosis=diagnosis,
+                chapter_number=chapter_number,
             )
             return result
 
@@ -1338,6 +1443,13 @@ class TaiJianOrchestrator:
         result.status = chapter_result.status
         session_manifest = self._build_session_manifest(session_name, result)
         self.session_store.save_model(self.session_store.run_manifest_path(session_name), session_manifest)
+        self._save_trust_report(
+            session_name=session_name,
+            manifest=session_manifest,
+            diagnosis=diagnosis,
+            blind_judge_report=blind_judge_report,
+            chapter_number=chapter_number,
+        )
         return result
 
     async def run(

@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from config.settings import AppSettings, get_settings
 from webapp.errors import ApiError, register_error_handlers
 from webapp.manager import WebRunManager
+from core.models.revival import DirectorIntentTranslation
 from webapp.models import (
     WebDirectorPlan,
     WebDirectorPlanUpdate,
@@ -320,6 +321,7 @@ def create_app(
     async def create_revival_run(
         file: UploadFile = File(...),
         start_chapter: int = Form(1),
+        goal_hint: str = Form(""),
         session_name: str = Form(""),
         planning_mode: str = Form("balanced"),
         new_character_budget: int | None = Form(None),
@@ -347,6 +349,7 @@ def create_app(
             session_name=session_name.strip() or None,
             chapters=1,
             start_chapter=start_chapter,
+            goal_hint=goal_hint.strip() or None,
             planning_mode=planning_mode,  # type: ignore[arg-type]
             new_character_budget=new_character_budget,
             new_location_budget=new_location_budget,
@@ -376,6 +379,23 @@ def create_app(
         request: WebArcSelectionRequest,
     ) -> WebRunSummary:
         return app.state.run_manager.select_revival_arc(run_id, request)
+
+    @app.get(
+        "/api/revival/runs/{run_id}/director-constraints",
+        response_model=DirectorIntentTranslation,
+    )
+    async def get_revival_director_constraints(run_id: str) -> DirectorIntentTranslation:
+        return app.state.run_manager.get_director_constraints(run_id)
+
+    @app.post(
+        "/api/revival/runs/{run_id}/director-constraints",
+        response_model=DirectorIntentTranslation,
+    )
+    async def save_revival_director_constraints(
+        run_id: str,
+        request: DirectorIntentTranslation,
+    ) -> DirectorIntentTranslation:
+        return app.state.run_manager.save_director_constraints(run_id, request)
 
     @app.post("/api/revival/runs/{run_id}/blind-challenge", response_model=WebRunDetail)
     async def save_revival_blind_challenge(

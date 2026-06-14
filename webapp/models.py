@@ -9,7 +9,9 @@ from core.models.revival import (
     BlindChallenge,
     BlindChallengeRating,
     DirectorArcOptions,
+    DirectorIntentTranslation,
     RevivalDiagnosis,
+    RevivalTrustReport,
     SelectedArc,
     WorkSkill,
 )
@@ -109,7 +111,9 @@ class WebRunArtifactPaths(BaseModel):
     work_skill: str | None = None
     arc_options: str | None = None
     selected_arc: str | None = None
+    director_constraints: str | None = None
     revival_diagnosis: str | None = None
+    trust_report: str | None = None
     blind_challenge: str | None = None
     latest_skeleton: str | None = None
     latest_chapter_brief: str | None = None
@@ -179,7 +183,9 @@ class WebRunDetail(WebRunSummary):
     arc_options: DirectorArcOptions | None = None
     arc_options_digest: str | None = None
     selected_arc: SelectedArc | None = None
+    director_constraints: DirectorIntentTranslation | None = None
     revival_diagnosis: RevivalDiagnosis | None = None
+    trust_report: RevivalTrustReport | None = None
     blind_challenge: WebBlindChallenge | None = None
     selected_references: list[dict] = Field(default_factory=list)
     arc_outlines: list[dict] = Field(default_factory=list)
@@ -209,6 +215,7 @@ class WebArcSelectionRequest(BaseModel):
     selected_option_id: str
     arc_options_digest: str | None = None
     user_note: str = ""
+    director_constraints: DirectorIntentTranslation | None = None
 
 
 class WebBlindChallengeRatingRequest(BaseModel):
@@ -312,9 +319,9 @@ class WebBenchmarkSummary(BaseModel):
 
 
 class WebBenchmarkDetail(WebBenchmarkSummary):
-    system_output_path: str
-    baseline_output_path: str
-    reference_path: str
+    system_output_path: str = ""
+    baseline_output_path: str = ""
+    reference_path: str = ""
     pairwise_reasoning: list[str] = Field(default_factory=list)
     system_score: float = 0.0
     baseline_score: float = 0.0
@@ -328,3 +335,6 @@ class WebBenchmarkDetail(WebBenchmarkSummary):
     baseline_elapsed_seconds: float = 0.0
     total_cost_usd: float = 0.0
     total_tokens: int = 0
+    revival_status: str | None = None
+    revival_issues: list[str] = Field(default_factory=list)
+    multi_chapter_scores: list[dict] = Field(default_factory=list)

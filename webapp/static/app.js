@@ -14,6 +14,7 @@ const state = {
   runCache: [],
   sourceTextCache: {},
   directorPlanCache: {},
+  directorConstraintsCache: {},
 };
 
 const elements = {
@@ -95,6 +96,7 @@ const elements = {
   arcList: document.getElementById("arc-list"),
   qualitySummary: document.getElementById("quality-summary"),
   consistencySummary: document.getElementById("consistency-summary"),
+  trustReportSummary: document.getElementById("trust-report-summary"),
   revivalDiagnosisSummary: document.getElementById("revival-diagnosis-summary"),
   blindChallenge: document.getElementById("blind-challenge"),
   threadsList: document.getElementById("threads-list"),
@@ -126,6 +128,14 @@ const elements = {
   directorPlanRefreshButton: document.getElementById("director-plan-refresh-button"),
   directorPlanAddChapterButton: document.getElementById("director-plan-add-chapter-button"),
   directorPlanSaveButton: document.getElementById("director-plan-save-button"),
+  directorConstraintsRaw: document.getElementById("director-constraints-raw"),
+  directorConstraintsActions: document.getElementById("director-constraints-actions"),
+  directorConstraintsScene: document.getElementById("director-constraints-scene"),
+  directorConstraintsForbidden: document.getElementById("director-constraints-forbidden"),
+  directorConstraintsStyle: document.getElementById("director-constraints-style"),
+  directorConstraintsStatus: document.getElementById("director-constraints-status"),
+  directorConstraintsRefreshButton: document.getElementById("director-constraints-refresh-button"),
+  directorConstraintsSaveButton: document.getElementById("director-constraints-save-button"),
   workbenchCurrentTitle: document.getElementById("workbench-current-title"),
   workbenchCurrentSummary: document.getElementById("workbench-current-summary"),
   workbenchPrimaryAction: document.getElementById("workbench-primary-action"),
@@ -377,6 +387,21 @@ function formatRunStatus(value) {
   }
 }
 
+function formatTrustStatus(value) {
+  switch (value) {
+    case "pass":
+      return "可信通过";
+    case "warning":
+      return "需要修订";
+    case "fail":
+      return "可信失败";
+    case "not_ready":
+      return "尚未评审";
+    default:
+      return value || "-";
+  }
+}
+
 function isLiveRunStatus(status) {
   return ["queued", "running", "analyzing", "generating"].includes(status);
 }
@@ -389,6 +414,12 @@ function formatBenchmarkWinner(value) {
       return "基线版胜出";
     case "tie":
       return "平局";
+    case "pass":
+      return "可信通过";
+    case "warning":
+      return "可信警告";
+    case "fail":
+      return "可信失败";
     default:
       return value || "-";
   }
@@ -626,7 +657,9 @@ function renderLibraryOverview(run) {
     "work_skill",
     "arc_options",
     "selected_arc",
+    "director_constraints",
     "revival_diagnosis",
+    "trust_report",
     "blind_challenge",
     "latest_skeleton",
     "latest_chapter_brief",
@@ -722,6 +755,47 @@ function formatRevivalDiagnosis(diagnosis) {
   }
   if (diagnosis.recommended_fix) lines.push(`建议：${diagnosis.recommended_fix}`);
   return lines.join("\n");
+}
+
+function renderTrustReport(report) {
+  if (!elements.trustReportSummary) return;
+  if (!report) {
+    elements.trustReportSummary.innerHTML = '<div class="thread-item"><strong>生成章节后出现可信报告</strong></div>';
+    return;
+  }
+  const checks = Array.isArray(report.checks) ? report.checks : [];
+  const checkHtml = checks.length
+    ? checks
+        .map((check) => {
+          const evidence = Array.isArray(check.evidence) && check.evidence.length
+            ? `<span>${escapeHtml(check.evidence.slice(0, 4).join("；"))}</span>`
+            : "";
+          const action = check.recommended_action
+            ? `<span>建议：${escapeHtml(check.recommended_action)}</span>`
+            : "";
+          return `
+            <div class="thread-item">
+              <strong>${escapeHtml(check.label || check.id)} · ${escapeHtml(formatTrustStatus(check.status))}</strong>
+              <span>${escapeHtml(check.observed || "-")}</span>
+              ${evidence}
+              ${action}
+            </div>
+          `;
+        })
+        .join("")
+    : '<div class="thread-item"><span>暂无检查项</span></div>';
+  const actions = Array.isArray(report.recommended_actions) && report.recommended_actions.length
+    ? `<div class="thread-item"><strong>建议动作</strong><span>${escapeHtml(report.recommended_actions.join("；"))}</span></div>`
+    : "";
+  elements.trustReportSummary.innerHTML = `
+    <div class="thread-item">
+      <strong>${escapeHtml(formatTrustStatus(report.status))}</strong>
+      <span>${escapeHtml(report.summary || "-")}</span>
+      ${report.chapter_number ? `<span>章节：${escapeHtml(report.chapter_number)}</span>` : ""}
+    </div>
+    ${checkHtml}
+    ${actions}
+  `;
 }
 
 function formatModelSummary(request) {
@@ -1292,8 +1366,9 @@ function renderWorkbenchHome(run) {
     elements.workbenchCurrentTitle.textContent = run?.session_name || "当前没有任务";
   }
   if (elements.workbenchCurrentSummary) {
+    const trustLabel = run?.trust_report ? `可信状态：${formatTrustStatus(run.trust_report.status)}。` : "";
     elements.workbenchCurrentSummary.textContent = run
-      ? `状态：${formatRunStatus(run.status)}。${run.progress?.message || "可以继续检查下一步。"}`
+      ? `状态：${formatRunStatus(run.status)}。${trustLabel}${run.progress?.message || "可以继续检查下一步。"}`
       : "先快速试看样例，或导入自己的原稿开始一轮真实续写。";
   }
   if (elements.workbenchPrimaryAction) {
@@ -1303,7 +1378,9 @@ function renderWorkbenchHome(run) {
   if (elements.workbenchNextStep) elements.workbenchNextStep.textContent = action.step;
   if (elements.workbenchNextDetail) elements.workbenchNextDetail.textContent = action.detail;
   if (elements.workbenchLatestResult) {
-    const latestGoal = truncateText(run?.latest_chapter_goal, 86);
+    const latestGoal = run?.trust_report
+      ? formatTrustStatus(run.trust_report.status)
+      : truncateText(run?.latest_chapter_goal, 86);
     elements.workbenchLatestResult.textContent =
       latestGoal || formatScore(run?.metrics?.latest_quality_score, run?.metrics?.latest_quality_verdict);
   }
@@ -1337,6 +1414,93 @@ function setDirectorPlanStatus(message, tone = "") {
   if (!elements.directorPlanStatus) return;
   elements.directorPlanStatus.textContent = message;
   elements.directorPlanStatus.className = tone ? `hint ${tone}` : "hint";
+}
+
+function setDirectorConstraintsStatus(message, tone = "") {
+  if (!elements.directorConstraintsStatus) return;
+  elements.directorConstraintsStatus.textContent = message;
+  elements.directorConstraintsStatus.className = tone ? `hint ${tone}` : "hint";
+}
+
+function linesToArray(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function arrayToLines(value) {
+  return Array.isArray(value) ? value.join("\n") : "";
+}
+
+function renderDirectorConstraints(constraints) {
+  if (!elements.directorConstraintsRaw) return;
+  const payload = constraints || {};
+  elements.directorConstraintsRaw.value = payload.raw_intent || "";
+  elements.directorConstraintsActions.value = arrayToLines(payload.internalized_actions);
+  elements.directorConstraintsScene.value = arrayToLines(payload.scene_constraints);
+  elements.directorConstraintsForbidden.value = arrayToLines(payload.forbidden_leaks);
+  elements.directorConstraintsStyle.value = arrayToLines(payload.style_register);
+  const status = payload.status ? `当前状态：${payload.status}` : "选择任务后，可编辑并保存生成前约束。";
+  setDirectorConstraintsStatus(status);
+}
+
+function collectDirectorConstraints() {
+  const existing = state.activeRunDetail?.director_constraints || {};
+  return {
+    schema_version: existing.schema_version || "1.0",
+    raw_intent: elements.directorConstraintsRaw?.value?.trim() || "",
+    internalized_actions: linesToArray(elements.directorConstraintsActions?.value),
+    scene_constraints: linesToArray(elements.directorConstraintsScene?.value),
+    forbidden_leaks: linesToArray(elements.directorConstraintsForbidden?.value),
+    style_register: linesToArray(elements.directorConstraintsStyle?.value),
+    status: existing.status || "user_edited",
+    warnings: Array.isArray(existing.warnings) ? existing.warnings : [],
+  };
+}
+
+async function loadDirectorConstraints(runId, { force = false } = {}) {
+  if (!runId) {
+    renderDirectorConstraints(null);
+    return;
+  }
+  if (!force && state.directorConstraintsCache[runId]) {
+    renderDirectorConstraints(state.directorConstraintsCache[runId]);
+    return;
+  }
+  try {
+    const constraints = await fetchJson(`/api/revival/runs/${encodeURIComponent(runId)}/director-constraints`);
+    state.directorConstraintsCache[runId] = constraints;
+    if (state.activeRunId === runId && state.activeRunDetail) {
+      state.activeRunDetail = { ...state.activeRunDetail, director_constraints: constraints };
+    }
+    renderDirectorConstraints(constraints);
+  } catch (error) {
+    setDirectorConstraintsStatus(`加载约束失败：${error.message}`, "tone-error");
+  }
+}
+
+async function saveDirectorConstraints() {
+  if (!state.activeRunId) return;
+  const constraints = collectDirectorConstraints();
+  if (elements.directorConstraintsSaveButton) elements.directorConstraintsSaveButton.disabled = true;
+  try {
+    const saved = await fetchJson(`/api/revival/runs/${encodeURIComponent(state.activeRunId)}/director-constraints`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(constraints),
+    });
+    state.directorConstraintsCache[state.activeRunId] = saved;
+    if (state.activeRunDetail) {
+      state.activeRunDetail = { ...state.activeRunDetail, director_constraints: saved };
+    }
+    renderDirectorConstraints(saved);
+    setDirectorConstraintsStatus("导演约束已保存。");
+  } catch (error) {
+    setDirectorConstraintsStatus(`保存约束失败：${error.message}`, "tone-error");
+  } finally {
+    if (elements.directorConstraintsSaveButton) elements.directorConstraintsSaveButton.disabled = false;
+  }
 }
 
 function emptyDirectorPlanEditor(message = "选择任务后加载章节计划") {
@@ -1579,6 +1743,8 @@ function renderBenchmarkDetail(detail) {
     `数据集：${detail.dataset_name}`,
     `案例：${detail.case_name}`,
     `结果：${formatBenchmarkWinner(detail.winner)}`,
+    `连续可信状态：${detail.revival_status ? formatTrustStatus(detail.revival_status) : "-"}`,
+    `连续可信问题：${detail.revival_issues?.length ? detail.revival_issues.join("；") : "-"}`,
     `置信度：${Number(detail.confidence).toFixed(2)}`,
     `系统版分数：${Number(detail.system_score).toFixed(2)}`,
     `基线版分数：${Number(detail.baseline_score).toFixed(2)}`,
@@ -1628,7 +1794,9 @@ function renderArtifacts(paths) {
     ["作品 skill", paths?.work_skill],
     ["人物走向选项", paths?.arc_options],
     ["已选人物走向", paths?.selected_arc],
+    ["导演内部化约束", paths?.director_constraints],
     ["复活诊断", paths?.revival_diagnosis],
+    ["可信报告", paths?.trust_report],
     ["盲看挑战", paths?.blind_challenge],
     ["最新提纲草稿", paths?.latest_skeleton],
     ["最新章节目标", paths?.latest_chapter_brief],
@@ -2299,6 +2467,8 @@ function renderRun(run) {
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
   elements.revivalDiagnosisSummary.textContent = formatRevivalDiagnosis(run.revival_diagnosis);
+  renderTrustReport(run.trust_report);
+  renderDirectorConstraints(run.director_constraints);
   renderLibraryOverview(run);
   renderWorldLibrary(run);
   renderCharactersLibrary(run);
@@ -2377,6 +2547,7 @@ async function loadRun(runId) {
   state.activeRunId = runId;
   renderRun(run);
   await loadDirectorPlan(runId);
+  await loadDirectorConstraints(runId);
   renderRunList(state.runCache);
   if (isLiveRunStatus(run.status)) {
     startPolling(runId);
@@ -2394,6 +2565,7 @@ async function selectArcOption(optionId) {
     body: JSON.stringify({
       selected_option_id: optionId,
       arc_options_digest: state.activeRunDetail?.arc_options_digest || null,
+      director_constraints: collectDirectorConstraints(),
     }),
   });
   setFormStatus("人物走向已选择，开始生成章节。");
@@ -2566,6 +2738,18 @@ window.addEventListener("load", async () => {
     }
     if (elements.directorPlanSaveButton) {
       elements.directorPlanSaveButton.addEventListener("click", saveDirectorPlan);
+    }
+    if (elements.directorConstraintsRefreshButton) {
+      elements.directorConstraintsRefreshButton.addEventListener("click", () => {
+        if (state.activeRunId) {
+          void loadDirectorConstraints(state.activeRunId, { force: true });
+        } else {
+          setDirectorConstraintsStatus("请先选择一个任务。", "tone-error");
+        }
+      });
+    }
+    if (elements.directorConstraintsSaveButton) {
+      elements.directorConstraintsSaveButton.addEventListener("click", saveDirectorConstraints);
     }
     window.addEventListener("hashchange", () => {
       applyStudioPage({ resetScroll: true });

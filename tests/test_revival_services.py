@@ -1,25 +1,38 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+from types import SimpleNamespace
+
 from config.settings import AppSettings
 from core.models.arc_outline import ArcOutline
 from core.models.lorebook import LorebookBundle, LorebookEntry
 from core.models.story_state import CharacterCard, StoryThread, StoryWorldState
 from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
-from core.models.revival import BlindJudgeDecision
+from core.models.revival import (
+    BlindChallenge,
+    BlindJudgeDecision,
+    BlindJudgeReport,
+    BlindJudgeRound,
+    DirectorIntentTranslation,
+    WorkSkill,
+)
 from pipeline.revival import (
     BlindChallengeBuilder,
     BlindJudge,
     ChapterSplitter,
     CleanProseGate,
+    DirectorIntentInternalizer,
     RevivalArcPlanner,
     RevivalDiagnosisBuilder,
     RevivalWorkspaceBuilder,
     SourceVoiceGate,
     StyleBibleBuilder,
+    TrustReportBuilder,
     WorkSkillBuilder,
     digest_payload,
 )
+from pipeline.stage3_generation.quality_checker import QualityReport
 
 
 class _FakeBlindJudgeLLM:
@@ -30,6 +43,19 @@ class _FakeBlindJudgeLLM:
     async def complete_structured(self, **kwargs):
         self.messages = kwargs["messages"]
         return self.decision
+
+
+class _FakeDirectorLLM:
+    def __init__(self, payload=None, error: Exception | None = None):
+        self.payload = payload
+        self.error = error
+        self.kwargs = None
+
+    async def complete_structured(self, **kwargs):
+        self.kwargs = kwargs
+        if self.error:
+            raise self.error
+        return self.payload
 
 
 def _snapshot() -> ExtractionSnapshot:
@@ -129,6 +155,101 @@ def test_revival_diagnosis_and_blind_challenge_builders() -> None:
     assert diagnosis.voice_fit == 0.8
     assert challenge.excerpt_char_count == 1000
     assert challenge.source_label_hidden is True
+
+
+def test_trust_report_builder_marks_pass_warning_and_fail() -> None:
+    pass_manifest = SimpleNamespace(
+        status="completed",
+        chapters=[
+            SimpleNamespace(
+                chapter_number=2,
+                status="completed",
+                quality_report=QualityReport(score=0.9, verdict="pass"),
+            )
+        ],
+    )
+    blind_report = BlindJudgeReport(
+        status="pass",
+        rounds=[
+            BlindJudgeRound(
+                round_number=1,
+                generated_excerpt_id="A",
+                decision=BlindJudgeDecision(suspected_excerpt_id="B", confidence=0.2),
+                passed=True,
+            )
+        ],
+    )
+    builder = TrustReportBuilder()
+    diagnosis = RevivalDiagnosisBuilder().build(
+        gate_result=CleanProseGate().check("沈照站在义庄门口。" * 200),
+        quality_score=0.9,
+        retry_count=0,
+    )
+
+    pass_report = builder.build(
+        manifest=pass_manifest,
+        diagnosis=diagnosis,
+        blind_judge_report=blind_report,
+        blind_challenge=BlindChallenge(excerpt_text="沈照站在雨里。", excerpt_char_count=7),
+    )
+    warning_report = builder.build(
+        manifest=SimpleNamespace(
+            status="completed_with_warnings",
+            chapters=[
+                SimpleNamespace(
+                    chapter_number=2,
+                    status="completed_with_warnings",
+                    quality_report=QualityReport(score=0.5, verdict="revise", issues=["短章"]),
+                )
+            ],
+        ),
+        diagnosis=diagnosis,
+        blind_judge_report=blind_report,
+    )
+    fail_report = builder.build(
+        manifest=pass_manifest,
+        diagnosis=diagnosis.model_copy(update={"status": "fail", "failure_reasons": ["clean prose 未过"]}),
+        blind_judge_report=blind_report.model_copy(update={"status": "fail"}),
+    )
+
+    assert pass_report.status == "pass"
+    assert warning_report.status == "warning"
+    assert fail_report.status == "fail"
+    assert any(check.id == "quality_report" for check in warning_report.checks)
+
+
+async def test_director_intent_internalizer_uses_llm_result() -> None:
+    llm = _FakeDirectorLLM(
+        DirectorIntentTranslation(
+            raw_intent="关系变化",
+            internalized_actions=["旧物触发二人言语有异"],
+            scene_constraints=["旁人传话，不直写解释"],
+            forbidden_leaks=["关系变化"],
+            style_register=["话少"],
+            status="generated",
+        )
+    )
+    internalizer = DirectorIntentInternalizer(AppSettings(), llm)  # type: ignore[arg-type]
+
+    result = await internalizer.internalize(
+        raw_intent="关系变化",
+        work_skill=WorkSkill(source_digest="abc", generated_at=datetime.now(timezone.utc)),
+    )
+
+    assert result.status == "generated"
+    assert result.internalized_actions == ["旧物触发二人言语有异"]
+    assert llm.kwargs["model"] == AppSettings().models.plot_model
+
+
+async def test_director_intent_internalizer_falls_back_and_cleans_modern_terms() -> None:
+    internalizer = DirectorIntentInternalizer(AppSettings(), _FakeDirectorLLM(error=RuntimeError("boom")))  # type: ignore[arg-type]
+
+    result = await internalizer.internalize(raw_intent="推进人物弧光和心理压力")
+
+    assert result.status == "fallback"
+    assert "人物弧光" in result.forbidden_leaks
+    assert all("人物弧光" not in item for item in result.internalized_actions)
+    assert all("心理压力" not in item for item in result.scene_constraints)
 
 
 def test_chapter_splitter_detects_hui_headings() -> None:

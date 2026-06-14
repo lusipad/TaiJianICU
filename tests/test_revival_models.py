@@ -13,8 +13,11 @@ from core.models.revival import (
     BlindJudgeRound,
     DirectorArcOption,
     DirectorArcOptions,
+    DirectorIntentTranslation,
     RevivalChapter,
     RevivalStyleBible,
+    RevivalTrustCheck,
+    RevivalTrustReport,
     RevivalWorkspaceArtifacts,
     SelectedArc,
     StyleMetrics,
@@ -43,6 +46,32 @@ def test_revival_artifacts_validate_expected_shape() -> None:
         selected_option_id="arc_a",
         selected_at=now,
         arc_options_digest="digest",
+        director_constraints=DirectorIntentTranslation(
+            raw_intent="关系变化",
+            internalized_actions=["旧事忽有新证"],
+            scene_constraints=["不可直写解释"],
+            forbidden_leaks=["关系变化"],
+            status="generated",
+        ),
+    )
+    trust_report = RevivalTrustReport(
+        status="warning",
+        summary="需要修订。",
+        generated_at=now,
+        chapter_number=80,
+        checks=[
+            RevivalTrustCheck(
+                id="clean_prose",
+                label="clean prose",
+                status="warning",
+                evidence=["命中现代词"],
+                expected="无污染词",
+                observed="命中 1 项",
+                source="revival_diagnosis",
+                recommended_action="重写该句",
+            )
+        ],
+        recommended_actions=["重写该句"],
     )
     challenge = BlindChallenge(excerpt_text="沈照站在雨里。", excerpt_char_count=7)
     decision = BlindJudgeDecision(suspected_excerpt_id="A", confidence=0.8)
@@ -84,6 +113,9 @@ def test_revival_artifacts_validate_expected_shape() -> None:
     assert work_skill.schema_version == "1.0"
     assert len(options.options) == 3
     assert selected.user_note == ""
+    assert selected.director_constraints is not None
+    assert trust_report.status == "warning"
+    assert trust_report.checks[0].recommended_action == "重写该句"
     assert challenge.source_label_hidden is True
     assert judge_report.rounds[0].decision.suspected_excerpt_id == "A"
     assert artifacts.chapters[0].chapter_number == 80
@@ -110,6 +142,9 @@ def test_revival_models_reject_unknown_fields() -> None:
             generated_at=datetime.now(timezone.utc),
             unexpected="should fail",
         )
+
+    with pytest.raises(ValidationError):
+        DirectorIntentTranslation(raw_intent="推进人物弧光", unexpected="should fail")
 
 
 def test_blind_challenge_excerpt_rejects_unknown_fields() -> None:

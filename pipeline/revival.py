@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from statistics import median
+from typing import Any
 
 from config.settings import AppSettings, render_prompt
 from core.llm.litellm_client import LiteLLMService
@@ -22,9 +23,12 @@ from core.models.revival import (
     CleanProseHit,
     DirectorArcOption,
     DirectorArcOptions,
+    DirectorIntentTranslation,
     RevivalDiagnosis,
     RevivalChapter,
     RevivalStyleBible,
+    RevivalTrustCheck,
+    RevivalTrustReport,
     RevivalWorkspaceArtifacts,
     StyleMetrics,
     WorkSkill,
@@ -606,6 +610,155 @@ class RevivalArcPlanner:
         )
 
 
+class DirectorIntentInternalizer:
+    def __init__(
+        self,
+        settings: AppSettings,
+        llm_service: LiteLLMService,
+    ):
+        self.settings = settings
+        self.llm_service = llm_service
+
+    async def internalize(
+        self,
+        *,
+        raw_intent: str = "",
+        work_skill: WorkSkill | None = None,
+        selected_option: DirectorArcOption | None = None,
+        director_notes: str = "",
+    ) -> DirectorIntentTranslation:
+        prompt = render_prompt(
+            "revival/director_intent_internalize.txt",
+            raw_intent=raw_intent.strip(),
+            director_notes=director_notes.strip(),
+            arc_option=selected_option.model_dump(mode="json") if selected_option else None,
+            work_skill=work_skill.model_dump(mode="json") if work_skill else None,
+            forbidden_words=MODERN_FORBIDDEN_WORDS,
+        )
+        try:
+            translation = await self.llm_service.complete_structured(
+                model=self.settings.models.plot_model,
+                messages=[{"role": "user", "content": prompt}],
+                response_model=DirectorIntentTranslation,
+                temperature=0.2,
+                max_tokens=1400,
+                operation="revival_director_intent_internalize",
+            )
+            assert isinstance(translation, DirectorIntentTranslation)
+            normalized = self._normalize_generated(
+                translation,
+                raw_intent=raw_intent,
+                work_skill=work_skill,
+            )
+            if not normalized.internalized_actions and not normalized.scene_constraints:
+                raise ValueError("director intent internalizer returned empty constraints")
+            return normalized
+        except Exception as error:
+            return self.fallback(
+                raw_intent=raw_intent,
+                work_skill=work_skill,
+                selected_option=selected_option,
+                director_notes=director_notes,
+                warning=f"LLM 导演翻译失败，已使用规则兜底：{error}",
+            )
+
+    @classmethod
+    def fallback(
+        cls,
+        *,
+        raw_intent: str = "",
+        work_skill: WorkSkill | None = None,
+        selected_option: DirectorArcOption | None = None,
+        director_notes: str = "",
+        warning: str = "使用规则化导演翻译兜底。",
+    ) -> DirectorIntentTranslation:
+        merged = "；".join(item for item in [raw_intent.strip(), director_notes.strip()] if item)
+        cleaned = cls._clean_modern_terms(merged) or "保持原书断点、人物声口和叙事节奏。"
+        action_seed = selected_option.must_happen if selected_option else []
+        internalized_actions = list(dict.fromkeys([*action_seed, f"用场面动作表现：{cleaned}"]))
+        scene_constraints = list(
+            dict.fromkeys(
+                [
+                    *(selected_option.must_not_break if selected_option else []),
+                    "只写可被人物看见、听见或做出的事，不写创作意图解释。",
+                ]
+            )
+        )
+        return DirectorIntentTranslation(
+            raw_intent=raw_intent.strip(),
+            internalized_actions=[cls._clean_modern_terms(item) for item in internalized_actions if item],
+            scene_constraints=[cls._clean_modern_terms(item) for item in scene_constraints if item],
+            forbidden_leaks=cls._detected_modern_terms(merged),
+            style_register=(work_skill.voice_rules[:3] if work_skill else []),
+            status="fallback",
+            warnings=[warning],
+        )
+
+    @classmethod
+    def mark_user_edited(cls, translation: DirectorIntentTranslation) -> DirectorIntentTranslation:
+        return translation.model_copy(update={"status": "user_edited"})
+
+    @classmethod
+    def _normalize_generated(
+        cls,
+        translation: DirectorIntentTranslation,
+        *,
+        raw_intent: str,
+        work_skill: WorkSkill | None,
+    ) -> DirectorIntentTranslation:
+        cleaned_actions = [cls._clean_modern_terms(item) for item in translation.internalized_actions if item]
+        cleaned_constraints = [cls._clean_modern_terms(item) for item in translation.scene_constraints if item]
+        leak_hits = cls._detected_modern_terms(
+            "\n".join([*translation.internalized_actions, *translation.scene_constraints])
+        )
+        warnings = list(translation.warnings)
+        if leak_hits:
+            warnings.append("导演翻译命中过现代词，已从生成约束中清理。")
+        return translation.model_copy(
+            update={
+                "raw_intent": raw_intent.strip(),
+                "internalized_actions": cleaned_actions,
+                "scene_constraints": cleaned_constraints,
+                "forbidden_leaks": list(
+                    dict.fromkeys([*translation.forbidden_leaks, *cls._detected_modern_terms(raw_intent), *leak_hits])
+                ),
+                "style_register": translation.style_register or (work_skill.voice_rules[:3] if work_skill else []),
+                "status": "generated",
+                "warnings": warnings,
+            }
+        )
+
+    @staticmethod
+    def _detected_modern_terms(text: str) -> list[str]:
+        return [word for word in MODERN_FORBIDDEN_WORDS if word in text]
+
+    @staticmethod
+    def _clean_modern_terms(text: str) -> str:
+        cleaned = text
+        replacements = {
+            "心理压力": "心事沉重",
+            "关系变化": "彼此言行有异",
+            "信息反转": "旧事忽有新证",
+            "情绪价值": "言语慰藉",
+            "创伤": "旧痛",
+            "压迫感": "逼人气势",
+            "安全感": "安稳之感",
+            "自我认同": "自知自处",
+            "边界感": "礼数分寸",
+            "原生家庭": "家中旧事",
+            "精神崩塌": "心神大乱",
+            "压迫机制": "层层逼迫",
+            "家庭暴力": "家中欺凌",
+            "权力结构": "尊卑势分",
+            "核心伏笔": "旧线索",
+            "主线推进": "正事往前走",
+            "人物弧光": "人物转折",
+        }
+        for source, target in replacements.items():
+            cleaned = cleaned.replace(source, target)
+        return cleaned.strip()
+
+
 class RevivalDiagnosisBuilder:
     def build(
         self,
@@ -874,3 +1027,252 @@ class BlindJudge:
             confidence_threshold=confidence_threshold,
             rounds=rounds,
         )
+
+
+class TrustReportBuilder:
+    def build(
+        self,
+        *,
+        manifest: Any | None = None,
+        diagnosis: RevivalDiagnosis | None = None,
+        blind_judge_report: BlindJudgeReport | None = None,
+        blind_challenge: BlindChallenge | None = None,
+        chapter_number: int | None = None,
+    ) -> RevivalTrustReport:
+        manifest_check, latest_chapter = self._manifest_check(manifest)
+        quality_check = self._quality_check(latest_chapter)
+        diagnosis_check = self._diagnosis_check(diagnosis)
+        blind_check = self._blind_judge_check(blind_judge_report, has_chapter=latest_chapter is not None)
+        human_check = self._human_rating_check(blind_challenge)
+        checks = [manifest_check, quality_check, diagnosis_check, blind_check, human_check]
+
+        if latest_chapter is not None and chapter_number is None:
+            chapter_number = getattr(latest_chapter, "chapter_number", None)
+
+        status = self._overall_status(checks, has_chapter=latest_chapter is not None)
+        recommended_actions = [
+            check.recommended_action
+            for check in checks
+            if check.status in {"warning", "fail"} and check.recommended_action
+        ]
+        return RevivalTrustReport(
+            status=status,
+            summary=self._summary_for_status(status),
+            checks=checks,
+            recommended_actions=list(dict.fromkeys(recommended_actions)),
+            generated_at=datetime.now(timezone.utc),
+            chapter_number=chapter_number,
+        )
+
+    @staticmethod
+    def _latest_chapter(manifest: Any | None) -> Any | None:
+        chapters = getattr(manifest, "chapters", None) or []
+        return chapters[-1] if chapters else None
+
+    def _manifest_check(self, manifest: Any | None) -> tuple[RevivalTrustCheck, Any | None]:
+        latest = self._latest_chapter(manifest)
+        if manifest is None or latest is None:
+            run_status = getattr(manifest, "status", "") if manifest is not None else ""
+            status = "fail" if run_status == "failed" else "not_ready"
+            return (
+                RevivalTrustCheck(
+                    id="run_manifest",
+                    label="运行清单",
+                    status=status,
+                    expected="完成章节生成并写入 run_manifest。",
+                    observed="运行失败，尚未发现章节运行记录。" if status == "fail" else "尚未发现章节运行记录。",
+                    source="run_manifest",
+                    recommended_action="查看运行错误并重新生成。" if status == "fail" else "先选择人物走向并生成章节。",
+                ),
+                latest,
+            )
+        run_status = getattr(manifest, "status", "")
+        chapter_status = getattr(latest, "status", "")
+        if run_status == "failed" or str(chapter_status).startswith("failed"):
+            status = "fail"
+            action = "查看失败章节状态，优先修复生成失败或关键 gate 失败原因。"
+        elif run_status == "completed_with_warnings" or chapter_status == "completed_with_warnings":
+            status = "warning"
+            action = "按 warning 检查项修订章节后重新生成可信报告。"
+        else:
+            status = "pass"
+            action = ""
+        return (
+            RevivalTrustCheck(
+                id="run_manifest",
+                label="运行清单",
+                status=status,
+                evidence=[f"run_status={run_status}", f"chapter_status={chapter_status}"],
+                expected="运行完成且没有 failed/warning 传播。",
+                observed=f"运行状态 {run_status or '-'}，章节状态 {chapter_status or '-'}。",
+                source="run_manifest",
+                recommended_action=action,
+            ),
+            latest,
+        )
+
+    @staticmethod
+    def _quality_check(latest_chapter: Any | None) -> RevivalTrustCheck:
+        report = getattr(latest_chapter, "quality_report", None) if latest_chapter is not None else None
+        if report is None:
+            return RevivalTrustCheck(
+                id="quality_report",
+                label="章节质量",
+                status="not_ready",
+                expected="章节生成后应有 QualityReport。",
+                observed="尚无章节质量报告。",
+                source="quality_report",
+                recommended_action="先完成章节生成。",
+            )
+        verdict = getattr(report, "verdict", "")
+        score = getattr(report, "score", None)
+        issues = list(getattr(report, "issues", None) or [])
+        status = "pass" if verdict == "pass" and not issues else "warning"
+        action = "" if status == "pass" else "优先处理质量报告列出的 issue，再重新运行评审。"
+        evidence = [f"verdict={verdict}"]
+        if score is not None:
+            evidence.append(f"score={score:.3f}")
+        evidence.extend(issues[:5])
+        return RevivalTrustCheck(
+            id="quality_report",
+            label="章节质量",
+            status=status,
+            evidence=evidence,
+            expected="QualityReport verdict=pass 且无章节 issue。",
+            observed=f"verdict={verdict or '-'}，issue 数 {len(issues)}。",
+            source="quality_report",
+            recommended_action=action,
+        )
+
+    @staticmethod
+    def _diagnosis_check(diagnosis: RevivalDiagnosis | None) -> RevivalTrustCheck:
+        if diagnosis is None:
+            return RevivalTrustCheck(
+                id="revival_diagnosis",
+                label="作者声口与 clean prose",
+                status="not_ready",
+                expected="生成后应有 RevivalDiagnosis。",
+                observed="尚无 RevivalDiagnosis。",
+                source="revival_diagnosis",
+                recommended_action="先完成章节生成。",
+            )
+        if diagnosis.status == "fail":
+            status = "fail"
+            action = diagnosis.recommended_fix or "重新生成正文，并清除说明性/现代化污染词。"
+        elif diagnosis.status == "warning" or diagnosis.contamination_hits:
+            status = "warning"
+            action = diagnosis.recommended_fix or "按命中的污染词和声口漂移证据修订。"
+        else:
+            status = "pass"
+            action = ""
+        evidence = [f"status={diagnosis.status}", f"retry_count={diagnosis.retry_count}"]
+        evidence.extend(hit.label for hit in diagnosis.contamination_hits[:5])
+        evidence.extend(diagnosis.failure_reasons[:5])
+        return RevivalTrustCheck(
+            id="revival_diagnosis",
+            label="作者声口与 clean prose",
+            status=status,
+            evidence=evidence,
+            expected="clean prose/source voice gate 通过，未命中污染词。",
+            observed=f"诊断状态 {diagnosis.status}，污染命中 {len(diagnosis.contamination_hits)}。",
+            source="revival_diagnosis",
+            recommended_action=action,
+        )
+
+    @staticmethod
+    def _blind_judge_check(
+        blind_judge_report: BlindJudgeReport | None,
+        *,
+        has_chapter: bool,
+    ) -> RevivalTrustCheck:
+        if blind_judge_report is None:
+            return RevivalTrustCheck(
+                id="blind_judge",
+                label="盲测判别",
+                status="warning" if has_chapter else "not_ready",
+                expected="盲测判别器未高置信识别生成段。",
+                observed="尚无 BlindJudgeReport。",
+                source="blind_judge_report",
+                recommended_action="补跑 Revival 生成或重新生成盲测报告。",
+            )
+        if blind_judge_report.status == "fail":
+            status = "fail"
+            action = "按盲测失败原因重写生成段，再重新盲测。"
+        elif blind_judge_report.status == "skipped":
+            status = "warning"
+            action = "补齐盲测输入后重新生成报告。"
+        else:
+            status = "pass"
+            action = ""
+        latest = blind_judge_report.rounds[-1] if blind_judge_report.rounds else None
+        evidence = [f"status={blind_judge_report.status}"]
+        if latest is not None:
+            evidence.append(f"confidence={latest.decision.confidence:.2f}")
+            evidence.extend(latest.failure_reasons[:5])
+        return RevivalTrustCheck(
+            id="blind_judge",
+            label="盲测判别",
+            status=status,
+            evidence=evidence,
+            expected="最终轮盲测未以高置信度抓出生成段。",
+            observed=f"盲测状态 {blind_judge_report.status}。",
+            source="blind_judge_report",
+            recommended_action=action,
+        )
+
+    @staticmethod
+    def _human_rating_check(blind_challenge: BlindChallenge | None) -> RevivalTrustCheck:
+        ratings = blind_challenge.ratings if blind_challenge else None
+        if ratings is None:
+            return RevivalTrustCheck(
+                id="human_blind_rating",
+                label="人工盲测评分",
+                status="pass",
+                expected="人工评分若存在，应不低于 3 分。",
+                observed="尚未进行人工评分。",
+                source="blind_challenge",
+            )
+        scores = [
+            score
+            for score in [
+                ratings.voice_match_score,
+                ratings.rhythm_match_score,
+                ratings.character_voice_score,
+            ]
+            if score is not None
+        ]
+        low_scores = [score for score in scores if score < 3]
+        status = "warning" if low_scores else "pass"
+        return RevivalTrustCheck(
+            id="human_blind_rating",
+            label="人工盲测评分",
+            status=status,
+            evidence=[f"scores={scores}", ratings.notes] if ratings.notes else [f"scores={scores}"],
+            expected="声口、节奏、人物评分均不低于 3 分。",
+            observed="存在低分项。" if low_scores else "人工评分未发现低分项。",
+            source="blind_challenge",
+            recommended_action="按人工备注修订声口、节奏或人物对白。" if low_scores else "",
+        )
+
+    @staticmethod
+    def _overall_status(
+        checks: list[RevivalTrustCheck],
+        *,
+        has_chapter: bool,
+    ) -> str:
+        if any(check.status == "fail" for check in checks):
+            return "fail"
+        if not has_chapter:
+            return "not_ready"
+        if any(check.status in {"warning", "not_ready"} for check in checks):
+            return "warning"
+        return "pass"
+
+    @staticmethod
+    def _summary_for_status(status: str) -> str:
+        return {
+            "pass": "关键可信 gate 已通过，盲测未高置信识别生成段。",
+            "warning": "章节已生成，但存在需要修订或补验的可信风险。",
+            "fail": "至少一个关键可信 gate 失败，需要先修复再交付。",
+            "not_ready": "已完成分析或尚未生成章节，可信评审还不能判定。",
+        }.get(status, "可信状态未知。")

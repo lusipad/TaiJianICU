@@ -12,6 +12,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from config.settings import AppSettings
+from core.benchmarking.multi_chapter import MultiChapterBenchmarkReport
 from core.benchmarking.runner import BenchmarkReport
 from core.llm.litellm_client import LiteLLMService
 from core.models.arc_outline import ArcOutline
@@ -22,8 +23,12 @@ from core.models.reference_profile import ReferenceProfile
 from core.models.revival import (
     BlindChallenge,
     BlindChallengeRating,
+    BlindJudgeReport,
     DirectorArcOptions,
+    DirectorIntentTranslation,
     RevivalDiagnosis,
+    RevivalTrustCheck,
+    RevivalTrustReport,
     SelectedArc,
     WorkSkill,
 )
@@ -31,7 +36,7 @@ from core.models.story_state import StoryThread
 from core.models.style_profile import ExtractionSnapshot
 from core.models.world_model import WorldModel
 from orchestrator import PipelineRunResult, RevivalAnalysisResult, TaiJianOrchestrator
-from pipeline.revival import digest_payload
+from pipeline.revival import DirectorIntentInternalizer, TrustReportBuilder, digest_payload
 from webapp.builtin_examples import BUILT_IN_EXAMPLES, BuiltInExample
 from webapp.errors import ApiError
 from webapp.models import (
@@ -73,6 +78,7 @@ class WebRunManager:
         self._async_loop: asyncio.AbstractEventLoop | None = None
         self._async_thread: threading.Thread | None = None
         self._async_futures: dict[str, ConcurrentFuture[None]] = {}
+        self._trust_report_builder = TrustReportBuilder()
         self._load_existing_runs()
 
     def _run_file(self, run_id: str) -> Path:
@@ -84,9 +90,22 @@ class WebRunManager:
     def _director_plan_path(self, session_name: str) -> Path:
         return self._session_dir(session_name) / "director_plan.json"
 
+    def _director_constraints_path(self, session_name: str) -> Path:
+        return self._session_dir(session_name) / "director_constraints.json"
+
+    def _trust_report_path(self, session_name: str) -> Path:
+        return self._session_dir(session_name) / "trust_report.json"
+
     def _benchmark_report_files(self) -> list[Path]:
         return sorted(
             self.settings.benchmarks_dir.glob("*/cases/*/report/benchmark_report.json"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+
+    def _multi_benchmark_report_files(self) -> list[Path]:
+        return sorted(
+            self.settings.benchmarks_dir.glob("*/cases/*/multi_report/multi_chapter_report.json"),
             key=lambda item: item.stat().st_mtime,
             reverse=True,
         )
@@ -164,6 +183,30 @@ class WebRunManager:
                 "artifact_paths": run.artifact_paths.model_copy(update={"director_plan": plan_path_str})
             }
         )
+        self._persist(hydrated)
+        return hydrated
+
+    def _ensure_revival_review_artifacts(self, run: WebRunDetail) -> WebRunDetail:
+        session_dir = self._session_dir(run.session_name)
+        updates: dict[str, object] = {}
+        artifact_updates: dict[str, str] = {}
+        constraints_path = session_dir / "director_constraints.json"
+        if run.director_constraints is None and constraints_path.exists():
+            constraints = self._load_json_model(constraints_path, DirectorIntentTranslation)
+            if isinstance(constraints, DirectorIntentTranslation):
+                updates["director_constraints"] = constraints
+                artifact_updates["director_constraints"] = str(constraints_path)
+        trust_path = session_dir / "trust_report.json"
+        if run.trust_report is None and trust_path.exists():
+            report = self._load_json_model(trust_path, RevivalTrustReport)
+            if isinstance(report, RevivalTrustReport):
+                updates["trust_report"] = report
+                artifact_updates["trust_report"] = str(trust_path)
+        if not updates and not artifact_updates:
+            return run
+        if artifact_updates:
+            updates["artifact_paths"] = run.artifact_paths.model_copy(update=artifact_updates)
+        hydrated = run.model_copy(update=updates)
         self._persist(hydrated)
         return hydrated
 
@@ -253,6 +296,7 @@ class WebRunManager:
             run = self._ensure_story_previews(run)
             run = self._ensure_arc_options_digest(run)
             run = self._ensure_director_plan_artifact(run)
+            run = self._ensure_revival_review_artifacts(run)
             self._runs[run.id] = run
             return run.model_copy(deep=True)
 
@@ -326,6 +370,48 @@ class WebRunManager:
         )
         return plan
 
+    def get_director_constraints(self, run_id: str) -> DirectorIntentTranslation:
+        run = self.get_run(run_id)
+        path = self._director_constraints_path(run.session_name)
+        constraints = self._load_json_model(path, DirectorIntentTranslation)
+        if isinstance(constraints, DirectorIntentTranslation):
+            return constraints
+        selected_option = None
+        if run.arc_options and run.selected_arc:
+            selected_option = next(
+                (
+                    option
+                    for option in run.arc_options.options
+                    if option.id == run.selected_arc.selected_option_id
+                ),
+                None,
+            )
+        return DirectorIntentInternalizer.fallback(
+            raw_intent=run.request.goal_hint or "",
+            work_skill=run.work_skill,
+            selected_option=selected_option,
+            warning="未找到导演约束产物，已基于当前任务生成兜底草案。",
+        )
+
+    def save_director_constraints(
+        self,
+        run_id: str,
+        request: DirectorIntentTranslation,
+    ) -> DirectorIntentTranslation:
+        run = self.get_run(run_id)
+        if run.status == "generating":
+            raise ApiError("章节已开始生成，不能再改导演约束。", 409, "Conflict")
+        path = self._director_constraints_path(run.session_name)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        constraints = DirectorIntentInternalizer.mark_user_edited(request)
+        path.write_text(constraints.model_dump_json(indent=2), encoding="utf-8")
+        self._update_run(
+            run_id,
+            director_constraints=constraints,
+            artifact_paths=run.artifact_paths.model_copy(update={"director_constraints": str(path)}),
+        )
+        return constraints
+
     async def test_runtime_connection(
         self,
         request: WebRuntimeConnectionTestRequest,
@@ -395,6 +481,23 @@ class WebRunManager:
                     report_markdown_path=report.report_markdown_path,
                 )
             )
+        for path in self._multi_benchmark_report_files():
+            try:
+                report = MultiChapterBenchmarkReport.model_validate_json(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            items.append(
+                WebBenchmarkSummary(
+                    dataset_name=report.dataset_name,
+                    case_name=report.case_name,
+                    target_chapter_number=report.target_start_chapter,
+                    prefix_chapter_count=report.target_start_chapter - 1,
+                    winner=getattr(report, "revival_status", "warning"),
+                    confidence=max(0.0, min(1.0, float(report.overall))),
+                    report_json_path=report.report_json_path,
+                    report_markdown_path=report.report_markdown_path,
+                )
+            )
         return items
 
     def get_benchmark(self, dataset_name: str, case_name: str) -> WebBenchmarkDetail:
@@ -407,7 +510,47 @@ class WebRunManager:
             / "benchmark_report.json"
         )
         if not path.exists():
-            raise ApiError("找不到对应的 benchmark 报告。", 404, "Not Found")
+            multi_path = (
+                self.settings.benchmarks_dir
+                / dataset_name
+                / "cases"
+                / case_name
+                / "multi_report"
+                / "multi_chapter_report.json"
+            )
+            if not multi_path.exists():
+                raise ApiError("找不到对应的 benchmark 报告。", 404, "Not Found")
+            report = MultiChapterBenchmarkReport.model_validate_json(
+                multi_path.read_text(encoding="utf-8")
+            )
+            issues = [
+                f"第{score.chapter_number}章：{issue}"
+                for score in report.chapter_scores
+                for issue in score.issues
+            ]
+            return WebBenchmarkDetail(
+                dataset_name=report.dataset_name,
+                case_name=report.case_name,
+                target_chapter_number=report.target_start_chapter,
+                prefix_chapter_count=report.target_start_chapter - 1,
+                winner=getattr(report, "revival_status", "warning"),
+                confidence=max(0.0, min(1.0, float(report.overall))),
+                report_json_path=report.report_json_path,
+                report_markdown_path=report.report_markdown_path,
+                reference_path=report.source_path,
+                pairwise_reasoning=[
+                    f"连续章节 overall={report.overall:.4f}",
+                    f"drift={report.drift:.4f}",
+                ],
+                system_score=report.overall,
+                system_summary=f"{report.chapter_count} 章连续可信回归，状态 {getattr(report, 'revival_status', 'warning')}",
+                system_weaknesses=issues[:12],
+                revival_status=getattr(report, "revival_status", None),
+                revival_issues=issues,
+                multi_chapter_scores=[
+                    score.model_dump(mode="json") for score in report.chapter_scores
+                ],
+            )
         report = BenchmarkReport.model_validate_json(path.read_text(encoding="utf-8"))
         return WebBenchmarkDetail(
             dataset_name=report.dataset_name,
@@ -904,6 +1047,61 @@ class WebRunManager:
             return None
         return model_cls.model_validate_json(path.read_text(encoding="utf-8"))
 
+    def _load_or_build_trust_report(
+        self,
+        *,
+        session_dir: Path,
+        manifest: PipelineRunResult | None = None,
+    ) -> RevivalTrustReport | None:
+        report_path = session_dir / "trust_report.json"
+        report = self._load_json_model(report_path, RevivalTrustReport)
+        if isinstance(report, RevivalTrustReport):
+            return report
+        diagnosis = self._load_json_model(session_dir / "revival_diagnosis.json", RevivalDiagnosis)
+        blind_judge_report = self._load_json_model(session_dir / "blind_judge_report.json", BlindJudgeReport)
+        blind_challenge = self._load_json_model(session_dir / "blind_challenge.json", BlindChallenge)
+        if manifest is None and not any([diagnosis, blind_judge_report, blind_challenge]):
+            return None
+        return self._trust_report_builder.build(
+            manifest=manifest,
+            diagnosis=diagnosis if isinstance(diagnosis, RevivalDiagnosis) else None,
+            blind_judge_report=blind_judge_report
+            if isinstance(blind_judge_report, BlindJudgeReport)
+            else None,
+            blind_challenge=blind_challenge if isinstance(blind_challenge, BlindChallenge) else None,
+        )
+
+    def _write_failure_trust_report(
+        self,
+        *,
+        run: WebRunDetail,
+        message: str,
+    ) -> tuple[RevivalTrustReport, Path]:
+        session_dir = self.settings.sessions_dir / run.session_name
+        session_dir.mkdir(parents=True, exist_ok=True)
+        report = RevivalTrustReport(
+            status="fail",
+            summary="章节生成失败，可信评审不能交付。",
+            checks=[
+                RevivalTrustCheck(
+                    id="generation_error",
+                    label="生成失败",
+                    status="fail",
+                    evidence=[message],
+                    expected="Revival 生成链路完成并进入可信报告。",
+                    observed=message,
+                    source="web_run_manager",
+                    recommended_action="查看运行日志和错误信息，修复后重新生成。",
+                )
+            ],
+            recommended_actions=["查看运行日志和错误信息，修复后重新生成。"],
+            generated_at=datetime.now(timezone.utc),
+            chapter_number=run.request.start_chapter,
+        )
+        path = session_dir / "trust_report.json"
+        path.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        return report, path
+
     def _populate_outputs(self, run_id: str, result: PipelineRunResult) -> None:
         current_run = self.get_run(run_id)
         snapshot_path = Path(result.stage1_snapshot_path)
@@ -914,6 +1112,10 @@ class WebRunManager:
         work_skill = self._load_json_model(session_dir / "work_skill.json", WorkSkill)
         arc_options = self._load_json_model(session_dir / "arc_options.json", DirectorArcOptions)
         selected_arc = self._load_json_model(session_dir / "selected_arc.json", SelectedArc)
+        director_constraints = self._load_json_model(
+            session_dir / "director_constraints.json",
+            DirectorIntentTranslation,
+        )
         revival_diagnosis = self._load_json_model(session_dir / "revival_diagnosis.json", RevivalDiagnosis)
         blind_challenge = self._load_json_model(session_dir / "blind_challenge.json", BlindChallenge)
         selected_references_bundle = self._load_json_model(
@@ -933,6 +1135,10 @@ class WebRunManager:
                 )
             except Exception:
                 manifest = None
+        trust_report = self._load_or_build_trust_report(
+            session_dir=session_dir,
+            manifest=manifest or result,
+        )
         latest_output_path = next(
             (
                 Path(item.output_path)
@@ -1085,7 +1291,9 @@ class WebRunManager:
             arc_options=arc_options,
             arc_options_digest=self._arc_options_digest(arc_options) if arc_options else None,
             selected_arc=selected_arc,
+            director_constraints=director_constraints,
             revival_diagnosis=revival_diagnosis,
+            trust_report=trust_report,
             blind_challenge=WebBlindChallenge.from_internal(blind_challenge),
             selected_references=[
                 item.model_dump(mode="json")
@@ -1121,9 +1329,19 @@ class WebRunManager:
                 work_skill=str(session_dir / "work_skill.json") if (session_dir / "work_skill.json").exists() else None,
                 arc_options=str(session_dir / "arc_options.json") if (session_dir / "arc_options.json").exists() else None,
                 selected_arc=str(session_dir / "selected_arc.json") if (session_dir / "selected_arc.json").exists() else None,
+                director_constraints=(
+                    str(session_dir / "director_constraints.json")
+                    if (session_dir / "director_constraints.json").exists()
+                    else None
+                ),
                 revival_diagnosis=(
                     str(session_dir / "revival_diagnosis.json")
                     if (session_dir / "revival_diagnosis.json").exists()
+                    else None
+                ),
+                trust_report=(
+                    str(session_dir / "trust_report.json")
+                    if (session_dir / "trust_report.json").exists()
                     else None
                 ),
                 blind_challenge=(
@@ -1158,6 +1376,11 @@ class WebRunManager:
         lorebook = self._load_json_model(session_dir / "lorebook.json", LorebookBundle)
         work_skill = self._load_json_model(session_dir / "work_skill.json", WorkSkill)
         arc_options = self._load_json_model(session_dir / "arc_options.json", DirectorArcOptions)
+        director_constraints = self._load_json_model(
+            session_dir / "director_constraints.json",
+            DirectorIntentTranslation,
+        )
+        trust_report = self._load_or_build_trust_report(session_dir=session_dir)
         selected_references_bundle = self._load_json_model(
             session_dir / "selected_references.json",
             _ReferenceProfileBundle,
@@ -1179,6 +1402,8 @@ class WebRunManager:
             work_skill=work_skill,
             arc_options=arc_options,
             arc_options_digest=self._arc_options_digest(arc_options) if arc_options else None,
+            director_constraints=director_constraints,
+            trust_report=trust_report,
             selected_references=[
                 item.model_dump(mode="json")
                 for item in (selected_references_bundle.profiles if selected_references_bundle else [])
@@ -1199,6 +1424,16 @@ class WebRunManager:
                 ),
                 work_skill=str(session_dir / "work_skill.json") if (session_dir / "work_skill.json").exists() else None,
                 arc_options=str(session_dir / "arc_options.json") if (session_dir / "arc_options.json").exists() else None,
+                director_constraints=(
+                    str(session_dir / "director_constraints.json")
+                    if (session_dir / "director_constraints.json").exists()
+                    else None
+                ),
+                trust_report=(
+                    str(session_dir / "trust_report.json")
+                    if (session_dir / "trust_report.json").exists()
+                    else None
+                ),
             ),
             metrics=WebRunMetrics(
                 total_calls=result.total_usage.calls,
@@ -1237,6 +1472,29 @@ class WebRunManager:
         )
         if selected_option is None:
             raise ApiError("找不到对应的人物走向。", 422, "Invalid Input")
+        director_constraints = request.director_constraints
+        if director_constraints is not None:
+            director_constraints = DirectorIntentInternalizer.mark_user_edited(director_constraints)
+        else:
+            loaded_constraints = self._load_json_model(
+                session_dir / "director_constraints.json",
+                DirectorIntentTranslation,
+            )
+            director_constraints = (
+                loaded_constraints
+                if isinstance(loaded_constraints, DirectorIntentTranslation)
+                else DirectorIntentInternalizer.fallback(
+                    raw_intent=current.request.goal_hint or request.user_note,
+                    work_skill=current.work_skill,
+                    selected_option=selected_option,
+                    warning="选择人物走向时未找到导演约束，已使用规则兜底。",
+                )
+            )
+        director_constraints_path = session_dir / "director_constraints.json"
+        director_constraints_path.write_text(
+            director_constraints.model_dump_json(indent=2),
+            encoding="utf-8",
+        )
 
         selected_arc = SelectedArc(
             selected_option_id=selected_option.id,
@@ -1246,7 +1504,10 @@ class WebRunManager:
             locked_constraints=[
                 *selected_option.must_happen,
                 *selected_option.must_not_break,
+                *director_constraints.internalized_actions,
+                *director_constraints.scene_constraints,
             ],
+            director_constraints=director_constraints,
         )
         selected_arc_path = session_dir / "selected_arc.json"
         selected_arc_path.write_text(selected_arc.model_dump_json(indent=2), encoding="utf-8")
@@ -1254,8 +1515,12 @@ class WebRunManager:
             update={
                 "status": "generating",
                 "selected_arc": selected_arc,
+                "director_constraints": director_constraints,
                 "artifact_paths": current.artifact_paths.model_copy(
-                    update={"selected_arc": str(selected_arc_path)}
+                    update={
+                        "selected_arc": str(selected_arc_path),
+                        "director_constraints": str(director_constraints_path),
+                    }
                 ),
                 "progress": current.progress.model_copy(
                     update={"completed_steps": 0, "message": "已选择人物走向，开始生成章节"}
@@ -1302,11 +1567,28 @@ class WebRunManager:
             }
         )
         challenge_path.write_text(updated_challenge.model_dump_json(indent=2), encoding="utf-8")
+        session_dir = self.settings.sessions_dir / current.session_name
+        manifest = self._load_json_model(session_dir / "run_manifest.json", PipelineRunResult)
+        trust_report = self._trust_report_builder.build(
+            manifest=manifest,
+            diagnosis=self._load_json_model(session_dir / "revival_diagnosis.json", RevivalDiagnosis),
+            blind_judge_report=self._load_json_model(
+                session_dir / "blind_judge_report.json",
+                BlindJudgeReport,
+            ),
+            blind_challenge=updated_challenge,
+        )
+        trust_report_path = session_dir / "trust_report.json"
+        trust_report_path.write_text(trust_report.model_dump_json(indent=2), encoding="utf-8")
         updated = current.model_copy(
             update={
                 "blind_challenge": WebBlindChallenge.from_internal(updated_challenge),
+                "trust_report": trust_report,
                 "artifact_paths": current.artifact_paths.model_copy(
-                    update={"blind_challenge": str(challenge_path)}
+                    update={
+                        "blind_challenge": str(challenge_path),
+                        "trust_report": str(trust_report_path),
+                    }
                 ),
                 "updated_at": datetime.now(timezone.utc),
             }
@@ -1344,11 +1626,20 @@ class WebRunManager:
             )
             self._populate_outputs(run_id, result)
         except Exception as exc:
+            current_after_error = self.get_run(run_id)
+            trust_report, trust_report_path = self._write_failure_trust_report(
+                run=current_after_error,
+                message=str(exc),
+            )
             self._update_run(
                 run_id,
                 status="failed",
                 error_message=str(exc),
-                progress=self.get_run(run_id).progress.model_copy(update={"message": "运行失败"}),
+                trust_report=trust_report,
+                artifact_paths=current_after_error.artifact_paths.model_copy(
+                    update={"trust_report": str(trust_report_path)}
+                ),
+                progress=current_after_error.progress.model_copy(update={"message": "运行失败"}),
             )
 
     async def _run_revival_analysis_async(
@@ -1370,6 +1661,7 @@ class WebRunManager:
             result = await orchestrator.prepare_revival_analysis(
                 input_path=Path(current.input_path or ""),
                 session_name=current.session_name,
+                goal_hint=current.request.goal_hint,
                 planning_mode=current.request.planning_mode,
                 new_character_budget=current.request.new_character_budget,
                 new_location_budget=current.request.new_location_budget,
@@ -1380,11 +1672,20 @@ class WebRunManager:
             )
             self._populate_revival_analysis_outputs(run_id, result)
         except Exception as exc:
+            current_after_error = self.get_run(run_id)
+            trust_report, trust_report_path = self._write_failure_trust_report(
+                run=current_after_error,
+                message=str(exc),
+            )
             self._update_run(
                 run_id,
                 status="failed",
                 error_message=str(exc),
-                progress=self.get_run(run_id).progress.model_copy(update={"message": "运行失败"}),
+                trust_report=trust_report,
+                artifact_paths=current_after_error.artifact_paths.model_copy(
+                    update={"trust_report": str(trust_report_path)}
+                ),
+                progress=current_after_error.progress.model_copy(update={"message": "运行失败"}),
             )
 
     async def _run_revival_generation_async(
@@ -1428,11 +1729,20 @@ class WebRunManager:
                     progress=failed.progress.model_copy(update={"message": "正文质检失败"}),
                 )
         except Exception as exc:
+            current_after_error = self.get_run(run_id)
+            trust_report, trust_report_path = self._write_failure_trust_report(
+                run=current_after_error,
+                message=str(exc),
+            )
             self._update_run(
                 run_id,
                 status="failed",
                 error_message=str(exc),
-                progress=self.get_run(run_id).progress.model_copy(update={"message": "运行失败"}),
+                trust_report=trust_report,
+                artifact_paths=current_after_error.artifact_paths.model_copy(
+                    update={"trust_report": str(trust_report_path)}
+                ),
+                progress=current_after_error.progress.model_copy(update={"message": "运行失败"}),
             )
 
 

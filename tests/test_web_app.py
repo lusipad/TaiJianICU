@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from config.settings import AppSettings
+from core.models.revival import DirectorIntentTranslation
 from webapp.app import create_app
 from webapp.models import (
     WebDirectorPlan,
@@ -54,6 +55,8 @@ class FakeRunManager:
         self.preview_calls = 0
         self.director_plan_get_calls = 0
         self.director_plan_save_calls = 0
+        self.director_constraints_get_calls = 0
+        self.director_constraints_save_calls = 0
         self.connection_test_calls = 0
         self.last_request = None
         self.last_runtime_api_override = None
@@ -224,6 +227,24 @@ class FakeRunManager:
             notes=request.notes,
             chapter_queue=request.chapter_queue,
         )
+
+    def get_director_constraints(self, run_id: str):
+        assert run_id == "run-1"
+        self.director_constraints_get_calls += 1
+        return DirectorIntentTranslation(
+            raw_intent="推进关系变化",
+            internalized_actions=["旧物触发言语有异"],
+            scene_constraints=["不可直写解释"],
+            forbidden_leaks=["关系变化"],
+            style_register=["话少"],
+            status="generated",
+        )
+
+    def save_director_constraints(self, run_id: str, request: DirectorIntentTranslation):
+        assert run_id == "run-1"
+        self.director_constraints_save_calls += 1
+        self.last_request = request
+        return request.model_copy(update={"status": "user_edited"})
 
     async def test_runtime_connection(self, request: WebRuntimeConnectionTestRequest):
         self.connection_test_calls += 1
@@ -469,7 +490,13 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
 
     assert "loadDirectorPlan" in script
     assert "saveDirectorPlan" in script
+    assert "renderTrustReport" in script
+    assert "loadDirectorConstraints" in script
+    assert "saveDirectorConstraints" in script
+    assert "collectDirectorConstraints" in script
     assert "/director-plan" in script
+    assert "/director-constraints" in script
+    assert "/api/revival/runs" in script
     assert "testRuntimeConnection" in script
     assert "/api/runtime/connection-test" in script
     assert "renderWorldLibrary" in script
@@ -700,6 +727,7 @@ def test_create_revival_run_accepts_txt_upload() -> None:
         files={"file": ("demo.txt", "第一章 测试".encode("utf-8"), "text/plain")},
         data={
             "start_chapter": "1",
+            "goal_hint": "推进人物弧光",
             "planning_mode": "balanced",
             "api_base_url": "https://openrouter.ai/api/v1",
             "api_key": "sk-demo",
@@ -711,6 +739,7 @@ def test_create_revival_run_accepts_txt_upload() -> None:
     assert response.json()["id"] == "run-1"
     assert manager.revival_start_calls == 1
     assert manager.last_request.chapters == 1
+    assert manager.last_request.goal_hint == "推进人物弧光"
     assert manager.last_runtime_api_override == WebRuntimeApiOverride(
         api_base_url="https://openrouter.ai/api/v1",
         api_key="sk-demo",
@@ -867,6 +896,34 @@ def test_director_plan_endpoints() -> None:
     assert manager.director_plan_get_calls == 1
     assert manager.director_plan_save_calls == 1
     assert manager.last_request.chapter_queue[0].status == "writing"
+
+
+def test_director_constraints_endpoints() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    get_response = client.get("/api/revival/runs/run-1/director-constraints")
+    save_response = client.post(
+        "/api/revival/runs/run-1/director-constraints",
+        json={
+            "raw_intent": "推进关系变化",
+            "internalized_actions": ["旧物触发言语有异"],
+            "scene_constraints": ["不可直写解释"],
+            "forbidden_leaks": ["关系变化"],
+            "style_register": ["话少"],
+            "status": "generated",
+            "warnings": [],
+        },
+    )
+
+    assert get_response.status_code == 200
+    assert get_response.json()["status"] == "generated"
+    assert save_response.status_code == 200
+    assert save_response.json()["status"] == "user_edited"
+    assert manager.director_constraints_get_calls == 1
+    assert manager.director_constraints_save_calls == 1
+    assert manager.last_request.internalized_actions == ["旧物触发言语有异"]
 
 
 def test_runtime_connection_test_endpoint() -> None:

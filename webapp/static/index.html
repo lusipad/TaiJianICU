@@ -309,6 +309,43 @@
               </div>
               <p id="director-plan-status" class="hint">选择一个任务后，可读取并保存本阶段导演计划。</p>
             </section>
+            <section class="director-plan-editor" aria-label="导演意图内部化约束编辑">
+              <div class="director-plan-editor-head">
+                <div>
+                  <p class="label">现代意图 → 作品动作</p>
+                  <strong>生成前锁定的导演约束</strong>
+                </div>
+                <div class="director-plan-actions">
+                  <button id="director-constraints-refresh-button" type="button" class="utility-button">重新加载</button>
+                  <button id="director-constraints-save-button" type="button">保存约束</button>
+                </div>
+              </div>
+              <div class="field-grid director-plan-meta-grid">
+                <label class="field">
+                  <span>原始意图</span>
+                  <textarea id="director-constraints-raw" rows="2"></textarea>
+                </label>
+                <label class="field">
+                  <span>内部化动作</span>
+                  <textarea id="director-constraints-actions" rows="5"></textarea>
+                </label>
+                <label class="field">
+                  <span>场面约束</span>
+                  <textarea id="director-constraints-scene" rows="5"></textarea>
+                </label>
+              </div>
+              <div class="field-grid director-plan-meta-grid">
+                <label class="field">
+                  <span>禁止泄漏词</span>
+                  <textarea id="director-constraints-forbidden" rows="3"></textarea>
+                </label>
+                <label class="field">
+                  <span>声口寄存器</span>
+                  <textarea id="director-constraints-style" rows="3"></textarea>
+                </label>
+              </div>
+              <p id="director-constraints-status" class="hint">选择任务后，可编辑并保存生成前约束。</p>
+            </section>
             <div class="result-grid">
               <article class="result-card">
                 <p class="label">作品 skill</p>
@@ -510,6 +547,12 @@
               <p class="panel-copy">单章评审是放大镜：判断这一章是否执行导演意图，并把问题反馈到后续章节。</p>
             </div>
             <div class="result-grid">
+              <article class="result-card result-card-feature">
+                <p class="label">可信报告</p>
+                <div id="trust-report-summary" class="thread-list"></div>
+              </article>
+            </div>
+            <div class="result-grid">
               <article class="result-card">
                 <p class="label">质检</p>
                 <pre id="quality-summary">-</pre>
@@ -645,6 +688,9 @@
                 </div>
                 <button id="clear-api-config-button" class="utility-button" type="button">清空当前 API</button>
               </div>
+              <p class="field-note">
+                桌面版仍会把原稿片段和提示发送到你配置的模型 API；临时 API Key 只用于本次运行，不写回全局配置。上传文本、运行记录、索引和输出保存在应用旁的 data/ 目录。本轮不提供一键删除控件。
+              </p>
               <div class="field-grid model-grid">
                 <label class="field">
                   <span>API Endpoint</span>

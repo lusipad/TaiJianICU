@@ -89,12 +89,24 @@ class DirectorArcOptions(_StrictModel):
     options: list[DirectorArcOption] = Field(min_length=3, max_length=3)
 
 
+class DirectorIntentTranslation(_StrictModel):
+    schema_version: str = "1.0"
+    raw_intent: str = ""
+    internalized_actions: list[str] = Field(default_factory=list)
+    scene_constraints: list[str] = Field(default_factory=list)
+    forbidden_leaks: list[str] = Field(default_factory=list)
+    style_register: list[str] = Field(default_factory=list)
+    status: Literal["generated", "fallback", "user_edited"] = "fallback"
+    warnings: list[str] = Field(default_factory=list)
+
+
 class SelectedArc(_StrictModel):
     selected_option_id: str
     selected_at: datetime
     arc_options_digest: str
     user_note: str = ""
     locked_constraints: list[str] = Field(default_factory=list)
+    director_constraints: DirectorIntentTranslation | None = None
 
 
 class CleanProseHit(_StrictModel):
@@ -174,3 +186,24 @@ class BlindJudgeReport(_StrictModel):
     @property
     def passed(self) -> bool:
         return self.status == "pass"
+
+
+class RevivalTrustCheck(_StrictModel):
+    id: str
+    label: str
+    status: Literal["pass", "warning", "fail", "not_ready"]
+    evidence: list[str] = Field(default_factory=list)
+    expected: str = ""
+    observed: str = ""
+    source: str = ""
+    recommended_action: str = ""
+
+
+class RevivalTrustReport(_StrictModel):
+    schema_version: str = "1.0"
+    status: Literal["pass", "warning", "fail", "not_ready"]
+    summary: str = ""
+    checks: list[RevivalTrustCheck] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+    generated_at: datetime
+    chapter_number: int | None = Field(default=None, ge=1)

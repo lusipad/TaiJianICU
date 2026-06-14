@@ -26,7 +26,7 @@ from core.llm.litellm_client import LLMUsageSummary
 from core.storage.session_store import SessionStore
 from intervention import InterventionConfig
 from orchestrator import ChapterRunResult, PipelineRunResult, PreparedStoryContext, TaiJianOrchestrator
-from pipeline.revival import CleanProseGate, CleanProseGateResult, RevivalDiagnosisBuilder
+from pipeline.revival import CleanProseGate, CleanProseGateResult, RevivalDiagnosisBuilder, TrustReportBuilder
 from pipeline.stage2_plot.consistency_checker import ConsistencyReport
 from pipeline.stage3_generation.quality_checker import QualityReport
 from pipeline.stage1_extraction.novel_indexer import IndexingResult
@@ -793,6 +793,7 @@ async def test_revival_generation_rewrites_and_persists_blind_judge_failure(tmp_
     orchestrator.revival_diagnosis_builder = RevivalDiagnosisBuilder()
     orchestrator.blind_challenge_builder = challenge_builder
     orchestrator.blind_judge = blind_judge
+    orchestrator.trust_report_builder = TrustReportBuilder()
 
     async def prepare_story_context(**kwargs) -> PreparedStoryContext:
         return context
@@ -830,6 +831,7 @@ async def test_revival_generation_rewrites_and_persists_blind_judge_failure(tmp_
     assert quality_checker.evaluated_texts == ["改后正文。"]
     assert store.chapter_revival_candidate_path("demo", 2).read_text(encoding="utf-8") == "改后正文。"
     assert store.blind_judge_report_path("demo").exists()
+    assert store.trust_report_path("demo").exists()
     manifest = store.load_model(store.run_manifest_path("demo"), PipelineRunResult)
     assert isinstance(manifest, PipelineRunResult)
     assert [chapter.chapter_number for chapter in manifest.chapters] == [1, 2]

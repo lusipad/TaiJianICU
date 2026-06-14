@@ -128,25 +128,26 @@ def multi_chapter_benchmark_command(
     table.add_column("章节")
     table.add_column("Overall")
     table.add_column("Length")
-    table.add_column("Rhythm")
-    table.add_column("Dialogue")
-    table.add_column("Marker")
-    table.add_column("Clean")
+    table.add_column("Dialogue Ratio")
+    table.add_column("Clean Prose")
+    table.add_column("Repetition")
     table.add_column("Issues")
     for score in report.chapter_scores:
+        gate = score.revival_gate_summary
         table.add_row(
             str(score.chapter_number),
             f"{score.overall:.2f}",
             f"{score.length_score:.2f}",
-            f"{score.rhythm_score:.2f}",
-            f"{score.dialogue_score:.2f}",
-            f"{score.marker_score:.2f}",
-            f"{score.clean_score:.2f}",
+            f"{gate.dialogue_ratio:.2f}",
+            f"{gate.clean_prose_status} ({gate.clean_gate_hits})",
+            f"{gate.repetition_ratio:.2f}",
             ", ".join(score.issues) or "-",
         )
     console.print(table)
     console.print(
         {
+            "revival_status": report.revival_status,
+            "revival_issues": report.revival_issues,
             "overall": report.overall,
             "drift": report.drift,
             "report_json_path": report.report_json_path,

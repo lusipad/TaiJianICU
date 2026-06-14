@@ -120,8 +120,14 @@ class SessionStore:
     def selected_arc_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "selected_arc.json"
 
+    def director_constraints_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "director_constraints.json"
+
     def revival_diagnosis_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "revival_diagnosis.json"
+
+    def trust_report_path(self, session_name: str) -> Path:
+        return self.session_dir(session_name) / "trust_report.json"
 
     def blind_challenge_path(self, session_name: str) -> Path:
         return self.session_dir(session_name) / "blind_challenge.json"

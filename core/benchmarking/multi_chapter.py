@@ -26,6 +26,15 @@ class ChapterBaselineMetrics(BaseModel):
     repetition_ratio: float = 0.0
 
 
+class ChapterRevivalGateSummary(BaseModel):
+    chinese_char_count: int = 0
+    dialogue_ratio: float = 0.0
+    clean_prose_status: str = "pass"
+    clean_gate_hits: int = 0
+    repetition_ratio: float = 0.0
+    overall_issue: str = ""
+
+
 class ChapterBaselineScore(BaseModel):
     chapter_number: int
     reference_title: str = ""
@@ -39,6 +48,7 @@ class ChapterBaselineScore(BaseModel):
     repetition_score: float
     reference_metrics: ChapterBaselineMetrics
     candidate_metrics: ChapterBaselineMetrics
+    revival_gate_summary: ChapterRevivalGateSummary = Field(default_factory=ChapterRevivalGateSummary)
     issues: list[str] = Field(default_factory=list)
 
 
@@ -51,6 +61,8 @@ class MultiChapterBenchmarkReport(BaseModel):
     chapter_count: int
     overall: float
     drift: float
+    revival_status: str = "pass"
+    revival_issues: list[str] = Field(default_factory=list)
     chapter_scores: list[ChapterBaselineScore] = Field(default_factory=list)
     report_json_path: str
     report_markdown_path: str
@@ -78,26 +90,72 @@ class MultiChapterBenchmarkRunner:
             raise ValueError("chapter_count 必须大于 0。")
         if target_start_chapter <= prefix_chapters:
             raise ValueError("target_start_chapter 必须大于 prefix_chapters。")
-        if not candidate_dir.exists() or not candidate_dir.is_dir():
-            raise ValueError(f"找不到候选章节目录: {candidate_dir}")
-
-        source = self.single_runner.ensure_dataset(
-            dataset_name,
-            source_path=source_path,
-            source_url=source_url,
-            source_encoding=source_encoding,
-            source_file_name=source_file_name,
-        )
-        chapters = self.single_runner._parse_chapters(source.read_text(encoding="utf-8"))
         target_end = target_start_chapter + chapter_count - 1
-        if target_end > len(chapters):
-            raise ValueError("目标章节范围超出数据集章节总数。")
+        case_name = f"{prefix_chapters}_to_{target_start_chapter}_{chapter_count}ch"
+        report_dir = self.settings.benchmarks_dir / dataset_name / "cases" / case_name / "multi_report"
+        report_dir.mkdir(parents=True, exist_ok=True)
 
-        candidates = self._load_candidates(
-            candidate_dir=candidate_dir,
-            start=target_start_chapter,
-            count=chapter_count,
-        )
+        if not candidate_dir.exists() or not candidate_dir.is_dir():
+            return self._write_failure_report(
+                dataset_name=dataset_name,
+                case_name=case_name,
+                source_path=source_path,
+                candidate_dir=candidate_dir,
+                target_start_chapter=target_start_chapter,
+                chapter_count=chapter_count,
+                report_dir=report_dir,
+                reason=f"找不到候选章节目录: {candidate_dir}",
+            )
+
+        try:
+            source = self.single_runner.ensure_dataset(
+                dataset_name,
+                source_path=source_path,
+                source_url=source_url,
+                source_encoding=source_encoding,
+                source_file_name=source_file_name,
+            )
+            chapters = self.single_runner._parse_chapters(source.read_text(encoding="utf-8"))
+        except Exception as exc:
+            return self._write_failure_report(
+                dataset_name=dataset_name,
+                case_name=case_name,
+                source_path=source_path,
+                candidate_dir=candidate_dir,
+                target_start_chapter=target_start_chapter,
+                chapter_count=chapter_count,
+                report_dir=report_dir,
+                reason=f"输入不可读或无法解析: {exc}",
+            )
+        if target_end > len(chapters):
+            return self._write_failure_report(
+                dataset_name=dataset_name,
+                case_name=case_name,
+                source_path=source,
+                candidate_dir=candidate_dir,
+                target_start_chapter=target_start_chapter,
+                chapter_count=chapter_count,
+                report_dir=report_dir,
+                reason="目标章节范围超出数据集章节总数。",
+            )
+
+        try:
+            candidates = self._load_candidates(
+                candidate_dir=candidate_dir,
+                start=target_start_chapter,
+                count=chapter_count,
+            )
+        except Exception as exc:
+            return self._write_failure_report(
+                dataset_name=dataset_name,
+                case_name=case_name,
+                source_path=source,
+                candidate_dir=candidate_dir,
+                target_start_chapter=target_start_chapter,
+                chapter_count=chapter_count,
+                report_dir=report_dir,
+                reason=str(exc),
+            )
         references = chapters[target_start_chapter - 1 : target_end]
         scores = [
             self._score_chapter(reference=reference, candidate_path=path, candidate_text=text)
@@ -105,10 +163,13 @@ class MultiChapterBenchmarkRunner:
         ]
         overall = round(sum(item.overall for item in scores) / len(scores), 4)
         drift = self._drift(scores)
+        revival_status = self._revival_status(scores)
+        revival_issues = [
+            f"chapter_{score.chapter_number}:{issue}"
+            for score in scores
+            for issue in score.issues
+        ]
 
-        case_name = f"{prefix_chapters}_to_{target_start_chapter}_{chapter_count}ch"
-        report_dir = self.settings.benchmarks_dir / dataset_name / "cases" / case_name / "multi_report"
-        report_dir.mkdir(parents=True, exist_ok=True)
         report = MultiChapterBenchmarkReport(
             dataset_name=dataset_name,
             case_name=case_name,
@@ -118,19 +179,53 @@ class MultiChapterBenchmarkRunner:
             chapter_count=chapter_count,
             overall=overall,
             drift=drift,
+            revival_status=revival_status,
+            revival_issues=revival_issues,
             chapter_scores=scores,
             report_json_path=str(report_dir / "multi_chapter_report.json"),
             report_markdown_path=str(report_dir / "multi_chapter_report.md"),
         )
+        return self._write_report(report)
+
+    @staticmethod
+    def _write_report(report: MultiChapterBenchmarkReport) -> MultiChapterBenchmarkReport:
         Path(report.report_json_path).write_text(
             report.model_dump_json(indent=2),
             encoding="utf-8",
         )
         Path(report.report_markdown_path).write_text(
-            self._render_markdown(report),
+            MultiChapterBenchmarkRunner._render_markdown(report),
             encoding="utf-8",
         )
         return report
+
+    def _write_failure_report(
+        self,
+        *,
+        dataset_name: str,
+        case_name: str,
+        source_path: Path | None,
+        candidate_dir: Path,
+        target_start_chapter: int,
+        chapter_count: int,
+        report_dir: Path,
+        reason: str,
+    ) -> MultiChapterBenchmarkReport:
+        report = MultiChapterBenchmarkReport(
+            dataset_name=dataset_name,
+            case_name=case_name,
+            source_path=str(source_path or ""),
+            candidate_dir=str(candidate_dir),
+            target_start_chapter=target_start_chapter,
+            chapter_count=chapter_count,
+            overall=0.0,
+            drift=0.0,
+            revival_status="fail",
+            revival_issues=[reason],
+            report_json_path=str(report_dir / "multi_chapter_report.json"),
+            report_markdown_path=str(report_dir / "multi_chapter_report.md"),
+        )
+        return self._write_report(report)
 
     @staticmethod
     def _load_candidates(
@@ -198,6 +293,11 @@ class MultiChapterBenchmarkRunner:
             ),
             4,
         )
+        issues = self._issues(
+            overall=overall,
+            candidate_metrics=candidate_metrics,
+            reference_metrics=reference_metrics,
+        )
         return ChapterBaselineScore(
             chapter_number=reference.number,
             reference_title=reference.title,
@@ -211,11 +311,15 @@ class MultiChapterBenchmarkRunner:
             repetition_score=round(repetition_score, 4),
             reference_metrics=reference_metrics,
             candidate_metrics=candidate_metrics,
-            issues=self._issues(
-                overall=overall,
-                candidate_metrics=candidate_metrics,
-                reference_metrics=reference_metrics,
+            revival_gate_summary=ChapterRevivalGateSummary(
+                chinese_char_count=candidate_metrics.chinese_char_count,
+                dialogue_ratio=candidate_metrics.dialogue_ratio,
+                clean_prose_status="fail" if candidate_metrics.clean_gate_hits else "pass",
+                clean_gate_hits=candidate_metrics.clean_gate_hits,
+                repetition_ratio=candidate_metrics.repetition_ratio,
+                overall_issue=", ".join(issues) if issues else "",
             ),
+            issues=issues,
         )
 
     @staticmethod
@@ -274,7 +378,15 @@ class MultiChapterBenchmarkRunner:
             issues.append("candidate_too_short")
         if candidate_metrics.repetition_ratio > 0.08:
             issues.append("high_repetition")
+        if abs(candidate_metrics.dialogue_ratio - reference_metrics.dialogue_ratio) > 0.25:
+            issues.append("dialogue_ratio_drift")
         return issues
+
+    @staticmethod
+    def _revival_status(scores: list[ChapterBaselineScore]) -> str:
+        if not scores:
+            return "fail"
+        return "warning" if any(score.issues for score in scores) else "pass"
 
     @staticmethod
     def _drift(scores: list[ChapterBaselineScore]) -> float:
@@ -293,25 +405,26 @@ class MultiChapterBenchmarkRunner:
     @staticmethod
     def _render_markdown(report: MultiChapterBenchmarkReport) -> str:
         rows = [
-            "| Chapter | Overall | Length | Rhythm | Dialogue | Marker | Clean | Repetition | Issues |",
-            "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
+            "| Chapter | Overall | Length | Dialogue Ratio | Clean Prose | Repetition | Issues |",
+            "| --- | ---: | ---: | ---: | --- | ---: | --- |",
         ]
         for score in report.chapter_scores:
+            gate = score.revival_gate_summary
             rows.append(
                 "| "
                 f"{score.chapter_number} | "
                 f"{score.overall:.2f} | "
                 f"{score.length_score:.2f} | "
-                f"{score.rhythm_score:.2f} | "
-                f"{score.dialogue_score:.2f} | "
-                f"{score.marker_score:.2f} | "
-                f"{score.clean_score:.2f} | "
-                f"{score.repetition_score:.2f} | "
+                f"{gate.dialogue_ratio:.2f} | "
+                f"{gate.clean_prose_status} ({gate.clean_gate_hits}) | "
+                f"{gate.repetition_ratio:.2f} | "
                 f"{', '.join(score.issues) or '-'} |"
             )
         payload = {
             "dataset": report.dataset_name,
             "case": report.case_name,
+            "revival_status": report.revival_status,
+            "revival_issues": report.revival_issues,
             "overall": report.overall,
             "drift": report.drift,
             "candidate_dir": report.candidate_dir,

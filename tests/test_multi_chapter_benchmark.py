@@ -62,7 +62,9 @@ def test_multi_chapter_runner_scores_candidate_directory(tmp_path: Path) -> None
 
     assert report.overall > 0.95
     assert report.drift == 0.0
+    assert report.revival_status == "pass"
     assert len(report.chapter_scores) == 2
+    assert report.chapter_scores[0].revival_gate_summary.clean_prose_status == "pass"
     assert Path(report.report_json_path).exists()
     assert Path(report.report_markdown_path).exists()
 
@@ -88,5 +90,28 @@ def test_multi_chapter_runner_flags_weak_candidate(tmp_path: Path) -> None:
     )
 
     score = report.chapter_scores[0]
+    assert report.revival_status == "warning"
     assert score.overall < 0.8
     assert {"clean_gate_hits", "candidate_too_short"} <= set(score.issues)
+
+
+def test_multi_chapter_runner_reports_missing_candidate_as_fail(tmp_path: Path) -> None:
+    source_path = tmp_path / "novel.txt"
+    _write_source(source_path)
+    candidate_dir = tmp_path / "candidates"
+    candidate_dir.mkdir()
+    settings = AppSettings(benchmarks_dir=tmp_path / "benchmarks")
+
+    report = MultiChapterBenchmarkRunner(settings).run(
+        dataset_name="demo",
+        prefix_chapters=2,
+        target_start_chapter=3,
+        chapter_count=1,
+        candidate_dir=candidate_dir,
+        source_path=source_path,
+    )
+
+    assert report.revival_status == "fail"
+    assert report.chapter_scores == []
+    assert "缺少章节文件" in report.revival_issues[0]
+    assert Path(report.report_json_path).exists()

@@ -11,12 +11,14 @@
 - 阶段 3：写回前运行 source-voice gate；短章、现代元叙述、解释性抒情腔、繁简混杂或声口指标明显偏离时进入修订。
 - 阶段 3：source-voice gate 失败会写入 `QualityReport.issues`。如果修订后仍不过门，章节和顶层 manifest 不会显示假绿。
 - 阶段 3：近章开头重复会进入定向修订，修订提示要求重写当前章前两段、换入场焦点，避免连续章节复用同一开场模板。
+- Revival 主线新增 `director_constraints.json`：把用户的现代导演意图内部化为作品动作、场面约束、禁止泄漏词和声口寄存器；LLM 结构化转换失败时使用规则兜底。
+- Revival 主线新增 `trust_report.json`：统一汇总 `QualityReport`、`RevivalDiagnosis`、`BlindJudgeReport`、人工盲测评分和 `run_manifest` 传播状态。
 - V2 执行层已接入 `WorldModel`、`ArcOutline`、`ChapterBrief` 与 `Lorebook` 命中结果。
 - V2 参考层已接入默认 `ReferenceProfile`，只作用于规划层抽象约束，不直接要求正文模仿。
 - 每章结束后会生成 `ChapterEvaluation`，供 rerank、reflection 和工作台展示使用。
 - 执行层支持 skeleton / draft 多候选生成与 rerank，可通过 CLI / Web 配置候选数。
 - 章节完成后会增量刷新 `WorldModel`，并把候选骨架、候选正文落盘到会话目录。
-- Web 支持上传 `.txt`、提交任务、轮询进度、查看摘要、产物路径和历史任务。
+- Web 支持上传 `.txt`、提交 Revival 分析、编辑导演内部化约束、选择人物走向、轮询进度、查看可信报告、产物路径和历史任务。
 - CLI 支持 `taijianicu run`、`taijianicu benchmark`、`taijianicu benchmark-multi`、`taijianicu web`、`taijianicu inspect`、`taijianicu intervene`；兼容旧命令 `taijian`。
 
 ## 质量门行为
@@ -28,6 +30,8 @@
 - 写回前会检查最近章节开头，若新章与近章前几十个中文字符高度一致，会进入最多 3 轮定向修订；修订后仍重复则保持 `revise`。
 - 对“对白比例偏离原文”这类声口问题，修订提示会按当前/基线比例选择增补短句往来或删减连续对白。
 - 合并 `run_manifest.json` 时，如果任一章节为 `completed_with_warnings` 或失败，顶层 `status` 会同步反映。
+- `TrustReportBuilder` 的顶层状态不使用百分制总分：`pass` 只表示关键 gate 全过且无章节 warning；`warning` 表示已生成但仍有短章、重复、质量 issue、盲测缺口或人工低分；`fail` 表示生成失败、clean/source voice 最终不过、盲测最终失败或 manifest failed；`not_ready` 表示仅完成分析。
+- `benchmark-multi` 继续作为连续章节回归入口，JSON/Markdown 现在包含每章 Revival gate 摘要和 `revival_status`，不新增专用命令。
 
 ## 红楼 81-120 回验证
 
@@ -100,13 +104,33 @@ taijianicu run --input data\input\hongloumeng_front80_pg24264.txt --chapters 6 -
 
 结论：重复检测本身有效，但“请修订”过于泛化，模型会保留原开篇模板。本轮已把修订动作收窄为重写当前章开头前两段、换入场人物/地点/物件/转场焦点，并把重复开头修订轮数提高到最多 3 轮。一个 115-116 真实窄 smoke 曾启动，但命令超时且未产出 `run_manifest.json`，因此不把它计入通过证据。
 
+增强后的标准连续回归仍使用 `benchmark-multi`：
+
+```powershell
+taijianicu benchmark-multi --dataset hongloumeng-115-120-revival-trust --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 115 --chapter-count 6 --candidate-dir data\output\hongloumeng-front80-verify115-120-repetitionguard-20260503
+```
+
+扩大到 111-120 时也不新增入口：
+
+```powershell
+taijianicu benchmark-multi --dataset hongloumeng-111-120-revival-trust --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 111 --chapter-count 10 --candidate-dir data\output\<session-name>
+```
+
 ## 当前测试基线
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-当前结果：`147 passed, 3 warnings`。
+当前结果：`156 passed, 3 warnings`。
+
+小规模 fixture 版连续可信回归：
+
+```powershell
+.\.venv\Scripts\taijianicu.exe benchmark-multi --dataset hongloumeng-115-fixture-smoke --source-file data\input\hongloumeng_pg24264.txt --prefix-chapters 80 --target-start-chapter 115 --chapter-count 1 --candidate-dir data\output\hongloumeng-front80-verify115-120-repetitionguard-20260503
+```
+
+当前结果：`revival_status=warning`，`revival_issues=["chapter_115:overall_below_threshold", "chapter_115:dialogue_ratio_drift"]`。报告落在 `data\benchmarks\hongloumeng-115-fixture-smoke\cases\80_to_115_1ch\multi_report\`。
 
 ## 已知缺口
 
