@@ -25,6 +25,7 @@ from core.models.revival import (
     DirectorArcOption,
     DirectorArcOptions,
     DirectorIntentTranslation,
+    RevivalTrustCheck,
     RevivalTrustReport,
     WorkSkill,
 )
@@ -46,6 +47,7 @@ from webapp.models import (
     WebRunRequest,
     WebRuntimeConnectionTestRequest,
     WebRuntimeApiOverride,
+    WebTrustRevisionNotesUpdate,
 )
 
 
@@ -673,6 +675,60 @@ def test_web_run_manager_saves_blind_challenge_rating(tmp_path: Path) -> None:
     assert "blind_challenge.json" in (detail.artifact_paths.blind_challenge or "")
     assert detail.trust_report is not None
     assert "trust_report.json" in (detail.artifact_paths.trust_report or "")
+
+
+def test_web_run_manager_saves_trust_revision_notes(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    now = datetime.now(timezone.utc)
+    session_dir = settings.sessions_dir / "revival-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    report = RevivalTrustReport(
+        status="warning",
+        summary="需要修订。",
+        generated_at=now,
+        checks=[
+            RevivalTrustCheck(
+                id="quality_report",
+                label="章节质量",
+                status="warning",
+                recommended_action="补足章节长度。",
+            )
+        ],
+        recommended_actions=["补足章节长度。"],
+        revision_notes=["旧提示"],
+    )
+    (session_dir / "trust_report.json").write_text(
+        report.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    manager._runs["run-1"] = WebRunDetail(
+        id="run-1",
+        status="completed_with_warnings",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=4, completed_steps=4),
+        input_path="demo.txt",
+        trust_report=report,
+    )
+
+    detail = manager.save_trust_revision_notes(
+        "run-1",
+        WebTrustRevisionNotesUpdate(
+            revision_notes=["  补足章节长度。  ", "", "补足章节长度。", "增加短句对白。"],
+        ),
+    )
+
+    assert detail.trust_report is not None
+    assert detail.trust_report.revision_notes == ["补足章节长度。", "增加短句对白。"]
+    assert "trust_report.json" in (detail.artifact_paths.trust_report or "")
+    stored = RevivalTrustReport.model_validate_json(
+        (session_dir / "trust_report.json").read_text(encoding="utf-8")
+    )
+    assert stored.revision_notes == ["补足章节长度。", "增加短句对白。"]
 
 
 def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:

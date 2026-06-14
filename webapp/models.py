@@ -225,6 +225,10 @@ class WebBlindChallengeRatingRequest(BaseModel):
     notes: str = ""
 
 
+class WebTrustRevisionNotesUpdate(BaseModel):
+    revision_notes: list[str] = Field(default_factory=list, max_length=20)
+
+
 class ApiErrorResponse(BaseModel):
     title: str
     status: int

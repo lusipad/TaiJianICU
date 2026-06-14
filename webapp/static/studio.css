@@ -1035,6 +1035,12 @@
   background: rgba(212, 160, 121, 0.045);
 }
 
+.trust-revision-panel p {
+  margin: 0;
+  color: rgba(226, 213, 201, 0.62);
+  line-height: 1.6;
+}
+
 .trust-revision-panel textarea {
   width: 100%;
   min-height: 142px;

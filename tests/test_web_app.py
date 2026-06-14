@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from config.settings import AppSettings
-from core.models.revival import DirectorIntentTranslation
+from core.models.revival import DirectorIntentTranslation, RevivalTrustReport
 from webapp.app import create_app
 from webapp.models import (
     WebDirectorPlan,
@@ -26,6 +26,7 @@ from webapp.models import (
     WebRunRequest,
     WebRunSourceText,
     WebRunSummary,
+    WebTrustRevisionNotesUpdate,
 )
 
 
@@ -57,6 +58,7 @@ class FakeRunManager:
         self.director_plan_save_calls = 0
         self.director_constraints_get_calls = 0
         self.director_constraints_save_calls = 0
+        self.trust_revision_notes_save_calls = 0
         self.connection_test_calls = 0
         self.last_request = None
         self.last_runtime_api_override = None
@@ -245,6 +247,20 @@ class FakeRunManager:
         self.director_constraints_save_calls += 1
         self.last_request = request
         return request.model_copy(update={"status": "user_edited"})
+
+    def save_trust_revision_notes(self, run_id: str, request: WebTrustRevisionNotesUpdate):
+        assert run_id == "run-1"
+        self.trust_revision_notes_save_calls += 1
+        self.last_request = request
+        report = self.detail.trust_report or RevivalTrustReport(
+            status="warning",
+            summary="需要修订。",
+            generated_at=datetime.now(timezone.utc),
+        )
+        self.detail = self.detail.model_copy(
+            update={"trust_report": report.model_copy(update={"revision_notes": request.revision_notes})}
+        )
+        return self.detail
 
     async def test_runtime_connection(self, request: WebRuntimeConnectionTestRequest):
         self.connection_test_calls += 1
@@ -497,6 +513,8 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
     assert "TRUST_EVIDENCE_LABELS" in script
     assert "trust-report-hero" in script
     assert "trust-revision-notes" in script
+    assert "saveTrustRevisionNotes" in script
+    assert "/trust-report/revision-notes" in script
     assert "loadDirectorConstraints" in script
     assert "saveDirectorConstraints" in script
     assert "collectDirectorConstraints" in script
@@ -930,6 +948,22 @@ def test_director_constraints_endpoints() -> None:
     assert manager.director_constraints_get_calls == 1
     assert manager.director_constraints_save_calls == 1
     assert manager.last_request.internalized_actions == ["旧物触发言语有异"]
+
+
+def test_trust_revision_notes_endpoint() -> None:
+    manager = FakeRunManager()
+    app = create_app(settings=AppSettings(), run_manager=manager)
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/revival/runs/run-1/trust-report/revision-notes",
+        json={"revision_notes": ["补足章节长度。", "增加短句对白。"]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["trust_report"]["revision_notes"] == ["补足章节长度。", "增加短句对白。"]
+    assert manager.trust_revision_notes_save_calls == 1
+    assert manager.last_request.revision_notes == ["补足章节长度。", "增加短句对白。"]
 
 
 def test_runtime_connection_test_endpoint() -> None:

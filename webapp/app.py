@@ -33,6 +33,7 @@ from webapp.models import (
     WebRunRequest,
     WebRunSourceText,
     WebRunSummary,
+    WebTrustRevisionNotesUpdate,
 )
 
 _AUTH_EXEMPT_PATHS = frozenset({"/health", "/ready"})
@@ -396,6 +397,16 @@ def create_app(
         request: DirectorIntentTranslation,
     ) -> DirectorIntentTranslation:
         return app.state.run_manager.save_director_constraints(run_id, request)
+
+    @app.post(
+        "/api/revival/runs/{run_id}/trust-report/revision-notes",
+        response_model=WebRunDetail,
+    )
+    async def save_revival_trust_revision_notes(
+        run_id: str,
+        request: WebTrustRevisionNotesUpdate,
+    ) -> WebRunDetail:
+        return app.state.run_manager.save_trust_revision_notes(run_id, request)
 
     @app.post("/api/revival/runs/{run_id}/blind-challenge", response_model=WebRunDetail)
     async def save_revival_blind_challenge(

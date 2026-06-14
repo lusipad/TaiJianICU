@@ -63,6 +63,7 @@ from webapp.models import (
     WebRunSourceText,
     WebRunSummary,
     WebRuntimeConfig,
+    WebTrustRevisionNotesUpdate,
 )
 
 
@@ -1547,6 +1548,37 @@ class WebRunManager:
                 progress=updated.progress.model_copy(update={"message": "运行失败"}),
             )
         return WebRunSummary.model_validate(updated.model_dump(mode="json"))
+
+    def save_trust_revision_notes(
+        self,
+        run_id: str,
+        request: WebTrustRevisionNotesUpdate,
+    ) -> WebRunDetail:
+        current = self.get_run(run_id)
+        session_dir = self._session_dir(current.session_name)
+        trust_report = current.trust_report or self._load_or_build_trust_report(session_dir=session_dir)
+        if not isinstance(trust_report, RevivalTrustReport):
+            raise ApiError("当前任务还没有可信报告，生成章节后再保存修订提示。", 409, "Conflict")
+        revision_notes = list(
+            dict.fromkeys(note.strip() for note in request.revision_notes if note.strip())
+        )
+        updated_report = trust_report.model_copy(update={"revision_notes": revision_notes})
+        trust_report_path = self._trust_report_path(current.session_name)
+        trust_report_path.parent.mkdir(parents=True, exist_ok=True)
+        trust_report_path.write_text(updated_report.model_dump_json(indent=2), encoding="utf-8")
+        updated = current.model_copy(
+            update={
+                "trust_report": updated_report,
+                "artifact_paths": current.artifact_paths.model_copy(
+                    update={"trust_report": str(trust_report_path)}
+                ),
+                "updated_at": datetime.now(timezone.utc),
+            }
+        )
+        with self._lock:
+            self._runs[run_id] = updated
+            self._persist(updated)
+        return updated
 
     def save_blind_challenge_rating(
         self,

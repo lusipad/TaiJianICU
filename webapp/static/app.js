@@ -933,8 +933,9 @@ function renderTrustReport(report) {
       <section class="trust-revision-panel">
         <div class="trust-report-section-head">
           <strong>修订提示草稿</strong>
-          <span>可编辑后粘入下一轮导演备注或修订提示</span>
+          <button id="trust-revision-save-button" type="button" class="utility-button">保存草稿</button>
         </div>
+        <p>可编辑后保存回可信报告，后续可粘入导演备注或修订提示。</p>
         <textarea id="trust-revision-notes" rows="6" spellcheck="false">${escapeHtml(revisionNotes.join("\n"))}</textarea>
       </section>
     `
@@ -971,6 +972,33 @@ function renderTrustReport(report) {
       </section>
     </div>
   `;
+}
+
+async function saveTrustRevisionNotes() {
+  if (!state.activeRunId) {
+    setFormStatus("请先选择一个任务。", "tone-error");
+    return;
+  }
+  const textarea = document.getElementById("trust-revision-notes");
+  if (!textarea) {
+    setFormStatus("当前没有可保存的修订提示。", "tone-error");
+    return;
+  }
+  const revisionNotes = textarea.value
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const detail = await fetchJson(
+    `/api/revival/runs/${encodeURIComponent(state.activeRunId)}/trust-report/revision-notes`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision_notes: revisionNotes }),
+    }
+  );
+  state.activeRunDetail = detail;
+  renderRun(detail);
+  setFormStatus("修订提示草稿已保存。", "tone-success");
 }
 
 function formatModelSummary(request) {
@@ -2821,6 +2849,19 @@ if (elements.blindChallenge) {
       await submitBlindChallengeRating();
     } catch (error) {
       setFormStatus(`保存评分失败：${error.message}`, "tone-error");
+      event.target.disabled = false;
+    }
+  });
+}
+
+if (elements.trustReportSummary) {
+  elements.trustReportSummary.addEventListener("click", async (event) => {
+    if (event.target.id !== "trust-revision-save-button") return;
+    event.target.disabled = true;
+    try {
+      await saveTrustRevisionNotes();
+    } catch (error) {
+      setFormStatus(`保存修订提示失败：${error.message}`, "tone-error");
       event.target.disabled = false;
     }
   });
