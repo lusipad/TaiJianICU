@@ -11,6 +11,7 @@ from core.models.style_profile import ExtractionSnapshot, StyleProfile
 from core.models.world_model import WorldModel
 from core.models.revival import (
     BlindChallenge,
+    BlindChallengeRating,
     BlindJudgeDecision,
     BlindJudgeReport,
     BlindJudgeRound,
@@ -219,6 +220,52 @@ def test_trust_report_builder_marks_pass_warning_and_fail() -> None:
     assert any("章节质量" in note for note in warning_report.revision_notes)
     assert any("作者声口" in note for note in fail_report.revision_notes)
     assert any(check.id == "quality_report" for check in warning_report.checks)
+
+
+def test_trust_report_builder_warns_on_empty_human_rating() -> None:
+    manifest = SimpleNamespace(
+        status="completed",
+        chapters=[
+            SimpleNamespace(
+                chapter_number=2,
+                status="completed",
+                quality_report=QualityReport(score=0.9, verdict="pass"),
+            )
+        ],
+    )
+    blind_report = BlindJudgeReport(
+        status="pass",
+        rounds=[
+            BlindJudgeRound(
+                round_number=1,
+                generated_excerpt_id="A",
+                decision=BlindJudgeDecision(suspected_excerpt_id="B", confidence=0.2),
+                passed=True,
+            )
+        ],
+    )
+    diagnosis = RevivalDiagnosisBuilder().build(
+        gate_result=CleanProseGate().check("沈照站在义庄门口。" * 200),
+        quality_score=0.9,
+        retry_count=0,
+    )
+
+    report = TrustReportBuilder().build(
+        manifest=manifest,
+        diagnosis=diagnosis,
+        blind_judge_report=blind_report,
+        blind_challenge=BlindChallenge(
+            excerpt_text="沈照站在雨里。",
+            excerpt_char_count=7,
+            ratings=BlindChallengeRating(notes="只写了备注，没有给分。"),
+        ),
+    )
+
+    human_check = next(check for check in report.checks if check.id == "human_blind_rating")
+    assert report.status == "warning"
+    assert human_check.status == "warning"
+    assert human_check.observed == "人工评分已提交，但没有可用分数。"
+    assert any("人工盲测评分" in note for note in report.revision_notes)
 
 
 async def test_director_intent_internalizer_uses_llm_result() -> None:

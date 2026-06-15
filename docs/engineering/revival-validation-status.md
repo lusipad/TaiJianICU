@@ -33,6 +33,7 @@
 - `TrustReportBuilder` 的顶层状态不使用百分制总分：`pass` 只表示关键 gate 全过且无章节 warning；`warning` 表示已生成但仍有短章、重复、质量 issue、盲测缺口或人工低分；`fail` 表示生成失败、clean/source voice 最终不过、盲测最终失败或 manifest failed；`not_ready` 表示仅完成分析。
 - `trust_report.json` 同步生成 `revision_notes`：把 warning/fail 检查项归纳成可编辑修订提示，Studio 单章评审会展示并可保存“修订提示草稿”，也可以直接按草稿重新生成当前章节；重生成前会保存 `previous_trust_report.json`，用于显示修订前后可信状态、失败项和警告项变化。
 - 人工盲测评分会刷新 `trust_report.json` 并纳入评分证据；若用户已经编辑过 `revision_notes`，刷新时会保留用户提示并追加低分项产生的新修订建议。
+- 人工盲测评分对象若已经提交但没有任何有效分数，会进入 `warning`，避免空评分把可信报告推成假通过。
 - 生成失败写出的失败态可信报告同样保留已有 `revision_notes`，再追加“不要沿用失败产物”和排查运行日志的失败处理提示。
 - `benchmark-multi` 继续作为连续章节回归入口，JSON/Markdown 现在包含每章 Revival gate 摘要和 `revival_status`，不新增专用命令。
 

@@ -1243,6 +1243,17 @@ class TrustReportBuilder:
             ]
             if score is not None
         ]
+        if not scores:
+            return RevivalTrustCheck(
+                id="human_blind_rating",
+                label="人工盲测评分",
+                status="warning",
+                evidence=["scores=[]", ratings.notes] if ratings.notes else ["scores=[]"],
+                expected="声口、节奏、人物评分至少填写一项，且已填写评分不低于 3 分。",
+                observed="人工评分已提交，但没有可用分数。",
+                source="blind_challenge",
+                recommended_action="补填声口、节奏或人物评分后重新保存盲测评分。",
+            )
         low_scores = [score for score in scores if score < 3]
         status = "warning" if low_scores else "pass"
         return RevivalTrustCheck(
