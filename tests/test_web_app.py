@@ -525,6 +525,7 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
     assert "buildTrustRevisionNotes" in script
     assert "renderTrustReportComparison" in script
     assert "previous_trust_report" in script
+    assert '"trust_report",\n    "previous_trust_report",' in script
     assert "TRUST_EVIDENCE_LABELS" in script
     assert "trust-report-hero" in script
     assert "trust-revision-notes" in script

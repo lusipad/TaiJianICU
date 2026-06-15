@@ -868,6 +868,7 @@ function renderLibraryOverview(run) {
     "director_constraints",
     "revival_diagnosis",
     "trust_report",
+    "previous_trust_report",
     "blind_challenge",
     "latest_skeleton",
     "latest_chapter_brief",
