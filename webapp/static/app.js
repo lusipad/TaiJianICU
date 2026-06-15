@@ -2901,7 +2901,7 @@ async function submitBlindChallengeRating() {
     return value ? Number(value) : null;
   };
   const notes = elements.blindChallenge.querySelector('[name="blind_notes"]')?.value || "";
-  await fetchJson(`/api/revival/runs/${encodeURIComponent(state.activeRunId)}/blind-challenge`, {
+  const detail = await fetchJson(`/api/revival/runs/${encodeURIComponent(state.activeRunId)}/blind-challenge`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -2911,8 +2911,10 @@ async function submitBlindChallengeRating() {
       notes,
     }),
   });
-  setFormStatus("盲测评分已保存。");
-  await loadRun(state.activeRunId);
+  renderRun(detail);
+  const trustStatus = detail.trust_report?.status;
+  const trustLabel = trustStatus ? `，可信状态：${formatTrustStatus(trustStatus)}` : "";
+  setFormStatus(`盲测评分已保存${trustLabel}。`, trustStatus === "pass" ? "tone-success" : "");
 }
 
 function stopPolling() {

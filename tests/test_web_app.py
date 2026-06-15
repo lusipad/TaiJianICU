@@ -531,6 +531,8 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
     assert "trust-revision-notes" in script
     assert "saveTrustRevisionNotes" in script
     assert "runTrustRevision" in script
+    assert "盲测评分已保存${trustLabel}" in script
+    assert "renderRun(detail)" in script
     assert "/trust-report/revision-notes" in script
     assert "/trust-report/revision-run" in script
     assert "loadDirectorConstraints" in script
