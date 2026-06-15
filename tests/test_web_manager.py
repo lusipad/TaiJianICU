@@ -835,6 +835,40 @@ def test_web_run_manager_hydrates_previous_trust_report(tmp_path: Path) -> None:
     assert "previous_trust_report.json" in (detail.artifact_paths.previous_trust_report or "")
 
 
+def test_web_run_manager_failure_trust_report_preserves_revision_notes(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    now = datetime.now(timezone.utc)
+    run = WebRunDetail(
+        id="run-1",
+        status="generating",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=4, completed_steps=2),
+        input_path="demo.txt",
+        trust_report=RevivalTrustReport(
+            status="warning",
+            summary="需要修订。",
+            generated_at=now,
+            revision_notes=["用户手写：先扩写场景。"],
+        ),
+    )
+
+    report, report_path = manager._write_failure_trust_report(  # noqa: SLF001
+        run=run,
+        message="模型接口超时",
+    )
+
+    assert report_path.name == "trust_report.json"
+    assert report.revision_notes[0] == "用户手写：先扩写场景。"
+    assert any("不要沿用失败产物" in note for note in report.revision_notes)
+    stored = RevivalTrustReport.model_validate_json(report_path.read_text(encoding="utf-8"))
+    assert stored.revision_notes == report.revision_notes
+
+
 def test_web_run_manager_restarts_generation_from_revision_notes(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
     manager = WebRunManager(settings)

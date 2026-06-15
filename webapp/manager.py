@@ -1091,6 +1091,11 @@ class WebRunManager:
     ) -> tuple[RevivalTrustReport, Path]:
         session_dir = self.settings.sessions_dir / run.session_name
         session_dir.mkdir(parents=True, exist_ok=True)
+        revision_notes = [
+            *(run.trust_report.revision_notes if run.trust_report else []),
+            "不要沿用失败产物。",
+            "先查看运行日志和错误信息，修复生成链路后重新生成章节。",
+        ]
         report = RevivalTrustReport(
             status="fail",
             summary="章节生成失败，可信评审不能交付。",
@@ -1107,10 +1112,7 @@ class WebRunManager:
                 )
             ],
             recommended_actions=["查看运行日志和错误信息，修复后重新生成。"],
-            revision_notes=[
-                "不要沿用失败产物。",
-                "先查看运行日志和错误信息，修复生成链路后重新生成章节。",
-            ],
+            revision_notes=list(dict.fromkeys(note for note in revision_notes if note)),
             generated_at=datetime.now(timezone.utc),
             chapter_number=run.request.start_chapter,
         )
