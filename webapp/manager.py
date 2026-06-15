@@ -1717,6 +1717,11 @@ class WebRunManager:
             ),
             blind_challenge=updated_challenge,
         )
+        if current.trust_report and current.trust_report.revision_notes:
+            revision_notes = list(
+                dict.fromkeys([*current.trust_report.revision_notes, *trust_report.revision_notes])
+            )
+            trust_report = trust_report.model_copy(update={"revision_notes": revision_notes})
         trust_report_path = session_dir / "trust_report.json"
         trust_report_path.write_text(trust_report.model_dump_json(indent=2), encoding="utf-8")
         updated = current.model_copy(

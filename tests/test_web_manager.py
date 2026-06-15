@@ -678,6 +678,66 @@ def test_web_run_manager_saves_blind_challenge_rating(tmp_path: Path) -> None:
     assert "trust_report.json" in (detail.artifact_paths.trust_report or "")
 
 
+def test_web_run_manager_preserves_revision_notes_when_saving_blind_rating(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    session_dir = settings.sessions_dir / "revival-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc)
+    existing_report = RevivalTrustReport(
+        status="warning",
+        summary="需要修订。",
+        generated_at=now,
+        revision_notes=["用户手写：保留这条修订提示。"],
+    )
+    (session_dir / "blind_challenge.json").write_text(
+        BlindChallenge(
+            excerpt_text="沈照站在雨里。",
+            excerpt_char_count=7,
+            excerpts=[
+                BlindChallengeExcerpt(
+                    excerpt_id="A",
+                    text="沈照站在雨里。",
+                    excerpt_char_count=7,
+                    source_note="generated",
+                )
+            ],
+            generated_excerpt_id="A",
+        ).model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    manager._runs["run-1"] = WebRunDetail(
+        id="run-1",
+        status="completed",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=4, completed_steps=4),
+        input_path="demo.txt",
+        trust_report=existing_report,
+    )
+
+    detail = manager.save_blind_challenge_rating(
+        "run-1",
+        WebBlindChallengeRatingRequest(
+            voice_match_score=2,
+            rhythm_match_score=4,
+            character_voice_score=5,
+            notes="声口不像",
+        ),
+    )
+
+    assert detail.trust_report is not None
+    assert detail.trust_report.revision_notes[0] == "用户手写：保留这条修订提示。"
+    assert any("人工盲测评分" in note for note in detail.trust_report.revision_notes)
+    stored = RevivalTrustReport.model_validate_json(
+        (session_dir / "trust_report.json").read_text(encoding="utf-8")
+    )
+    assert stored.revision_notes == detail.trust_report.revision_notes
+
+
 def test_web_run_manager_saves_trust_revision_notes(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
     manager = WebRunManager(settings)
