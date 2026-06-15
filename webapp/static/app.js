@@ -432,6 +432,19 @@ function trustStatusRank(value) {
   }
 }
 
+function comparableTrustStatusRank(value) {
+  switch (value) {
+    case "fail":
+      return 0;
+    case "warning":
+      return 1;
+    case "pass":
+      return 2;
+    default:
+      return null;
+  }
+}
+
 const TRUST_CHECK_ORDER = {
   revival_diagnosis: 0,
   blind_judge: 1,
@@ -541,8 +554,13 @@ function countTrustCheckStatuses(report) {
 }
 
 function describeTrustTrend(currentStatus, previousStatus) {
-  const currentRank = trustStatusRank(currentStatus);
-  const previousRank = trustStatusRank(previousStatus);
+  if (currentStatus === previousStatus) {
+    return currentStatus === "not_ready" ? "证据仍不足" : "状态持平";
+  }
+  const currentRank = comparableTrustStatusRank(currentStatus);
+  const previousRank = comparableTrustStatusRank(previousStatus);
+  if (currentRank == null) return "证据不足";
+  if (previousRank == null) return currentStatus === "pass" ? "补齐后通过" : "补齐后发现问题";
   if (currentRank > previousRank) return "状态好转";
   if (currentRank < previousRank) return "状态变差";
   return "状态持平";
