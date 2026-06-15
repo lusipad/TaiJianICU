@@ -97,6 +97,9 @@ class WebRunManager:
     def _trust_report_path(self, session_name: str) -> Path:
         return self._session_dir(session_name) / "trust_report.json"
 
+    def _previous_trust_report_path(self, session_name: str) -> Path:
+        return self._session_dir(session_name) / "previous_trust_report.json"
+
     def _benchmark_report_files(self) -> list[Path]:
         return sorted(
             self.settings.benchmarks_dir.glob("*/cases/*/report/benchmark_report.json"),
@@ -203,6 +206,14 @@ class WebRunManager:
             if isinstance(report, RevivalTrustReport):
                 updates["trust_report"] = report
                 artifact_updates["trust_report"] = str(trust_path)
+        previous_trust_path = session_dir / "previous_trust_report.json"
+        if previous_trust_path.exists():
+            if run.previous_trust_report is None:
+                previous_report = self._load_json_model(previous_trust_path, RevivalTrustReport)
+                if isinstance(previous_report, RevivalTrustReport):
+                    updates["previous_trust_report"] = previous_report
+            if run.artifact_paths.previous_trust_report is None:
+                artifact_updates["previous_trust_report"] = str(previous_trust_path)
         if not updates and not artifact_updates:
             return run
         if artifact_updates:
@@ -1144,6 +1155,12 @@ class WebRunManager:
             session_dir=session_dir,
             manifest=manifest or result,
         )
+        previous_trust_report = self._load_json_model(
+            session_dir / "previous_trust_report.json",
+            RevivalTrustReport,
+        )
+        if not isinstance(previous_trust_report, RevivalTrustReport):
+            previous_trust_report = current_run.previous_trust_report
         latest_output_path = next(
             (
                 Path(item.output_path)
@@ -1299,6 +1316,7 @@ class WebRunManager:
             director_constraints=director_constraints,
             revival_diagnosis=revival_diagnosis,
             trust_report=trust_report,
+            previous_trust_report=previous_trust_report,
             blind_challenge=WebBlindChallenge.from_internal(blind_challenge),
             selected_references=[
                 item.model_dump(mode="json")
@@ -1349,6 +1367,11 @@ class WebRunManager:
                     if (session_dir / "trust_report.json").exists()
                     else None
                 ),
+                previous_trust_report=(
+                    str(session_dir / "previous_trust_report.json")
+                    if (session_dir / "previous_trust_report.json").exists()
+                    else None
+                ),
                 blind_challenge=(
                     str(session_dir / "blind_challenge.json")
                     if (session_dir / "blind_challenge.json").exists()
@@ -1386,6 +1409,10 @@ class WebRunManager:
             DirectorIntentTranslation,
         )
         trust_report = self._load_or_build_trust_report(session_dir=session_dir)
+        previous_trust_report = self._load_json_model(
+            session_dir / "previous_trust_report.json",
+            RevivalTrustReport,
+        )
         selected_references_bundle = self._load_json_model(
             session_dir / "selected_references.json",
             _ReferenceProfileBundle,
@@ -1409,6 +1436,11 @@ class WebRunManager:
             arc_options_digest=self._arc_options_digest(arc_options) if arc_options else None,
             director_constraints=director_constraints,
             trust_report=trust_report,
+            previous_trust_report=(
+                previous_trust_report
+                if isinstance(previous_trust_report, RevivalTrustReport)
+                else None
+            ),
             selected_references=[
                 item.model_dump(mode="json")
                 for item in (selected_references_bundle.profiles if selected_references_bundle else [])
@@ -1437,6 +1469,11 @@ class WebRunManager:
                 trust_report=(
                     str(session_dir / "trust_report.json")
                     if (session_dir / "trust_report.json").exists()
+                    else None
+                ),
+                previous_trust_report=(
+                    str(session_dir / "previous_trust_report.json")
+                    if (session_dir / "previous_trust_report.json").exists()
                     else None
                 ),
             ),
@@ -1608,7 +1645,9 @@ class WebRunManager:
         if not selected_arc_path.exists():
             selected_arc_path.write_text(selected_arc.model_dump_json(indent=2), encoding="utf-8")
         trust_report_path = self._trust_report_path(current.session_name)
+        previous_trust_report_path = self._previous_trust_report_path(current.session_name)
         updated_report = trust_report.model_copy(update={"revision_notes": revision_notes})
+        previous_trust_report_path.write_text(updated_report.model_dump_json(indent=2), encoding="utf-8")
         trust_report_path.write_text(updated_report.model_dump_json(indent=2), encoding="utf-8")
         updated = current.model_copy(
             update={
@@ -1616,10 +1655,12 @@ class WebRunManager:
                 "error_message": None,
                 "selected_arc": selected_arc,
                 "trust_report": updated_report,
+                "previous_trust_report": updated_report,
                 "artifact_paths": current.artifact_paths.model_copy(
                     update={
                         "selected_arc": str(selected_arc_path),
                         "trust_report": str(trust_report_path),
+                        "previous_trust_report": str(previous_trust_report_path),
                     }
                 ),
                 "progress": current.progress.model_copy(

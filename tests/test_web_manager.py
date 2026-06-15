@@ -732,6 +732,49 @@ def test_web_run_manager_saves_trust_revision_notes(tmp_path: Path) -> None:
     assert stored.revision_notes == ["补足章节长度。", "增加短句对白。"]
 
 
+def test_web_run_manager_hydrates_previous_trust_report(tmp_path: Path) -> None:
+    settings = build_settings(tmp_path)
+    manager = WebRunManager(settings)
+    now = datetime.now(timezone.utc)
+    session_dir = settings.sessions_dir / "revival-session"
+    session_dir.mkdir(parents=True, exist_ok=True)
+    previous_report = RevivalTrustReport(
+        status="fail",
+        summary="上一版失败。",
+        generated_at=now,
+        checks=[
+            RevivalTrustCheck(
+                id="clean_prose",
+                label="clean prose",
+                status="fail",
+                recommended_action="去掉现代词。",
+            )
+        ],
+    )
+    (session_dir / "previous_trust_report.json").write_text(
+        previous_report.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+    manager._runs["run-1"] = WebRunDetail(
+        id="run-1",
+        status="completed",
+        created_at=now,
+        updated_at=now,
+        session_name="revival-session",
+        input_filename="demo.txt",
+        request=WebRunRequest(chapters=1, start_chapter=1),
+        progress=WebRunProgress(total_steps=4, completed_steps=4),
+        input_path="demo.txt",
+    )
+
+    detail = manager.get_run("run-1")
+
+    assert detail.previous_trust_report is not None
+    assert detail.previous_trust_report.status == "fail"
+    assert detail.previous_trust_report.checks[0].id == "clean_prose"
+    assert "previous_trust_report.json" in (detail.artifact_paths.previous_trust_report or "")
+
+
 def test_web_run_manager_restarts_generation_from_revision_notes(tmp_path: Path) -> None:
     settings = build_settings(tmp_path)
     manager = WebRunManager(settings)
@@ -776,9 +819,14 @@ def test_web_run_manager_restarts_generation_from_revision_notes(tmp_path: Path)
     detail = manager.get_run("run-1")
     assert detail.trust_report is not None
     assert detail.trust_report.revision_notes == ["补足章节长度。", "增加短句对白。"]
+    assert detail.previous_trust_report is not None
+    assert detail.previous_trust_report.status == "warning"
+    assert detail.previous_trust_report.revision_notes == ["补足章节长度。", "增加短句对白。"]
     assert detail.progress.message == "已保存修订提示，开始重新生成"
     assert (session_dir / "selected_arc.json").exists()
     assert (session_dir / "trust_report.json").exists()
+    assert (session_dir / "previous_trust_report.json").exists()
+    assert "previous_trust_report.json" in (detail.artifact_paths.previous_trust_report or "")
 
 
 def test_web_run_manager_lists_benchmarks(tmp_path: Path) -> None:

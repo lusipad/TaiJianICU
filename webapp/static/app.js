@@ -532,6 +532,84 @@ function renderTrustCheck(check, { compact = false } = {}) {
   `;
 }
 
+function countTrustCheckStatuses(report) {
+  const counts = { pass: 0, warning: 0, fail: 0, not_ready: 0 };
+  for (const check of Array.isArray(report?.checks) ? report.checks : []) {
+    if (Object.prototype.hasOwnProperty.call(counts, check.status)) counts[check.status] += 1;
+  }
+  return counts;
+}
+
+function describeTrustTrend(currentStatus, previousStatus) {
+  const currentRank = trustStatusRank(currentStatus);
+  const previousRank = trustStatusRank(previousStatus);
+  if (currentRank > previousRank) return "状态好转";
+  if (currentRank < previousRank) return "状态变差";
+  return "状态持平";
+}
+
+function renderTrustReportComparison(report, previousReport) {
+  if (!previousReport) return "";
+  const previousCounts = countTrustCheckStatuses(previousReport);
+  const currentCounts = countTrustCheckStatuses(report);
+  const previousChecks = new Map(
+    (Array.isArray(previousReport.checks) ? previousReport.checks : []).map((check) => [check.id, check])
+  );
+  const changedChecks = (Array.isArray(report.checks) ? report.checks : [])
+    .map((check) => {
+      const previous = previousChecks.get(check.id);
+      if (!previous || previous.status === check.status) return null;
+      return {
+        label: check.label || previous.label || check.id,
+        before: previous.status,
+        after: check.status,
+        trend: describeTrustTrend(check.status, previous.status),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 4);
+  const changedHtml = changedChecks.length
+    ? `
+      <div class="trust-comparison-changes">
+        ${changedChecks
+          .map(
+            (item) => `
+              <span>
+                ${escapeHtml(item.label)}：
+                ${escapeHtml(formatTrustStatus(item.before))} -> ${escapeHtml(formatTrustStatus(item.after))}
+                · ${escapeHtml(item.trend)}
+              </span>
+            `
+          )
+          .join("")}
+      </div>
+    `
+    : '<p class="trust-comparison-note">检查项状态暂无变化，继续看具体证据和修订提示。</p>';
+  return `
+    <section class="trust-comparison-panel">
+      <div class="trust-report-section-head">
+        <strong>修订前后对比</strong>
+        <span>${escapeHtml(describeTrustTrend(report.status, previousReport.status))}</span>
+      </div>
+      <div class="trust-comparison-grid">
+        <div>
+          <span>总状态</span>
+          <strong>${escapeHtml(formatTrustStatus(previousReport.status))} -> ${escapeHtml(formatTrustStatus(report.status))}</strong>
+        </div>
+        <div>
+          <span>失败项</span>
+          <strong>${escapeHtml(previousCounts.fail)} -> ${escapeHtml(currentCounts.fail)}</strong>
+        </div>
+        <div>
+          <span>警告项</span>
+          <strong>${escapeHtml(previousCounts.warning)} -> ${escapeHtml(currentCounts.warning)}</strong>
+        </div>
+      </div>
+      ${changedHtml}
+    </section>
+  `;
+}
+
 function isLiveRunStatus(status) {
   return ["queued", "running", "analyzing", "generating"].includes(status);
 }
@@ -887,7 +965,7 @@ function formatRevivalDiagnosis(diagnosis) {
   return lines.join("\n");
 }
 
-function renderTrustReport(report) {
+function renderTrustReport(report, previousReport = null) {
   if (!elements.trustReportSummary) return;
   if (!report) {
     elements.trustReportSummary.innerHTML = `
@@ -904,6 +982,7 @@ function renderTrustReport(report) {
   const passChecks = checks.filter((check) => check.status === "pass").length;
   const primaryAction = priorityChecks[0]?.recommended_action || report.recommended_actions?.[0] || "";
   const revisionNotes = buildTrustRevisionNotes(report, checks);
+  const comparisonHtml = renderTrustReportComparison(report, previousReport);
   const checkHtml = checks.length
     ? checks.map((check) => renderTrustCheck(check)).join("")
     : '<div class="trust-report-empty"><span>暂无检查项</span></div>';
@@ -956,6 +1035,7 @@ function renderTrustReport(report) {
           <span>${escapeHtml(passChecks)} / ${escapeHtml(readyChecks || checks.length)} 项已通过</span>
         </div>
       </section>
+      ${comparisonHtml}
       ${primaryAction ? `<section class="trust-next-action"><strong>下一步</strong><span>${escapeHtml(primaryAction)}</span></section>` : ""}
       <section class="trust-report-section">
         <div class="trust-report-section-head">
@@ -2035,6 +2115,7 @@ function renderArtifacts(paths) {
     ["导演内部化约束", paths?.director_constraints],
     ["复活诊断", paths?.revival_diagnosis],
     ["可信报告", paths?.trust_report],
+    ["上一版可信报告", paths?.previous_trust_report],
     ["盲看挑战", paths?.blind_challenge],
     ["最新提纲草稿", paths?.latest_skeleton],
     ["最新章节目标", paths?.latest_chapter_brief],
@@ -2705,7 +2786,7 @@ function renderRun(run) {
   elements.qualitySummary.textContent = formatQualitySummary(run.latest_quality_report);
   elements.consistencySummary.textContent = formatConsistencySummary(run.latest_consistency_report);
   elements.revivalDiagnosisSummary.textContent = formatRevivalDiagnosis(run.revival_diagnosis);
-  renderTrustReport(run.trust_report);
+  renderTrustReport(run.trust_report, run.previous_trust_report);
   renderDirectorConstraints(run.director_constraints);
   renderLibraryOverview(run);
   renderWorldLibrary(run);

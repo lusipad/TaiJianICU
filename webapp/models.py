@@ -114,6 +114,7 @@ class WebRunArtifactPaths(BaseModel):
     director_constraints: str | None = None
     revival_diagnosis: str | None = None
     trust_report: str | None = None
+    previous_trust_report: str | None = None
     blind_challenge: str | None = None
     latest_skeleton: str | None = None
     latest_chapter_brief: str | None = None
@@ -186,6 +187,7 @@ class WebRunDetail(WebRunSummary):
     director_constraints: DirectorIntentTranslation | None = None
     revival_diagnosis: RevivalDiagnosis | None = None
     trust_report: RevivalTrustReport | None = None
+    previous_trust_report: RevivalTrustReport | None = None
     blind_challenge: WebBlindChallenge | None = None
     selected_references: list[dict] = Field(default_factory=list)
     arc_outlines: list[dict] = Field(default_factory=list)

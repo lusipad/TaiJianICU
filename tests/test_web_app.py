@@ -523,6 +523,8 @@ def test_studio_static_scripts_wire_director_plan_and_connection_test() -> None:
     assert "trustStatusClass" in script
     assert "sortTrustChecks" in script
     assert "buildTrustRevisionNotes" in script
+    assert "renderTrustReportComparison" in script
+    assert "previous_trust_report" in script
     assert "TRUST_EVIDENCE_LABELS" in script
     assert "trust-report-hero" in script
     assert "trust-revision-notes" in script

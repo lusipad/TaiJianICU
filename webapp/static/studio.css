@@ -948,7 +948,8 @@
 .trust-next-action,
 .trust-check,
 .trust-action-list,
-.trust-revision-panel {
+.trust-revision-panel,
+.trust-comparison-panel {
   min-width: 0;
   padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1057,6 +1058,56 @@
   background: rgba(14, 12, 11, 0.34);
   color: rgba(241, 223, 207, 0.8);
   font: 13px/1.65 var(--font-mono);
+}
+
+.trust-comparison-panel {
+  display: grid;
+  gap: 12px;
+  border-color: rgba(107, 207, 142, 0.18);
+  background: rgba(107, 207, 142, 0.035);
+}
+
+.trust-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trust-comparison-grid div,
+.trust-comparison-changes span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.026);
+}
+
+.trust-comparison-grid span,
+.trust-comparison-note {
+  color: rgba(226, 213, 201, 0.58);
+  font-size: 13px;
+}
+
+.trust-comparison-grid strong {
+  color: rgba(241, 223, 207, 0.82);
+  font-size: 14px;
+}
+
+.trust-comparison-changes {
+  display: grid;
+  gap: 8px;
+}
+
+.trust-comparison-changes span {
+  color: rgba(226, 213, 201, 0.68);
+  line-height: 1.55;
+}
+
+.trust-comparison-note {
+  margin: 0;
+  line-height: 1.6;
 }
 
 .trust-report-section-head,
@@ -1676,6 +1727,7 @@
   .result-grid-triple,
   .field-grid,
   .model-grid,
+  .trust-comparison-grid,
   .run-meta {
     grid-template-columns: 1fr;
   }
